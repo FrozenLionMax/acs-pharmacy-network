@@ -356,6 +356,12 @@ class ACSApp {
   switchTab(tabName) {
     this.activeTab = tabName;
 
+    if (window.location.pathname.startsWith("/pharmacy/")) {
+      try {
+        window.history.pushState({}, "", "/");
+      } catch (e) {}
+    }
+
     // Update nav button active states
     document.querySelectorAll(".nav-item-btn").forEach((btn) => {
       if (btn.getAttribute("data-tab") === tabName) {
@@ -365,6 +371,7 @@ class ACSApp {
       }
     });
 
+    this.renderHeaderBar();
     this.renderCurrentView();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -373,6 +380,27 @@ class ACSApp {
   renderCurrentView() {
     const container = document.getElementById("main-view-container");
     if (!container) return;
+
+    // Toggle Portal Header / Footer vs Standalone Hosted Mode
+    const portalHeader = document.querySelector("header.no-print");
+    const portalFooter = document.querySelector("footer.no-print");
+    const mainElement = document.querySelector("main");
+
+    if (this.activeTab === "hosted-site") {
+      document.body.classList.add("hosted-mode");
+      if (portalHeader) portalHeader.style.display = "none";
+      if (portalFooter) portalFooter.style.display = "none";
+      if (mainElement) {
+        mainElement.className = "w-full p-0 m-0 max-w-none flex-1";
+      }
+    } else {
+      document.body.classList.remove("hosted-mode");
+      if (portalHeader) portalHeader.style.display = "";
+      if (portalFooter) portalFooter.style.display = "";
+      if (mainElement) {
+        mainElement.className = "flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 py-6";
+      }
+    }
 
     // If not authenticated and not on landing, force landing
     if (!this.currentUser && this.activeTab !== "landing" && this.activeTab !== "hosted-site") {
@@ -768,13 +796,6 @@ class ACSApp {
     if (!store) return `<div class="p-8 text-center bg-white rounded-xl">No store found.</div>`;
 
     const isAudit = this.hostedSubTab === "audit-dossier";
-    const liveLocalUrl = isAudit
-      ? `${window.location.origin}/pharmacy/${store.slug || store.id}/audit`
-      : `${window.location.origin}/pharmacy/${store.slug || store.id}`;
-    const publicGovUrl = isAudit
-      ? `https://acs.up.gov.in/pharmacy/${store.slug || store.id}/audit`
-      : `https://acs.up.gov.in/pharmacy/${store.slug || store.id}`;
-
     const cleanPhone = store.phone.replace(/[^0-9]/g, "");
     const waUrl = `https://wa.me/${cleanPhone.startsWith('91') ? cleanPhone : '91' + cleanPhone}?text=Hello%20${encodeURIComponent(store.name)},%20I%20am%20inquiring%20about%20medicine%20availability.`;
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.name + ' ' + store.address)}`;
@@ -831,569 +852,270 @@ class ACSApp {
     const rev = store.revenueData;
 
     return `
-      <div class="space-y-4 animate-fade-in -mt-2">
-        <!-- Floating Owner & Inspector Navigation Ribbon -->
-        <div class="bg-slate-900 text-white p-3.5 rounded-2xl shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs border border-slate-800">
-          <div class="flex flex-wrap items-center gap-3">
-            <div class="flex items-center gap-2">
-              <span class="w-3 h-3 rounded-full bg-emerald-400 animate-ping"></span>
-              <span class="font-extrabold tracking-wide text-amber-300 uppercase">Live Hosted Webpage</span>
-            </div>
+      <div class="hosted-standalone-site w-full bg-white text-slate-800 animate-fade-in min-h-screen flex flex-col justify-between">
+        <!-- Micro Statutory Top Bar -->
+        <div class="bg-teal-950 text-teal-100 py-2.5 px-6 sm:px-12 flex flex-wrap items-center justify-between text-xs border-b border-teal-900">
+          <div class="flex items-center gap-3">
+            <span><i class="fa fa-shield text-amber-400"></i> UP FSDA Licensed Retail Pharmacy</span>
+            <span class="text-teal-700">|</span>
+            <span class="font-mono text-teal-200">Lic 20: ${store.license20}</span>
+            <span class="text-teal-700 hidden sm:inline">|</span>
+            <span class="font-mono text-teal-200 hidden sm:inline">Lic 21: ${store.license21}</span>
+            <span class="text-teal-700 hidden md:inline">|</span>
+            <span class="hidden md:inline"><i class="fa fa-map-marker text-amber-400"></i> ${store.district}, Uttar Pradesh</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span>Hours: <strong>${store.operatingHours}</strong></span>
+            ${store.is24x7 ? `<span class="bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider">24x7 Open</span>` : ''}
+            <span class="text-teal-700 hidden sm:inline">|</span>
+            <a href="tel:${cleanPhone}" class="text-amber-300 hover:text-white font-bold hidden sm:inline">
+              <i class="fa fa-phone"></i> ${store.phone}
+            </a>
+          </div>
+        </div>
 
-            <!-- Dual-Page View Switcher in Ribbon -->
-            <div class="inline-flex p-1 bg-slate-800 rounded-xl border border-slate-700/80">
+        <!-- Real Standalone Pharmacy Navbar -->
+        <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 py-4 px-6 sm:px-12 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div class="flex items-center gap-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#135c7e] to-[#2c5895] text-white flex items-center justify-center text-xl font-black shadow-md flex-shrink-0">
+              <i class="fa fa-plus"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">${store.name}</h1>
+                <span class="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase border border-emerald-300 flex items-center gap-1">
+                  <i class="fa fa-check-circle"></i> UPPC Verified
+                </span>
+              </div>
+              <p class="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
+                <i class="fa fa-map-marker text-slate-400"></i> ${store.address}
+              </p>
+            </div>
+          </div>
+
+          <!-- Navigation Switcher & Direct Actions -->
+          <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
+            <div class="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200">
               <button 
                 onclick="window.acsApp.setHostedSubTab('storefront')" 
-                class="px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${!isAudit ? 'bg-[#135c7e] text-white shadow' : 'text-slate-400 hover:text-white'}"
+                class="px-3.5 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${!isAudit ? 'bg-white text-[#135c7e] shadow-sm font-extrabold' : 'text-slate-600 hover:text-slate-900'}"
               >
-                <i class="fa fa-shopping-bag"></i> Page 1: Public Storefront (Patient View)
+                <i class="fa fa-medkit"></i> Storefront & Medicines
               </button>
               <button 
                 onclick="window.acsApp.setHostedSubTab('audit-dossier')" 
-                class="px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${isAudit ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'}"
+                class="px-3.5 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${isAudit ? 'bg-[#135c7e] text-white shadow-sm font-extrabold' : 'text-slate-600 hover:text-slate-900'}"
               >
-                <i class="fa fa-clipboard-check"></i> Page 2: Statutory Audit Dossier & Ledger
+                <i class="fa fa-file-text-o"></i> Statutory Audit Dossier
               </button>
             </div>
-          </div>
 
-          <div class="flex flex-wrap items-center gap-2">
-            <button onclick="navigator.clipboard.writeText('${liveLocalUrl}'); window.acsApp.showToast('Copied real-time working link: ${liveLocalUrl}', 'success');" class="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1.5">
-              <i class="fa fa-clone"></i> Copy Working Link
-            </button>
-            <a href="${liveLocalUrl}" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5">
-              <i class="fa fa-external-link"></i> Open Link
+            <div class="h-6 w-px bg-slate-200 hidden md:block"></div>
+
+            <a href="tel:${cleanPhone}" class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5">
+              <i class="fa fa-phone text-[#135c7e]"></i> Call Store
             </a>
-            <button onclick="window.acsApp.openEditStoreModal('${store.id}')" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1.5">
-              <i class="fa fa-pencil"></i> Edit Store Info
-            </button>
-            <button onclick="window.acsApp.switchTab('store-detail')" class="bg-[#135c7e] hover:bg-[#0f4b67] text-white px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5">
-              <i class="fa fa-dashboard"></i> Back to Hub
+            <a href="${waUrl}" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm">
+              <i class="fa fa-whatsapp text-sm"></i> WhatsApp
+            </a>
+            <button onclick="window.acsApp.openPrescriptionUploadModal('${store.name}')" class="bg-amber-400 hover:bg-amber-500 text-slate-950 px-3.5 py-2 rounded-xl font-black transition flex items-center gap-1.5 shadow-sm">
+              <i class="fa fa-file-text-o"></i> Upload Rx
             </button>
           </div>
-        </div>
+        </header>
 
-        <!-- Simulated Browser Frame -->
-        <div class="hosted-website-frame border border-slate-300 rounded-2xl overflow-hidden shadow-2xl bg-white">
-          <div class="browser-chrome bg-slate-900 p-3 flex items-center justify-between border-b border-slate-800">
-            <div class="browser-dots flex items-center gap-2">
-              <div class="w-3 h-3 rounded-full bg-rose-500"></div>
-              <div class="w-3 h-3 rounded-full bg-amber-500"></div>
-              <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
-            </div>
-            
-            <div class="browser-address-bar flex-1 mx-4 max-w-2xl bg-slate-800/90 text-slate-200 px-4 py-1.5 rounded-lg flex items-center justify-between text-xs font-mono border border-slate-700">
-              <div class="flex items-center gap-2 truncate">
-                <i class="fa fa-lock text-emerald-400 text-xs"></i>
-                <span class="truncate text-emerald-300 font-bold">${publicGovUrl}</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="text-[10px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded font-mono font-bold hidden sm:inline border border-emerald-800">
-                  SSL 256-BIT ENCRYPTED
-                </span>
-                <a href="${liveLocalUrl}" target="_blank" title="Open real local server URL in new tab" class="text-[10px] bg-slate-700 hover:bg-slate-600 text-amber-300 px-2 py-0.5 rounded font-sans font-bold">
-                  Open Real URL <i class="fa fa-external-link text-[9px]"></i>
-                </a>
-              </div>
-            </div>
+        <!-- Main Content Area -->
+        <main class="flex-1 w-full">
+          ${!isAudit ? `
+            <!-- ======================================================== -->
+            <!-- PAGE 1: PUBLIC PATIENT STOREFRONT VIEW                  -->
+            <!-- ======================================================== -->
+            <div>
+              <!-- Store Hero Banner Image -->
+              <div class="relative h-72 sm:h-96 bg-slate-900 overflow-hidden">
+                <img src="${store.photoUrl}" alt="${store.name}" class="w-full h-full object-cover opacity-90 transition duration-500 hover:scale-105" onerror="this.src='https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80'" />
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/40 to-transparent"></div>
+                
+                <div class="absolute bottom-6 left-6 right-6 sm:bottom-8 sm:left-12 sm:right-12 text-white flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                  <div>
+                    <span class="text-xs font-black uppercase tracking-widest text-amber-300 block mb-1">
+                      Licensed Retail Chemists & Druggists
+                    </span>
+                    <h2 class="text-2xl sm:text-4xl font-black">${store.name}</h2>
+                    <p class="text-xs sm:text-sm text-slate-200 mt-2 max-w-2xl leading-relaxed">
+                      Dispensing 100% genuine allopathic, biological, and OTC medications under constant supervision of qualified UPPC registered pharmacists.
+                    </p>
+                  </div>
 
-            <div class="text-slate-400 text-xs hidden md:flex items-center gap-2">
-              <i class="fa fa-shield text-amber-400"></i>
-              <span class="text-[11px] font-semibold">UP FSDA Verified Host</span>
-            </div>
-          </div>
-
-          <!-- Real Hosted Website Content -->
-          <div class="bg-white text-slate-800 min-h-[600px]">
-            <!-- Micro Top Bar -->
-            <div class="bg-teal-950 text-teal-100 py-2.5 px-6 sm:px-10 flex flex-wrap items-center justify-between text-xs border-b border-teal-900">
-              <div class="flex items-center gap-3">
-                <span><i class="fa fa-check-circle text-emerald-400"></i> UP FSDA Licensed Retail Pharmacy</span>
-                <span class="text-teal-700">|</span>
-                <span><i class="fa fa-map-marker text-amber-400"></i> ${store.district}, Uttar Pradesh</span>
-                <span class="text-teal-700 hidden sm:inline">|</span>
-                <span class="hidden sm:inline font-mono">Reg: ${store.license20}</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <span>Hours: <strong>${store.operatingHours}</strong></span>
-                ${store.is24x7 ? `<span class="bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider">24x7 Open</span>` : ''}
-              </div>
-            </div>
-
-            <!-- Website Header -->
-            <header class="py-5 px-6 sm:px-10 border-b border-slate-200 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-5">
-              <div class="flex items-center gap-4">
-                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#135c7e] to-[#2c5895] text-white flex items-center justify-center text-2xl font-black shadow-md flex-shrink-0">
-                  <i class="fa fa-plus"></i>
+                  <div class="flex items-center gap-3 bg-black/60 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/20 text-xs">
+                    <div>
+                      <span class="text-slate-400 block text-[10px] uppercase font-bold">Form 20 Lic:</span>
+                      <span class="font-mono font-bold text-white text-xs">${store.license20}</span>
+                    </div>
+                    <div class="h-7 w-px bg-white/20"></div>
+                    <div>
+                      <span class="text-slate-400 block text-[10px] uppercase font-bold">Form 21 Lic:</span>
+                      <span class="font-mono font-bold text-white text-xs">${store.license21}</span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <h2 class="text-2xl font-black text-slate-900 tracking-tight">${store.name}</h2>
-                    <span class="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase border border-emerald-300">
-                      <i class="fa fa-check"></i> UPPC Verified
+              </div>
+
+              <!-- Main Body Grid: Pharmacist on Duty & Live Medicine Search -->
+              <div class="max-w-7xl mx-auto p-6 sm:p-12 space-y-8">
+                <!-- Grid: 3 Highlight Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <!-- Pharmacist On Duty -->
+                  <div class="p-6 rounded-2xl bg-teal-50/70 border border-teal-200 flex flex-col justify-between shadow-sm">
+                    <div>
+                      <div class="flex items-center gap-2 text-[#135c7e] font-bold text-xs uppercase tracking-wider mb-3">
+                        <i class="fa fa-user-md text-base text-teal-700"></i> Registered Pharmacist On Duty
+                      </div>
+                      <h3 class="text-lg font-black text-slate-900">${chiefPharmacist ? chiefPharmacist.name : 'Qualified Pharmacist'}</h3>
+                      <span class="text-xs text-teal-800 font-semibold block">${chiefPharmacist ? chiefPharmacist.qualification : 'B.Pharm (UP)'}</span>
+                      
+                      <div class="mt-3 pt-3 border-t border-teal-200/80 space-y-2 text-xs text-slate-700">
+                        <div class="flex items-center justify-between">
+                          <span class="text-slate-500 font-medium">UPPC Reg ID:</span>
+                          <span class="font-mono font-bold text-[#135c7e] bg-teal-100/80 px-2 py-0.5 rounded">${chiefPharmacist ? chiefPharmacist.uppcRegNo : 'UPPC-PH-41290'}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                          <span class="text-slate-500 font-medium">Shift Timing:</span>
+                          <span class="font-bold text-slate-800">${chiefPharmacist ? chiefPharmacist.shift : 'Active Duty'}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                          <span class="text-slate-500 font-medium">Aadhaar Linked:</span>
+                          <span class="text-emerald-700 font-bold"><i class="fa fa-check-circle"></i> Biometric Verified</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-teal-200/80 text-[11px] text-teal-900 flex items-center gap-1.5 font-semibold">
+                      <i class="fa fa-shield text-teal-700"></i> Personally present for prescription dispensing.
+                    </div>
+                  </div>
+
+                  <!-- Store Facilities & Cold Storage -->
+                  <div class="p-6 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-between shadow-sm">
+                    <div>
+                      <div class="flex items-center gap-2 text-slate-700 font-bold text-xs uppercase tracking-wider mb-3">
+                        <i class="fa fa-snowflake-o text-base text-blue-600"></i> Cold Chain & Storage
+                      </div>
+                      <h3 class="text-base font-bold text-slate-900">Certified Refrigerated Bins</h3>
+                      <p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                        Insulin, vaccines, biologicals, and injectables strictly preserved at 2°C – 8°C with digital temperature monitoring.
+                      </p>
+                      <div class="mt-3 space-y-1.5 text-xs text-slate-600">
+                        <div class="flex items-center gap-2"><i class="fa fa-check text-emerald-600"></i> Daily digital temperature logbook maintained</div>
+                        <div class="flex items-center gap-2"><i class="fa fa-check text-emerald-600"></i> Dedicated backup generator power supply</div>
+                      </div>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center gap-1.5">
+                      <i class="fa fa-shield text-slate-400"></i> Inspected by District Drug Inspector (UP FSDA).
+                    </div>
+                  </div>
+
+                  <!-- Location & GPS Directions -->
+                  <div class="p-6 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-between shadow-sm">
+                    <div>
+                      <div class="flex items-center gap-2 text-slate-700 font-bold text-xs uppercase tracking-wider mb-3">
+                        <i class="fa fa-location-arrow text-base text-amber-600"></i> Store Location & GPS
+                      </div>
+                      <h3 class="text-base font-bold text-slate-900">${store.city}, Uttar Pradesh</h3>
+                      <p class="text-xs text-slate-600 mt-1.5 line-clamp-3 leading-relaxed">
+                        ${store.address}
+                      </p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-200">
+                      <a href="${mapsUrl}" target="_blank" class="w-full inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-black text-white py-2.5 px-3 rounded-xl text-xs font-bold transition shadow-sm">
+                        <i class="fa fa-map-marker text-amber-400"></i> Open in Google Maps
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Live Medicine Search for Customers -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-5">
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 class="text-xl font-black text-slate-900 flex items-center gap-2">
+                        <i class="fa fa-search text-[#135c7e]"></i> Check Medicine Availability
+                      </h3>
+                      <p class="text-xs text-slate-500 mt-0.5">
+                        Search for medicines, generic compositions, or brand names to check real-time stock at this store.
+                      </p>
+                    </div>
+                    <span class="text-xs bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold px-3.5 py-1.5 rounded-full self-start sm:self-auto flex items-center gap-1.5">
+                      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      ${store.stocks.length} Medicines in Live Database
                     </span>
                   </div>
-                  <p class="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
-                    <i class="fa fa-map-marker text-slate-400"></i> ${store.address}
-                  </p>
-                </div>
-              </div>
 
-              <!-- In-Page Sub-Page Switcher Tabs inside Website Header -->
-              <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <div class="bg-slate-200/80 p-1 rounded-xl flex items-center self-start sm:self-auto border border-slate-300">
-                  <button 
-                    onclick="window.acsApp.setHostedSubTab('storefront')" 
-                    class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${!isAudit ? 'bg-white text-[#135c7e] shadow-sm font-extrabold' : 'text-slate-600 hover:text-slate-900'}"
-                  >
-                    <i class="fa fa-shopping-bag"></i> Public Storefront
-                  </button>
-                  <button 
-                    onclick="window.acsApp.setHostedSubTab('audit-dossier')" 
-                    class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${isAudit ? 'bg-[#135c7e] text-white shadow-sm font-extrabold' : 'text-slate-600 hover:text-slate-900'}"
-                  >
-                    <i class="fa fa-file-text-o"></i> Statutory Audit Dossier
-                  </button>
-                </div>
-
-                <!-- Quick Patient Contact Actions -->
-                <div class="flex items-center gap-2">
-                  <a href="tel:${cleanPhone}" class="bg-[#135c7e] hover:bg-[#0f4b67] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-                    <i class="fa fa-phone"></i> Call
-                  </a>
-                  <a href="${waUrl}" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-                    <i class="fa fa-whatsapp text-sm"></i> WhatsApp
-                  </a>
-                  <button onclick="window.acsApp.openPrescriptionUploadModal('${store.name}')" class="bg-amber-400 hover:bg-amber-500 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-sm">
-                    <i class="fa fa-file-text-o"></i> Upload Rx
-                  </button>
-                </div>
-              </div>
-            </header>
-
-            <!-- ======================================================== -->
-            <!-- CONDITIONAL BODY: PAGE 1 (STOREFRONT) VS PAGE 2 (AUDIT) -->
-            <!-- ======================================================== -->
-
-            ${!isAudit ? `
-              <!-- ======================================================== -->
-              <!-- PAGE 1: PUBLIC PATIENT STOREFRONT VIEW                  -->
-              <!-- ======================================================== -->
-              <div>
-                <!-- Store Hero Banner Image -->
-                <div class="relative h-72 sm:h-96 bg-slate-900 overflow-hidden">
-                  <img src="${store.photoUrl}" alt="${store.name}" class="w-full h-full object-cover opacity-90 transition duration-500 hover:scale-105" onerror="this.src='https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80'" />
-                  <div class="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/40 to-transparent"></div>
-                  
-                  <div class="absolute bottom-6 left-6 right-6 sm:bottom-8 sm:left-10 sm:right-10 text-white flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                    <div>
-                      <span class="text-xs font-black uppercase tracking-widest text-amber-300 block mb-1">
-                        Licensed Chemists & Druggists
-                      </span>
-                      <h3 class="text-2xl sm:text-4xl font-black">${store.name}</h3>
-                      <p class="text-xs sm:text-sm text-slate-200 mt-2 max-w-2xl leading-relaxed">
-                        Dispensing 100% genuine allopathic, biological, and OTC medications under constant supervision of qualified UPPC registered pharmacists.
-                      </p>
-                    </div>
-
-                    <div class="flex items-center gap-3 bg-black/60 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/20 text-xs">
-                      <div>
-                        <span class="text-slate-400 block text-[10px] uppercase font-bold">Form 20 Lic:</span>
-                        <span class="font-mono font-bold text-white text-xs">${store.license20}</span>
-                      </div>
-                      <div class="h-7 w-px bg-white/20"></div>
-                      <div>
-                        <span class="text-slate-400 block text-[10px] uppercase font-bold">Form 21 Lic:</span>
-                        <span class="font-mono font-bold text-white text-xs">${store.license21}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Main Body Grid: Pharmacist on Duty & Live Medicine Search -->
-                <div class="p-6 sm:p-10 space-y-8">
-                  <!-- Grid: 3 Highlight Cards -->
-                  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Pharmacist On Duty -->
-                    <div class="p-5 rounded-2xl bg-teal-50/70 border border-teal-200 flex flex-col justify-between shadow-sm">
-                      <div>
-                        <div class="flex items-center gap-2 text-[#135c7e] font-bold text-xs uppercase tracking-wider mb-3">
-                          <i class="fa fa-user-md text-base text-teal-700"></i> Registered Pharmacist On Duty
-                        </div>
-                        <h4 class="text-lg font-black text-slate-900">${chiefPharmacist ? chiefPharmacist.name : 'Qualified Pharmacist'}</h4>
-                        <span class="text-xs text-teal-800 font-semibold block">${chiefPharmacist ? chiefPharmacist.qualification : 'B.Pharm (UP)'}</span>
-                        
-                        <div class="mt-3 pt-3 border-t border-teal-200/80 space-y-2 text-xs text-slate-700">
-                          <div class="flex items-center justify-between">
-                            <span class="text-slate-500 font-medium">UPPC Reg ID:</span>
-                            <span class="font-mono font-bold text-[#135c7e] bg-teal-100/80 px-2 py-0.5 rounded">${chiefPharmacist ? chiefPharmacist.uppcRegNo : 'UPPC-PH-41290'}</span>
-                          </div>
-                          <div class="flex items-center justify-between">
-                            <span class="text-slate-500 font-medium">Shift Timing:</span>
-                            <span class="font-bold text-slate-800">${chiefPharmacist ? chiefPharmacist.shift : 'Active Duty'}</span>
-                          </div>
-                          <div class="flex items-center justify-between">
-                            <span class="text-slate-500 font-medium">Aadhaar Linked:</span>
-                            <span class="text-emerald-700 font-bold"><i class="fa fa-check-circle"></i> Biometric Verified</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div class="mt-4 pt-3 border-t border-teal-200/80 text-[11px] text-teal-900 flex items-center gap-1.5 font-semibold">
-                        <i class="fa fa-shield text-teal-700"></i> Personally present for prescription dispensing.
-                      </div>
-                    </div>
-
-                    <!-- Store Facilities & Cold Storage -->
-                    <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-between shadow-sm">
-                      <div>
-                        <div class="flex items-center gap-2 text-slate-700 font-bold text-xs uppercase tracking-wider mb-3">
-                          <i class="fa fa-snowflake-o text-base text-blue-600"></i> Cold Chain & Storage
-                        </div>
-                        <h4 class="text-base font-bold text-slate-900">Certified Refrigerated Bins</h4>
-                        <p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
-                          Insulin, vaccines, biologicals, and injectables strictly preserved at 2°C – 8°C with digital temperature monitoring.
-                        </p>
-                        <div class="mt-3 space-y-1.5 text-xs text-slate-600">
-                          <div class="flex items-center gap-2"><i class="fa fa-check text-emerald-600"></i> Daily digital temperature logbook maintained</div>
-                          <div class="flex items-center gap-2"><i class="fa fa-check text-emerald-600"></i> Dedicated backup generator power supply</div>
-                        </div>
-                      </div>
-                      <div class="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center gap-1.5">
-                        <i class="fa fa-shield text-slate-400"></i> Inspected by District Drug Inspector (UP FSDA).
-                      </div>
-                    </div>
-
-                    <!-- Location & GPS Directions -->
-                    <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-between shadow-sm">
-                      <div>
-                        <div class="flex items-center gap-2 text-slate-700 font-bold text-xs uppercase tracking-wider mb-3">
-                          <i class="fa fa-location-arrow text-base text-amber-600"></i> Store Location & GPS
-                        </div>
-                        <h4 class="text-base font-bold text-slate-900">${store.city}, Uttar Pradesh</h4>
-                        <p class="text-xs text-slate-600 mt-1.5 line-clamp-3 leading-relaxed">
-                          ${store.address}
-                        </p>
-                      </div>
-                      <div class="mt-4 pt-3 border-t border-slate-200">
-                        <a href="${mapsUrl}" target="_blank" class="w-full inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-black text-white py-2.5 px-3 rounded-xl text-xs font-bold transition shadow-sm">
-                          <i class="fa fa-map-marker text-amber-400"></i> Open in Google Maps
-                        </a>
-                      </div>
-                    </div>
+                  <!-- Search Input -->
+                  <div class="relative">
+                    <i class="fa fa-search absolute left-4 top-3.5 text-slate-400 text-sm"></i>
+                    <input 
+                      type="text" 
+                      id="hosted-stock-search-input" 
+                      placeholder="Search medicine brand, generic composition (e.g. Paracetamol, Augmentin, Insulin, Telmisartan)..." 
+                      value="${this.hostedStockSearch}"
+                      class="w-full pl-11 pr-4 py-3 text-xs sm:text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#135c7e] bg-slate-50/50"
+                    />
                   </div>
 
-                  <!-- Live Medicine Search for Customers -->
-                  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-5">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <h3 class="text-xl font-black text-slate-900 flex items-center gap-2">
-                          <i class="fa fa-search text-[#135c7e]"></i> Check Medicine Availability
-                        </h3>
-                        <p class="text-xs text-slate-500 mt-0.5">
-                          Patients can search for medicines, generic chemical compositions, or brands to check real-time store stock.
-                        </p>
-                      </div>
-                      <span class="text-xs bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold px-3.5 py-1.5 rounded-full self-start sm:self-auto flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        ${store.stocks.length} Medicines in Live Database
-                      </span>
-                    </div>
-
-                    <!-- Search Input -->
-                    <div class="relative">
-                      <i class="fa fa-search absolute left-4 top-3.5 text-slate-400 text-sm"></i>
-                      <input 
-                        type="text" 
-                        id="hosted-stock-search-input" 
-                        placeholder="Search medicine brand, generic composition (e.g. Paracetamol, Augmentin, Insulin, Telmisartan)..." 
-                        value="${this.hostedStockSearch}"
-                        class="w-full pl-11 pr-4 py-3 text-xs sm:text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#135c7e] bg-slate-50/50"
-                      />
-                    </div>
-
-                    <!-- Medicine Availability Table -->
-                    <div class="overflow-x-auto rounded-xl border border-slate-200">
-                      <table class="w-full text-left text-xs border-collapse">
-                        <thead>
-                          <tr class="bg-slate-100/80 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px]">
-                            <th class="py-3 px-4">Medicine & Composition</th>
-                            <th class="py-3 px-3">Manufacturer</th>
-                            <th class="py-3 px-3">Schedule</th>
-                            <th class="py-3 px-3">Availability</th>
-                            <th class="py-3 px-3">Unit Price (MRP)</th>
-                            <th class="py-3 px-4 text-right">Inquire / Order</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                          ${filteredPublicStock.length === 0 ? `
-                            <tr>
-                              <td colspan="6" class="py-10 text-center text-slate-400">
-                                <i class="fa fa-medkit text-3xl mb-2 text-slate-300 block"></i>
-                                No medicines found matching "${this.hostedStockSearch}". Please call the store directly at ${store.phone} or upload your prescription.
-                              </td>
-                            </tr>
-                          ` : filteredPublicStock.map((m) => {
-                            const inStock = m.quantity > 0;
-                            return `
-                              <tr class="hover:bg-slate-50/80 transition">
-                                <td class="py-3 px-4">
-                                  <span class="font-bold text-slate-900 text-sm block">${m.name}</span>
-                                  <span class="text-[11px] text-slate-500 font-mono">${m.saltName}</span>
-                                </td>
-                                <td class="py-3 px-3 text-slate-700 font-medium">${m.manufacturer}</td>
-                                <td class="py-3 px-3">
-                                  <span class="px-2 py-0.5 rounded text-[10px] font-bold ${m.schedule.includes('H') ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700'}">
-                                    ${m.schedule}
-                                  </span>
-                                </td>
-                                <td class="py-3 px-3">
-                                  ${inStock ? `
-                                    <span class="text-emerald-700 font-bold flex items-center gap-1.5">
-                                      <i class="fa fa-check-circle"></i> In Stock (${m.quantity} ${m.unit})
-                                    </span>
-                                  ` : `
-                                    <span class="text-rose-600 font-bold flex items-center gap-1.5">
-                                      <i class="fa fa-times-circle"></i> Out of Stock
-                                    </span>
-                                  `}
-                                </td>
-                                <td class="py-3 px-3 font-bold text-slate-900 text-sm">
-                                  ₹ ${m.mrp.toFixed(2)}
-                                </td>
-                                <td class="py-3 px-4 text-right">
-                                  <a href="${waUrl}&text=Hello,%20is%20${encodeURIComponent(m.name)}%20available?" target="_blank" class="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg font-bold text-xs transition shadow-sm">
-                                    <i class="fa fa-whatsapp"></i> Inquire
-                                  </a>
-                                </td>
-                              </tr>
-                            `;
-                          }).join("")}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <!-- Prescription Upload CTA Strip -->
-                    <div class="p-4 rounded-xl bg-gradient-to-r from-teal-50 to-amber-50 border border-teal-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                      <div class="flex items-center gap-3">
-                        <span class="w-10 h-10 rounded-xl bg-[#135c7e] text-white flex items-center justify-center text-lg flex-shrink-0">
-                          <i class="fa fa-file-text-o"></i>
-                        </span>
-                        <div>
-                          <strong class="font-extrabold text-slate-900 text-sm block">Have a doctor's prescription?</strong>
-                          <span class="text-slate-600">Upload your prescription photo and our registered pharmacist will verify and prepare your order for pickup or delivery.</span>
-                        </div>
-                      </div>
-                      <button onclick="window.acsApp.openPrescriptionUploadModal('${store.name}')" class="bg-amber-400 hover:bg-amber-500 text-slate-950 px-4 py-2 rounded-xl font-black transition shadow flex-shrink-0">
-                        Upload Prescription Now
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ` : `
-              <!-- ======================================================== -->
-              <!-- PAGE 2: STATUTORY STOCK, STAFF & REVENUE AUDIT DOSSIER  -->
-              <!-- ======================================================== -->
-              <div class="p-6 sm:p-10 space-y-8 animate-fade-in">
-                <!-- Statutory Audit Header & Legal Disclaimer -->
-                <div class="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 text-white shadow-lg border border-teal-900/60 relative overflow-hidden">
-                  <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
-                    <div>
-                      <div class="flex items-center gap-2 text-amber-300 font-mono text-xs uppercase tracking-widest font-black mb-1">
-                        <i class="fa fa-shield text-amber-400"></i> Government of Uttar Pradesh • FSDA & UPPC Statutory Audit Dossier
-                      </div>
-                      <h3 class="text-2xl sm:text-3xl font-black text-white">
-                        Statutory Regulatory Dossier & Live Ledger
-                      </h3>
-                      <p class="text-xs text-teal-100 mt-1 max-w-3xl leading-relaxed">
-                        Official compliance record for <strong>${store.name}</strong> under the Drugs & Cosmetics Act 1940 (Form 20/21) and Pharmacy Act 1948 Section 42. Synchronized in real time with the ACS State Central Registry.
-                      </p>
-                    </div>
-
-                    <div class="flex items-center gap-3">
-                      <button 
-                        onclick="window.acsApp.toggleFinancialPrivacy()" 
-                        class="px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${this.financialsVisible ? 'bg-amber-400 text-slate-950 font-black' : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'}"
-                      >
-                        <i class="fa ${this.financialsVisible ? 'fa-eye-slash' : 'fa-eye'}"></i>
-                        <span>${this.financialsVisible ? 'Hide Private Numbers' : 'Reveal Financial Numbers'}</span>
-                      </button>
-                      <button 
-                        onclick="window.acsApp.openAddMedicineModal()" 
-                        class="bg-[#135c7e] hover:bg-[#0f4b67] text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow"
-                      >
-                        <i class="fa fa-plus"></i> Add Medicine
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- Real-time Statutory KPI Cards Bar -->
-                  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6 pt-5 border-t border-teal-800/60 text-xs">
-                    <div class="p-3 bg-white/5 rounded-xl border border-white/10">
-                      <span class="text-slate-400 block text-[10px] uppercase font-bold">Total Active SKUs</span>
-                      <span class="text-xl font-black text-white mt-0.5 block">${store.stocks.length}</span>
-                    </div>
-                    <div class="p-3 bg-white/5 rounded-xl border border-white/10">
-                      <span class="text-slate-400 block text-[10px] uppercase font-bold">Stock Valuation</span>
-                      <span class="text-xl font-black text-emerald-400 mt-0.5 block">₹ ${totalInventoryValue.toLocaleString('en-IN')}</span>
-                    </div>
-                    <div class="p-3 bg-white/5 rounded-xl border border-white/10">
-                      <span class="text-slate-400 block text-[10px] uppercase font-bold">Low Stock Items</span>
-                      <span class="text-xl font-black ${lowStockCount > 0 ? 'text-rose-400' : 'text-slate-200'} mt-0.5 block">${lowStockCount}</span>
-                    </div>
-                    <div class="p-3 bg-white/5 rounded-xl border border-white/10">
-                      <span class="text-slate-400 block text-[10px] uppercase font-bold">Expiring &le; 90 Days</span>
-                      <span class="text-xl font-black ${expiringCount > 0 ? 'text-amber-400' : 'text-slate-200'} mt-0.5 block">${expiringCount}</span>
-                    </div>
-                    <div class="p-3 bg-white/5 rounded-xl border border-white/10">
-                      <span class="text-slate-400 block text-[10px] uppercase font-bold">UPPC Pharmacists</span>
-                      <span class="text-xl font-black text-teal-300 mt-0.5 block">${uppcStaffCount} Active</span>
-                    </div>
-                    <div class="p-3 bg-white/5 rounded-xl border border-white/10">
-                      <span class="text-slate-400 block text-[10px] uppercase font-bold">Month Turnover</span>
-                      <span class="text-xl font-black text-amber-300 mt-0.5 block ${this.financialsVisible ? '' : 'privacy-blur'}">₹ ${(rev.monthRevenue || 0).toLocaleString('en-IN')}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- SECTION 1: MEDICINE STOCK & BATCH INVENTORY REGISTER -->
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5">
-                  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                      <h4 class="text-lg font-black text-slate-900 flex items-center gap-2">
-                        <i class="fa fa-cubes text-[#135c7e]"></i> Statutory Medicine Stock & Batch Inventory Register
-                      </h4>
-                      <p class="text-xs text-slate-500 mt-0.5">
-                        Mandatory batch tracking, expiry monitoring, and rack location records under Form 20/21 rules.
-                      </p>
-                    </div>
-
-                    <div class="flex flex-wrap items-center gap-2">
-                      <button id="hosted-audit-btn-export-csv" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
-                        <i class="fa fa-download"></i> Export CSV
-                      </button>
-                      <button id="hosted-audit-btn-import-csv" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
-                        <i class="fa fa-upload"></i> Bulk CSV Import
-                      </button>
-                      <input type="file" id="hosted-audit-csv-input" accept=".csv" class="hidden" />
-                      <button onclick="window.acsApp.openAddMedicineModal()" class="bg-[#135c7e] hover:bg-[#0f4b67] text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-                        <i class="fa fa-plus"></i> Add New Medicine
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- Search & Filter Controls -->
-                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div class="relative sm:col-span-1">
-                      <i class="fa fa-search absolute left-3.5 top-3 text-slate-400 text-xs"></i>
-                      <input 
-                        type="text" 
-                        id="hosted-audit-search-input" 
-                        placeholder="Search brand, salt, batch, manufacturer..." 
-                        value="${this.auditStockSearch || ''}"
-                        class="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#135c7e]"
-                      />
-                    </div>
-
-                    <div>
-                      <select id="hosted-audit-schedule-filter" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#135c7e] bg-white">
-                        <option value="ALL" ${auditSched === 'ALL' ? 'selected' : ''}>All Schedules (H, H1, X, OTC)</option>
-                        <option value="Schedule H" ${auditSched === 'Schedule H' ? 'selected' : ''}>Schedule H (Prescription Only)</option>
-                        <option value="Schedule H1" ${auditSched === 'Schedule H1' ? 'selected' : ''}>Schedule H1 (High Risk / Antibiotic)</option>
-                        <option value="Schedule X" ${auditSched === 'Schedule X' ? 'selected' : ''}>Schedule X (Narcotics)</option>
-                        <option value="OTC" ${auditSched === 'OTC' ? 'selected' : ''}>OTC / General</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <select id="hosted-audit-alert-filter" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#135c7e] bg-white">
-                        <option value="ALL" ${auditAlert === 'ALL' ? 'selected' : ''}>All Stock Status</option>
-                        <option value="LOW_STOCK" ${auditAlert === 'LOW_STOCK' ? 'selected' : ''}>Low Stock Critical (&le; 20 units)</option>
-                        <option value="EXPIRING" ${auditAlert === 'EXPIRING' ? 'selected' : ''}>Expiring Within 90 Days</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <!-- Full Comprehensive Audit Stock Table -->
+                  <!-- Medicine Availability Table -->
                   <div class="overflow-x-auto rounded-xl border border-slate-200">
                     <table class="w-full text-left text-xs border-collapse">
                       <thead>
                         <tr class="bg-slate-100/80 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px]">
-                          <th class="py-3 px-3">Medicine & Salt Composition</th>
-                          <th class="py-3 px-3">Batch No</th>
-                          <th class="py-3 px-3">Expiry Date</th>
-                          <th class="py-3 px-3">Rack Bay</th>
+                          <th class="py-3 px-4">Medicine & Composition</th>
+                          <th class="py-3 px-3">Manufacturer</th>
                           <th class="py-3 px-3">Schedule</th>
-                          <th class="py-3 px-3 text-center">In-Stock Quantity</th>
-                          <th class="py-3 px-3">Purchase & MRP</th>
-                          <th class="py-3 px-3 text-right">Actions</th>
+                          <th class="py-3 px-3">Availability</th>
+                          <th class="py-3 px-3">Unit Price (MRP)</th>
+                          <th class="py-3 px-4 text-right">Inquire / Order</th>
                         </tr>
                       </thead>
                       <tbody class="divide-y divide-slate-100">
-                        ${filteredAuditStock.length === 0 ? `
+                        ${filteredPublicStock.length === 0 ? `
                           <tr>
-                            <td colspan="8" class="py-8 text-center text-slate-400">
-                              No medicine records found matching your filters.
+                            <td colspan="6" class="py-10 text-center text-slate-400">
+                              <i class="fa fa-medkit text-3xl mb-2 text-slate-300 block"></i>
+                              No medicines found matching "${this.hostedStockSearch}". Please call the store directly at ${store.phone} or upload your prescription.
                             </td>
                           </tr>
-                        ` : filteredAuditStock.map((m) => {
-                          const isLow = m.quantity <= (m.minAlertThreshold || 20);
-                          const exp = new Date(m.expiryDate);
-                          const diffMonths = (exp.getFullYear() - 2026) * 12 + (exp.getMonth() - 9);
-                          const isExpiring = diffMonths <= 3;
-                          const margin = Math.round(((m.mrp - m.purchaseRate) / m.mrp) * 100);
-
+                        ` : filteredPublicStock.map((m) => {
+                          const inStock = m.quantity > 0;
                           return `
                             <tr class="hover:bg-slate-50/80 transition">
-                              <td class="py-3 px-3">
-                                <span class="font-bold text-slate-900 block text-xs">${m.name}</span>
+                              <td class="py-3 px-4">
+                                <span class="font-bold text-slate-900 text-sm block">${m.name}</span>
                                 <span class="text-[11px] text-slate-500 font-mono">${m.saltName}</span>
-                                <span class="text-[10px] text-slate-400 block mt-0.5">${m.manufacturer}</span>
                               </td>
-                              <td class="py-3 px-3 font-mono text-slate-700 font-semibold">
-                                ${m.batchNo}
-                              </td>
+                              <td class="py-3 px-3 text-slate-700 font-medium">${m.manufacturer}</td>
                               <td class="py-3 px-3">
-                                <span class="font-mono font-semibold ${isExpiring ? 'text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200' : 'text-slate-700'}">
-                                  ${m.expiryDate}
-                                </span>
-                                ${isExpiring ? `<span class="block text-[10px] text-amber-700 font-bold mt-0.5">Expiring Soon</span>` : ''}
-                              </td>
-                              <td class="py-3 px-3">
-                                <span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-mono font-bold text-[11px]">
-                                  ${m.rackLocation || 'Rack A'}
-                                </span>
-                              </td>
-                              <td class="py-3 px-3">
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${m.schedule.includes('H1') ? 'bg-purple-50 text-purple-700 border border-purple-200' : m.schedule.includes('H') ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700'}">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${m.schedule.includes('H') ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700'}">
                                   ${m.schedule}
                                 </span>
                               </td>
-                              <td class="py-3 px-3 text-center">
-                                <div class="inline-flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg">
-                                  <button onclick="window.acsApp.adjustStockQty('${m.id}', -5)" class="w-5 h-5 flex items-center justify-center rounded bg-white hover:bg-slate-200 text-slate-700 font-black shadow-xs">-</button>
-                                  <span class="font-extrabold ${isLow ? 'text-rose-600' : 'text-slate-800'} min-w-[2.5rem] text-center">
-                                    ${m.quantity}
-                                  </span>
-                                  <button onclick="window.acsApp.adjustStockQty('${m.id}', 5)" class="w-5 h-5 flex items-center justify-center rounded bg-white hover:bg-slate-200 text-slate-700 font-black shadow-xs">+</button>
-                                </div>
-                                <span class="text-[10px] text-slate-400 block mt-0.5">${m.unit}</span>
-                              </td>
                               <td class="py-3 px-3">
-                                <div class="text-slate-800 font-bold">MRP: ₹ ${m.mrp.toFixed(2)}</div>
-                                <div class="text-[11px] text-slate-500">Cost: ₹ ${m.purchaseRate.toFixed(2)}</div>
-                                <span class="text-[10px] text-emerald-700 font-bold">${margin}% Margin</span>
+                                ${inStock ? `
+                                  <span class="text-emerald-700 font-bold flex items-center gap-1.5">
+                                    <i class="fa fa-check-circle"></i> In Stock (${m.quantity} ${m.unit})
+                                  </span>
+                                ` : `
+                                  <span class="text-rose-600 font-bold flex items-center gap-1.5">
+                                    <i class="fa fa-times-circle"></i> Out of Stock
+                                  </span>
+                                `}
                               </td>
-                              <td class="py-3 px-3 text-right">
-                                <div class="flex items-center justify-end gap-1">
-                                  <button onclick="window.acsApp.openEditMedicineModal('${m.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit Medicine Details">
-                                    <i class="fa fa-pencil"></i>
-                                  </button>
-                                  <button onclick="window.acsApp.deleteMedicine('${m.id}')" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded" title="Delete Medicine">
-                                    <i class="fa fa-trash"></i>
-                                  </button>
-                                </div>
+                              <td class="py-3 px-3 font-bold text-slate-900 text-sm">
+                                ₹ ${m.mrp.toFixed(2)}
+                              </td>
+                              <td class="py-3 px-4 text-right">
+                                <a href="${waUrl}&text=Hello,%20is%20${encodeURIComponent(m.name)}%20available?" target="_blank" class="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg font-bold text-xs transition shadow-sm">
+                                  <i class="fa fa-whatsapp"></i> Inquire
+                                </a>
                               </td>
                             </tr>
                           `;
@@ -1401,226 +1123,483 @@ class ACSApp {
                       </tbody>
                     </table>
                   </div>
-                </div>
 
-                <!-- SECTION 2: UPPC REGISTERED PHARMACIST & STAFF COMPLIANCE ROSTER -->
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5">
-                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                      <h4 class="text-lg font-black text-slate-900 flex items-center gap-2">
-                        <i class="fa fa-user-md text-[#135c7e]"></i> UPPC Registered Pharmacists & Staff Compliance Roster
-                      </h4>
-                      <p class="text-xs text-slate-500 mt-0.5">
-                        Statutory pharmacist duty register mandated under the Pharmacy Act 1948 Section 42.
-                      </p>
+                  <!-- Prescription Upload CTA Strip -->
+                  <div class="p-5 rounded-2xl bg-gradient-to-r from-teal-50 to-amber-50 border border-teal-200/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+                    <div class="flex items-center gap-3.5">
+                      <span class="w-11 h-11 rounded-2xl bg-[#135c7e] text-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
+                        <i class="fa fa-file-text-o"></i>
+                      </span>
+                      <div>
+                        <strong class="font-extrabold text-slate-900 text-sm block">Have a doctor's prescription?</strong>
+                        <span class="text-slate-600">Upload your prescription photo and our registered pharmacist will verify and prepare your medicines.</span>
+                      </div>
                     </div>
-
-                    <button onclick="window.acsApp.openAddStaffModal()" class="bg-[#135c7e] hover:bg-[#0f4b67] text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm self-start sm:self-auto">
-                      <i class="fa fa-user-plus"></i> Add Staff / Pharmacist
+                    <button onclick="window.acsApp.openPrescriptionUploadModal('${store.name}')" class="bg-amber-400 hover:bg-amber-500 text-slate-950 px-5 py-2.5 rounded-xl font-black transition shadow flex-shrink-0">
+                      Upload Prescription Now
                     </button>
                   </div>
-
-                  <!-- Statutory Callout -->
-                  <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-3">
-                    <i class="fa fa-shield text-amber-600 text-lg mt-0.5"></i>
-                    <div>
-                      <strong class="font-bold">Pharmacy Act 1948 Statutory Requirement:</strong>
-                      Only qualified pharmacists with active registrations registered in the <strong>Uttar Pradesh Pharmacy Council (UPPC)</strong> registry are legally entitled to dispense prescription medications.
+                </div>
+              </div>
+            </div>
+          ` : `
+            <!-- ======================================================== -->
+            <!-- PAGE 2: STATUTORY STOCK, STAFF & REVENUE AUDIT DOSSIER  -->
+            <!-- ======================================================== -->
+            <div class="max-w-7xl mx-auto p-6 sm:p-12 space-y-8 animate-fade-in">
+              <!-- Statutory Audit Header & Legal Disclaimer -->
+              <div class="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 text-white shadow-xl border border-teal-900/60 relative overflow-hidden">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
+                  <div>
+                    <div class="flex items-center gap-2 text-amber-300 font-mono text-xs uppercase tracking-widest font-black mb-1">
+                      <i class="fa fa-shield text-amber-400"></i> Government of Uttar Pradesh • FSDA & UPPC Statutory Audit Dossier
                     </div>
+                    <h2 class="text-2xl sm:text-3xl font-black text-white">
+                      Statutory Regulatory Compliance Dossier & Live Ledger
+                    </h2>
+                    <p class="text-xs text-teal-100 mt-1.5 max-w-3xl leading-relaxed">
+                      Official compliance register for <strong>${store.name}</strong> under the Drugs & Cosmetics Act 1940 (Form 20/21) and Pharmacy Act 1948 Section 42. Synchronized in real time with the ACS State Central Registry.
+                    </p>
                   </div>
 
-                  <!-- Staff Roster Cards Grid -->
-                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    ${store.staff.map((st) => {
-                      const isUppc = st.uppcRegNo && st.uppcRegNo.startsWith("UPPC");
-                      return `
-                        <div class="p-4 rounded-xl border ${isUppc ? 'border-teal-200 bg-teal-50/40' : 'border-slate-200 bg-slate-50/40'} flex flex-col justify-between space-y-3">
-                          <div class="flex items-start gap-3">
-                            <img src="${st.avatar || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=150&q=80'}" alt="${st.name}" class="w-12 h-12 rounded-xl object-cover border border-slate-200 flex-shrink-0" onerror="this.src='https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=150&q=80'" />
-                            <div class="flex-1 min-w-0">
-                              <h5 class="font-black text-slate-900 text-sm truncate">${st.name}</h5>
-                              <span class="text-xs font-bold text-[#135c7e] block">${st.role}</span>
-                              <span class="text-[11px] text-slate-500 block">${st.qualification}</span>
-                            </div>
-                          </div>
+                  <div class="flex items-center gap-3">
+                    <button 
+                      onclick="window.acsApp.toggleFinancialPrivacy()" 
+                      class="px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${this.financialsVisible ? 'bg-amber-400 text-slate-950 font-black' : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'}"
+                    >
+                      <i class="fa ${this.financialsVisible ? 'fa-eye-slash' : 'fa-eye'}"></i>
+                      <span>${this.financialsVisible ? 'Hide Private Numbers' : 'Reveal Financial Numbers'}</span>
+                    </button>
+                    <button 
+                      onclick="window.acsApp.openAddMedicineModal()" 
+                      class="bg-[#135c7e] hover:bg-[#0f4b67] text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow"
+                    >
+                      <i class="fa fa-plus"></i> Add Medicine
+                    </button>
+                  </div>
+                </div>
 
-                          <div class="space-y-1.5 text-xs border-t border-slate-200/70 pt-2.5">
-                            <div class="flex items-center justify-between">
-                              <span class="text-slate-500">UPPC Reg ID:</span>
-                              <span class="font-mono font-bold text-[#135c7e] flex items-center gap-1">
-                                ${st.uppcRegNo}
-                                ${isUppc ? `<i class="fa fa-check-circle text-emerald-600"></i>` : ''}
+                <!-- Real-time Statutory KPI Cards Bar -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6 pt-6 border-t border-teal-800/60 text-xs">
+                  <div class="p-3.5 bg-white/5 rounded-2xl border border-white/10">
+                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Total Active SKUs</span>
+                    <span class="text-xl font-black text-white mt-0.5 block">${store.stocks.length}</span>
+                  </div>
+                  <div class="p-3.5 bg-white/5 rounded-2xl border border-white/10">
+                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Stock Valuation</span>
+                    <span class="text-xl font-black text-emerald-400 mt-0.5 block">₹ ${totalInventoryValue.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div class="p-3.5 bg-white/5 rounded-2xl border border-white/10">
+                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Low Stock Items</span>
+                    <span class="text-xl font-black ${lowStockCount > 0 ? 'text-rose-400' : 'text-slate-200'} mt-0.5 block">${lowStockCount}</span>
+                  </div>
+                  <div class="p-3.5 bg-white/5 rounded-2xl border border-white/10">
+                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Expiring &le; 90 Days</span>
+                    <span class="text-xl font-black ${expiringCount > 0 ? 'text-amber-400' : 'text-slate-200'} mt-0.5 block">${expiringCount}</span>
+                  </div>
+                  <div class="p-3.5 bg-white/5 rounded-2xl border border-white/10">
+                    <span class="text-slate-400 block text-[10px] uppercase font-bold">UPPC Pharmacists</span>
+                    <span class="text-xl font-black text-teal-300 mt-0.5 block">${uppcStaffCount} Active</span>
+                  </div>
+                  <div class="p-3.5 bg-white/5 rounded-2xl border border-white/10">
+                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Month Turnover</span>
+                    <span class="text-xl font-black text-amber-300 mt-0.5 block ${this.financialsVisible ? '' : 'privacy-blur'}">₹ ${(rev.monthRevenue || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- SECTION 1: MEDICINE STOCK & BATCH INVENTORY REGISTER -->
+              <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-5">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h3 class="text-lg font-black text-slate-900 flex items-center gap-2">
+                      <i class="fa fa-cubes text-[#135c7e]"></i> Statutory Medicine Stock & Batch Inventory Register
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                      Mandatory batch tracking, expiry monitoring, and rack location records under Form 20/21 rules.
+                    </p>
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-2">
+                    <button id="hosted-audit-btn-export-csv" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+                      <i class="fa fa-download"></i> Export CSV
+                    </button>
+                    <button id="hosted-audit-btn-import-csv" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+                      <i class="fa fa-upload"></i> Bulk CSV Import
+                    </button>
+                    <input type="file" id="hosted-audit-csv-input" accept=".csv" class="hidden" />
+                    <button onclick="window.acsApp.openAddMedicineModal()" class="bg-[#135c7e] hover:bg-[#0f4b67] text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                      <i class="fa fa-plus"></i> Add New Medicine
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Search & Filter Controls -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div class="relative sm:col-span-1">
+                    <i class="fa fa-search absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+                    <input 
+                      type="text" 
+                      id="hosted-audit-search-input" 
+                      placeholder="Search brand, salt, batch, manufacturer..." 
+                      value="${this.auditStockSearch || ''}"
+                      class="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#135c7e]"
+                    />
+                  </div>
+
+                  <div>
+                    <select id="hosted-audit-schedule-filter" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#135c7e] bg-white">
+                      <option value="ALL" ${auditSched === 'ALL' ? 'selected' : ''}>All Schedules (H, H1, X, OTC)</option>
+                      <option value="Schedule H" ${auditSched === 'Schedule H' ? 'selected' : ''}>Schedule H (Prescription Only)</option>
+                      <option value="Schedule H1" ${auditSched === 'Schedule H1' ? 'selected' : ''}>Schedule H1 (High Risk / Antibiotic)</option>
+                      <option value="Schedule X" ${auditSched === 'Schedule X' ? 'selected' : ''}>Schedule X (Narcotics)</option>
+                      <option value="OTC" ${auditSched === 'OTC' ? 'selected' : ''}>OTC / General</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <select id="hosted-audit-alert-filter" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#135c7e] bg-white">
+                      <option value="ALL" ${auditAlert === 'ALL' ? 'selected' : ''}>All Stock Status</option>
+                      <option value="LOW_STOCK" ${auditAlert === 'LOW_STOCK' ? 'selected' : ''}>Low Stock Critical (&le; 20 units)</option>
+                      <option value="EXPIRING" ${auditAlert === 'EXPIRING' ? 'selected' : ''}>Expiring Within 90 Days</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Full Comprehensive Audit Stock Table -->
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                  <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr class="bg-slate-100/80 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px]">
+                        <th class="py-3 px-3">Medicine & Salt Composition</th>
+                        <th class="py-3 px-3">Batch No</th>
+                        <th class="py-3 px-3">Expiry Date</th>
+                        <th class="py-3 px-3">Rack Bay</th>
+                        <th class="py-3 px-3">Schedule</th>
+                        <th class="py-3 px-3 text-center">In-Stock Quantity</th>
+                        <th class="py-3 px-3">Purchase & MRP</th>
+                        <th class="py-3 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                      ${filteredAuditStock.length === 0 ? `
+                        <tr>
+                          <td colspan="8" class="py-8 text-center text-slate-400">
+                            No medicine records found matching your filters.
+                          </td>
+                        </tr>
+                      ` : filteredAuditStock.map((m) => {
+                        const isLow = m.quantity <= (m.minAlertThreshold || 20);
+                        const exp = new Date(m.expiryDate);
+                        const diffMonths = (exp.getFullYear() - 2026) * 12 + (exp.getMonth() - 9);
+                        const isExpiring = diffMonths <= 3;
+                        const margin = Math.round(((m.mrp - m.purchaseRate) / m.mrp) * 100);
+
+                        return `
+                          <tr class="hover:bg-slate-50/80 transition">
+                            <td class="py-3 px-3">
+                              <span class="font-bold text-slate-900 block text-xs">${m.name}</span>
+                              <span class="text-[11px] text-slate-500 font-mono">${m.saltName}</span>
+                              <span class="text-[10px] text-slate-400 block mt-0.5">${m.manufacturer}</span>
+                            </td>
+                            <td class="py-3 px-3 font-mono text-slate-700 font-semibold">
+                              ${m.batchNo}
+                            </td>
+                            <td class="py-3 px-3">
+                              <span class="font-mono font-semibold ${isExpiring ? 'text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200' : 'text-slate-700'}">
+                                ${m.expiryDate}
                               </span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                              <span class="text-slate-500">Shift Timing:</span>
-                              <span class="font-semibold text-slate-800">${st.shift}</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                              <span class="text-slate-500">Contact:</span>
-                              <span class="font-mono text-slate-700">${st.phone}</span>
-                            </div>
-                          </div>
+                              ${isExpiring ? `<span class="block text-[10px] text-amber-700 font-bold mt-0.5">Expiring Soon</span>` : ''}
+                            </td>
+                            <td class="py-3 px-3">
+                              <span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-mono font-bold text-[11px]">
+                                ${m.rackLocation || 'Rack A'}
+                              </span>
+                            </td>
+                            <td class="py-3 px-3">
+                              <span class="px-2 py-0.5 rounded text-[10px] font-bold ${m.schedule.includes('H1') ? 'bg-purple-50 text-purple-700 border border-purple-200' : m.schedule.includes('H') ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700'}">
+                                ${m.schedule}
+                              </span>
+                            </td>
+                            <td class="py-3 px-3 text-center">
+                              <div class="inline-flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg">
+                                <button onclick="window.acsApp.adjustStockQty('${m.id}', -5)" class="w-5 h-5 flex items-center justify-center rounded bg-white hover:bg-slate-200 text-slate-700 font-black shadow-xs">-</button>
+                                <span class="font-extrabold ${isLow ? 'text-rose-600' : 'text-slate-800'} min-w-[2.5rem] text-center">
+                                  ${m.quantity}
+                                </span>
+                                <button onclick="window.acsApp.adjustStockQty('${m.id}', 5)" class="w-5 h-5 flex items-center justify-center rounded bg-white hover:bg-slate-200 text-slate-700 font-black shadow-xs">+</button>
+                              </div>
+                              <span class="text-[10px] text-slate-400 block mt-0.5">${m.unit}</span>
+                            </td>
+                            <td class="py-3 px-3">
+                              <div class="text-slate-800 font-bold">MRP: ₹ ${m.mrp.toFixed(2)}</div>
+                              <div class="text-[11px] text-slate-500">Cost: ₹ ${m.purchaseRate.toFixed(2)}</div>
+                              <span class="text-[10px] text-emerald-700 font-bold">${margin}% Margin</span>
+                            </td>
+                            <td class="py-3 px-3 text-right">
+                              <div class="flex items-center justify-end gap-1">
+                                <button onclick="window.acsApp.openEditMedicineModal('${m.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit Medicine Details">
+                                  <i class="fa fa-pencil"></i>
+                                </button>
+                                <button onclick="window.acsApp.deleteMedicine('${m.id}')" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded" title="Delete Medicine">
+                                  <i class="fa fa-trash"></i>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        `;
+                      }).join("")}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
-                          <div class="flex items-center justify-between border-t border-slate-200/70 pt-2 text-xs">
-                            <span class="text-[10px] text-slate-400">Joined: ${st.joinedDate}</span>
-                            <button onclick="window.acsApp.deleteStaff('${st.id}')" class="text-rose-600 hover:bg-rose-50 px-2 py-1 rounded text-xs transition" title="Remove staff">
-                              <i class="fa fa-trash"></i> Remove
-                            </button>
+              <!-- SECTION 2: UPPC REGISTERED PHARMACIST & STAFF COMPLIANCE ROSTER -->
+              <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 class="text-lg font-black text-slate-900 flex items-center gap-2">
+                      <i class="fa fa-user-md text-[#135c7e]"></i> UPPC Registered Pharmacists & Staff Compliance Roster
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                      Statutory pharmacist duty register mandated under the Pharmacy Act 1948 Section 42.
+                    </p>
+                  </div>
+
+                  <button onclick="window.acsApp.openAddStaffModal()" class="bg-[#135c7e] hover:bg-[#0f4b67] text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm self-start sm:self-auto">
+                    <i class="fa fa-user-plus"></i> Add Staff / Pharmacist
+                  </button>
+                </div>
+
+                <!-- Statutory Callout -->
+                <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-3">
+                  <i class="fa fa-shield text-amber-600 text-lg mt-0.5"></i>
+                  <div>
+                    <strong class="font-bold">Pharmacy Act 1948 Statutory Requirement:</strong>
+                    Only qualified pharmacists with active registrations registered in the <strong>Uttar Pradesh Pharmacy Council (UPPC)</strong> registry are legally entitled to dispense prescription medications.
+                  </div>
+                </div>
+
+                <!-- Staff Roster Cards Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  ${store.staff.map((st) => {
+                    const isUppc = st.uppcRegNo && st.uppcRegNo.startsWith("UPPC");
+                    return `
+                      <div class="p-4 rounded-xl border ${isUppc ? 'border-teal-200 bg-teal-50/40' : 'border-slate-200 bg-slate-50/40'} flex flex-col justify-between space-y-3">
+                        <div class="flex items-start gap-3">
+                          <img src="${st.avatar || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=150&q=80'}" alt="${st.name}" class="w-12 h-12 rounded-xl object-cover border border-slate-200 flex-shrink-0" onerror="this.src='https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=150&q=80'" />
+                          <div class="flex-1 min-w-0">
+                            <h4 class="font-black text-slate-900 text-sm truncate">${st.name}</h4>
+                            <span class="text-xs font-bold text-[#135c7e] block">${st.role}</span>
+                            <span class="text-[11px] text-slate-500 block">${st.qualification}</span>
                           </div>
                         </div>
-                      `;
-                    }).join("")}
+
+                        <div class="space-y-1.5 text-xs border-t border-slate-200/70 pt-2.5">
+                          <div class="flex items-center justify-between">
+                            <span class="text-slate-500">UPPC Reg ID:</span>
+                            <span class="font-mono font-bold text-[#135c7e] flex items-center gap-1">
+                              ${st.uppcRegNo}
+                              ${isUppc ? `<i class="fa fa-check-circle text-emerald-600"></i>` : ''}
+                            </span>
+                          </div>
+                          <div class="flex items-center justify-between">
+                            <span class="text-slate-500">Shift Timing:</span>
+                            <span class="font-semibold text-slate-800">${st.shift}</span>
+                          </div>
+                          <div class="flex items-center justify-between">
+                            <span class="text-slate-500">Contact:</span>
+                            <span class="font-mono text-slate-700">${st.phone}</span>
+                          </div>
+                        </div>
+
+                        <div class="flex items-center justify-between border-t border-slate-200/70 pt-2 text-xs">
+                          <span class="text-[10px] text-slate-400">Joined: ${st.joinedDate}</span>
+                          <button onclick="window.acsApp.deleteStaff('${st.id}')" class="text-rose-600 hover:bg-rose-50 px-2 py-1 rounded text-xs transition" title="Remove staff">
+                            <i class="fa fa-trash"></i> Remove
+                          </button>
+                        </div>
+                      </div>
+                    `;
+                  }).join("")}
+                </div>
+              </div>
+
+              <!-- SECTION 3: PRIVATE FINANCIAL LEDGER & REVENUE INTELLIGENCE -->
+              <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h3 class="text-lg font-black text-slate-900 flex items-center gap-2">
+                      <i class="fa fa-inr text-amber-500"></i> Financial Ledger & Revenue Intelligence
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                      Statutory sales turnovers, UPI vs cash ratios, and GST reconciliation records.
+                    </p>
+                  </div>
+
+                  <div class="flex items-center gap-2">
+                    <button onclick="window.acsApp.toggleFinancialPrivacy()" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold border ${this.financialsVisible ? 'bg-amber-50 border-amber-300 text-amber-800' : 'bg-slate-100 border-slate-300 text-slate-700'} transition flex items-center gap-1.5">
+                      <i class="fa ${this.financialsVisible ? 'fa-eye-slash' : 'fa-eye'}"></i>
+                      <span>${this.financialsVisible ? 'Hide Numbers' : 'Reveal Numbers'}</span>
+                    </button>
+                    <button onclick="window.acsApp.openAddSalesModal()" class="bg-[#135c7e] hover:bg-[#0f4b67] text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                      <i class="fa fa-plus"></i> Record Daily Sales
+                    </button>
                   </div>
                 </div>
 
-                <!-- SECTION 3: PRIVATE FINANCIAL LEDGER & REVENUE INTELLIGENCE -->
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
-                  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                      <h4 class="text-lg font-black text-slate-900 flex items-center gap-2">
-                        <i class="fa fa-inr text-amber-500"></i> Financial Ledger & Revenue Intelligence
-                      </h4>
-                      <p class="text-xs text-slate-500 mt-0.5">
-                        Statutory sales turnovers, UPI vs cash ratios, and GST reconciliation records.
-                      </p>
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                      <button onclick="window.acsApp.toggleFinancialPrivacy()" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold border ${this.financialsVisible ? 'bg-amber-50 border-amber-300 text-amber-800' : 'bg-slate-100 border-slate-300 text-slate-700'} transition flex items-center gap-1.5">
-                        <i class="fa ${this.financialsVisible ? 'fa-eye-slash' : 'fa-eye'}"></i>
-                        <span>${this.financialsVisible ? 'Hide Numbers' : 'Reveal Numbers'}</span>
-                      </button>
-                      <button onclick="window.acsApp.openAddSalesModal()" class="bg-[#135c7e] hover:bg-[#0f4b67] text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-                        <i class="fa fa-plus"></i> Record Daily Sales
-                      </button>
-                    </div>
+                <!-- Financial KPI Metric Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <span class="text-slate-500 text-xs font-semibold block">Today's Counter Sales</span>
+                    <span class="text-2xl font-black text-slate-900 mt-1 block ${this.financialsVisible ? '' : 'privacy-blur'}">
+                      ₹ ${(rev.todaySales || 0).toLocaleString('en-IN')}
+                    </span>
+                    <span class="text-[11px] text-emerald-700 font-bold block mt-1"><i class="fa fa-arrow-up"></i> +8.4% vs yesterday</span>
                   </div>
 
-                  <!-- Financial KPI Metric Cards -->
-                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                      <span class="text-slate-500 text-xs font-semibold block">Today's Counter Sales</span>
-                      <span class="text-2xl font-black text-slate-900 mt-1 block ${this.financialsVisible ? '' : 'privacy-blur'}">
-                        ₹ ${(rev.todaySales || 0).toLocaleString('en-IN')}
-                      </span>
-                      <span class="text-[11px] text-emerald-700 font-bold block mt-1"><i class="fa fa-arrow-up"></i> +8.4% vs yesterday</span>
-                    </div>
-
-                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                      <span class="text-slate-500 text-xs font-semibold block">This Month's Gross Turnover</span>
-                      <span class="text-2xl font-black text-slate-900 mt-1 block ${this.financialsVisible ? '' : 'privacy-blur'}">
-                        ₹ ${(rev.monthRevenue || 0).toLocaleString('en-IN')}
-                      </span>
-                      <span class="text-[11px] text-emerald-700 font-bold block mt-1"><i class="fa fa-arrow-up"></i> Active Billing</span>
-                    </div>
-
-                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                      <span class="text-slate-500 text-xs font-semibold block">UPI & Digital Mode Share</span>
-                      <span class="text-2xl font-black text-emerald-700 mt-1 block ${this.financialsVisible ? '' : 'privacy-blur'}">
-                        ${rev.paymentModes ? Math.round((rev.paymentModes.upi / (rev.paymentModes.upi + rev.paymentModes.cards + rev.paymentModes.cash)) * 100) : 58}%
-                      </span>
-                      <span class="text-[11px] text-slate-500 font-medium block mt-1">Cashless Transactions</span>
-                    </div>
-
-                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                      <span class="text-slate-500 text-xs font-semibold block">Annual GST Reconciled</span>
-                      <span class="text-2xl font-black text-[#135c7e] mt-1 block ${this.financialsVisible ? '' : 'privacy-blur'}">
-                        ₹ ${(rev.annualGstPaid || 0).toLocaleString('en-IN')}
-                      </span>
-                      <span class="text-[11px] text-emerald-700 font-bold block mt-1"><i class="fa fa-check-circle"></i> GSTIN: ${store.gstin}</span>
-                    </div>
+                  <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <span class="text-slate-500 text-xs font-semibold block">This Month's Gross Turnover</span>
+                    <span class="text-2xl font-black text-slate-900 mt-1 block ${this.financialsVisible ? '' : 'privacy-blur'}">
+                      ₹ ${(rev.monthRevenue || 0).toLocaleString('en-IN')}
+                    </span>
+                    <span class="text-[11px] text-emerald-700 font-bold block mt-1"><i class="fa fa-arrow-up"></i> Active Billing</span>
                   </div>
 
-                  <!-- Charts Row: Monthly Bar Chart & Payment Doughnut Chart -->
-                  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="lg:col-span-2 p-5 rounded-xl border border-slate-200 bg-slate-50/50">
-                      <h5 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center justify-between">
-                        <span><i class="fa fa-bar-chart text-[#135c7e] mr-1.5"></i> Monthly Revenue Turnover History</span>
-                        <span class="text-[11px] text-slate-500 font-normal">FY 2025-2026</span>
-                      </h5>
-                      <div class="h-64 relative">
-                        <canvas id="hosted-audit-monthly-chart"></canvas>
-                      </div>
-                    </div>
-
-                    <div class="p-5 rounded-xl border border-slate-200 bg-slate-50/50">
-                      <h5 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center justify-between">
-                        <span><i class="fa fa-pie-chart text-emerald-600 mr-1.5"></i> Payment Modes</span>
-                        <span class="text-[11px] text-slate-500 font-normal">Current Month</span>
-                      </h5>
-                      <div class="h-64 relative flex items-center justify-center">
-                        <canvas id="hosted-audit-payment-chart"></canvas>
-                      </div>
-                    </div>
+                  <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <span class="text-slate-500 text-xs font-semibold block">UPI & Digital Mode Share</span>
+                    <span class="text-2xl font-black text-emerald-700 mt-1 block ${this.financialsVisible ? '' : 'privacy-blur'}">
+                      ${rev.paymentModes ? Math.round((rev.paymentModes.upi / (rev.paymentModes.upi + rev.paymentModes.cards + rev.paymentModes.cash)) * 100) : 58}%
+                    </span>
+                    <span class="text-[11px] text-slate-500 font-medium block mt-1">Cashless Transactions</span>
                   </div>
 
-                  <!-- Monthly Reconciliation History Table -->
-                  <div class="overflow-x-auto rounded-xl border border-slate-200">
-                    <table class="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr class="bg-slate-100/80 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px]">
-                          <th class="py-3 px-4">Billing Month</th>
-                          <th class="py-3 px-4">Gross Turnover</th>
-                          <th class="py-3 px-4">Digital Mode (UPI/POS)</th>
-                          <th class="py-3 px-4">Cash Mode</th>
-                          <th class="py-3 px-4">Digital Share %</th>
-                          <th class="py-3 px-4">Audit Status</th>
-                        </tr>
-                      </thead>
-                      <tbody class="divide-y divide-slate-100">
-                        ${(rev.monthlyHistory || []).map((m) => {
-                          const digitalRatio = Math.round((m.digital / m.revenue) * 100);
-                          return `
-                            <tr class="hover:bg-slate-50/80 transition">
-                              <td class="py-3 px-4 font-bold text-slate-800">${m.month}</td>
-                              <td class="py-3 px-4 font-mono font-bold text-slate-900 ${this.financialsVisible ? '' : 'privacy-blur'}">
-                                ₹ ${m.revenue.toLocaleString('en-IN')}
-                              </td>
-                              <td class="py-3 px-4 font-mono text-emerald-700 ${this.financialsVisible ? '' : 'privacy-blur'}">
-                                ₹ ${m.digital.toLocaleString('en-IN')}
-                              </td>
-                              <td class="py-3 px-4 font-mono text-slate-600 ${this.financialsVisible ? '' : 'privacy-blur'}">
-                                ₹ ${m.cash.toLocaleString('en-IN')}
-                              </td>
-                              <td class="py-3 px-4">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-teal-50 text-teal-700">
-                                  ${digitalRatio}%
-                                </span>
-                              </td>
-                              <td class="py-3 px-4">
-                                <span class="text-emerald-700 font-bold flex items-center gap-1 text-[11px]">
-                                  <i class="fa fa-check-circle"></i> Reconciled
-                                </span>
-                              </td>
-                            </tr>
-                          `;
-                        }).join("")}
-                      </tbody>
-                    </table>
+                  <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <span class="text-slate-500 text-xs font-semibold block">Annual GST Reconciled</span>
+                    <span class="text-2xl font-black text-[#135c7e] mt-1 block ${this.financialsVisible ? '' : 'privacy-blur'}">
+                      ₹ ${(rev.annualGstPaid || 0).toLocaleString('en-IN')}
+                    </span>
+                    <span class="text-[11px] text-emerald-700 font-bold block mt-1"><i class="fa fa-check-circle"></i> GSTIN: ${store.gstin}</span>
                   </div>
                 </div>
-              </div>
-            `}
 
-            <!-- Website Footer -->
-            <footer class="bg-slate-900 text-slate-400 py-6 px-6 sm:px-10 text-xs border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div>
-                © 2026 <strong>${store.name}</strong>. Certified & Hosted via All Chemists & Stores Registry (ACS UP).
+                <!-- Charts Row: Monthly Bar Chart & Payment Doughnut Chart -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div class="lg:col-span-2 p-5 rounded-xl border border-slate-200 bg-slate-50/50">
+                    <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center justify-between">
+                      <span><i class="fa fa-bar-chart text-[#135c7e] mr-1.5"></i> Monthly Revenue Turnover History</span>
+                      <span class="text-[11px] text-slate-500 font-normal">FY 2025-2026</span>
+                    </h4>
+                    <div class="h-64 relative">
+                      <canvas id="hosted-audit-monthly-chart"></canvas>
+                    </div>
+                  </div>
+
+                  <div class="p-5 rounded-xl border border-slate-200 bg-slate-50/50">
+                    <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center justify-between">
+                      <span><i class="fa fa-pie-chart text-emerald-600 mr-1.5"></i> Payment Modes</span>
+                      <span class="text-[11px] text-slate-500 font-normal">Current Month</span>
+                    </h4>
+                    <div class="h-64 relative flex items-center justify-center">
+                      <canvas id="hosted-audit-payment-chart"></canvas>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Monthly Reconciliation History Table -->
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                  <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr class="bg-slate-100/80 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px]">
+                        <th class="py-3 px-4">Billing Month</th>
+                        <th class="py-3 px-4">Gross Turnover</th>
+                        <th class="py-3 px-4">Digital Mode (UPI/POS)</th>
+                        <th class="py-3 px-4">Cash Mode</th>
+                        <th class="py-3 px-4">Digital Share %</th>
+                        <th class="py-3 px-4">Audit Status</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                      ${(rev.monthlyHistory || []).map((m) => {
+                        const digitalRatio = Math.round((m.digital / m.revenue) * 100);
+                        return `
+                          <tr class="hover:bg-slate-50/80 transition">
+                            <td class="py-3 px-4 font-bold text-slate-800">${m.month}</td>
+                            <td class="py-3 px-4 font-mono font-bold text-slate-900 ${this.financialsVisible ? '' : 'privacy-blur'}">
+                              ₹ ${m.revenue.toLocaleString('en-IN')}
+                            </td>
+                            <td class="py-3 px-4 font-mono text-emerald-700 ${this.financialsVisible ? '' : 'privacy-blur'}">
+                              ₹ ${m.digital.toLocaleString('en-IN')}
+                            </td>
+                            <td class="py-3 px-4 font-mono text-slate-600 ${this.financialsVisible ? '' : 'privacy-blur'}">
+                              ₹ ${m.cash.toLocaleString('en-IN')}
+                            </td>
+                            <td class="py-3 px-4">
+                              <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-teal-50 text-teal-700">
+                                ${digitalRatio}%
+                              </span>
+                            </td>
+                            <td class="py-3 px-4">
+                              <span class="text-emerald-700 font-bold flex items-center gap-1 text-[11px]">
+                                <i class="fa fa-check-circle"></i> Reconciled
+                              </span>
+                            </td>
+                          </tr>
+                        `;
+                      }).join("")}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-              <div class="flex flex-wrap gap-4 text-slate-400">
-                <span>Drugs & Cosmetics Act 1940</span>
-                <span>Pharmacy Act 1948</span>
-                <span class="font-mono text-slate-300">GSTIN: ${store.gstin}</span>
+            </div>
+          `}
+        </main>
+
+        <!-- Pharmacy Website Footer -->
+        <footer class="bg-slate-950 text-slate-400 py-10 px-6 sm:px-12 text-xs border-t border-slate-800 mt-12">
+          <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+            <div>
+              <div class="flex items-center gap-2 text-white font-black text-base">
+                <span class="w-6 h-6 rounded-lg bg-[#135c7e] flex items-center justify-center text-xs text-white">+</span>
+                <span>${store.name}</span>
               </div>
-            </footer>
+              <p class="text-slate-400 mt-1.5 max-w-lg leading-relaxed">
+                Licensed Retail Chemist dispensing genuine medicines under UPPC registered supervision. Regulated under the Drugs and Cosmetics Act 1940 & Pharmacy Act 1948.
+              </p>
+            </div>
+
+            <div class="flex flex-col sm:flex-row sm:items-center gap-4 text-slate-300">
+              <div><span class="text-slate-500 block text-[10px] uppercase font-bold">GSTIN:</span> <span class="font-mono">${store.gstin}</span></div>
+              <div><span class="text-slate-500 block text-[10px] uppercase font-bold">FSDA Form 20:</span> <span class="font-mono">${store.license20}</span></div>
+              <div><span class="text-slate-500 block text-[10px] uppercase font-bold">FSDA Form 21:</span> <span class="font-mono">${store.license21}</span></div>
+            </div>
           </div>
-        </div>
+
+          <div class="max-w-7xl mx-auto mt-8 pt-6 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-500 text-[11px]">
+            <div>
+              © 2026 ${store.name}. Hosted on the Uttar Pradesh Pharmacy Syndicate Network (ACS).
+            </div>
+            <div class="flex items-center gap-3">
+              <a href="/" onclick="event.preventDefault(); window.acsApp.switchTab('landing');" class="text-amber-400 hover:text-amber-300 underline font-semibold">
+                ACS Central Registry Portal
+              </a>
+            </div>
+          </div>
+        </footer>
+
+        <!-- Discreet Floating Button for Logged-In Store Owner or Admin -->
+        ${this.currentUser ? `
+          <div class="fixed bottom-5 right-5 z-50">
+            <button onclick="window.acsApp.switchTab('store-detail')" class="bg-slate-900 hover:bg-black text-white px-4 py-2.5 rounded-full shadow-2xl backdrop-blur-md border border-white/20 text-xs font-bold transition flex items-center gap-2">
+              <i class="fa fa-dashboard text-amber-400"></i> Store Management Portal
+            </button>
+          </div>
+        ` : ''}
       </div>
     `;
   }
 
-  bindHostedWebsiteEvents() {
+    bindHostedWebsiteEvents() {
     const store = this.getCurrentStore();
     if (!store) return;
 
