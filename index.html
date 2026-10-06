@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ACS - All Chemists & Stores Registry | Uttar Pradesh Pharmacy Network</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Chart.js for Revenue & Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Base URL for SPA Routing -->
+  <base href="/" />
+
+  <!-- Custom CSS with UPPC Colors -->
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="bg-[#f4f7fa] text-slate-800 antialiased min-h-screen flex flex-col justify-between">
+
+  <!-- ========================================== -->
+  <!-- TOP GOVERNMENT STATUTORY NOTICES & HELPLINE -->
+  <!-- ========================================== -->
+  <header class="w-full no-print">
+    <!-- Top Micro Bar -->
+    <div class="top-notice-bar py-1.5 px-4 sm:px-8 flex flex-wrap items-center justify-between text-xs">
+      <div class="flex items-center gap-4">
+        <span><i class="fa fa-phone text-amber-400"></i> Technical Helpline: <strong>0522-4150500</strong> (Mon-Fri 10AM-6PM)</span>
+        <span class="hidden md:inline text-slate-400">|</span>
+        <span class="hidden md:inline"><i class="fa fa-envelope text-amber-400"></i> Portal Support: <strong>support@uppc.in</strong></span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="hidden sm:inline text-slate-300">Govt. of Uttar Pradesh • Drug Licensing & Pharmacy Portal</span>
+        <span class="text-amber-400 font-semibold cursor-pointer hover:underline" onclick="window.acsApp.switchTab('verify')">
+          <i class="fa fa-check-square-o"></i> Check UPPC Reg
+        </span>
+      </div>
+    </div>
+
+    <!-- Main Branding Header -->
+    <div class="main-brand-header py-4 px-4 sm:px-8">
+      <div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-4">
+        <!-- Brand Emblem & Title -->
+        <div class="flex items-center gap-4 cursor-pointer" onclick="window.acsApp.switchTab('landing')">
+          <div class="council-emblem w-14 h-14 rounded-2xl flex items-center justify-center text-slate-900 text-2xl font-black shadow-md flex-shrink-0">
+            <i class="fa fa-plus-square text-[#135c7e]"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2">
+                <span>ACS</span>
+                <span class="text-xs sm:text-sm font-semibold bg-amber-400 text-slate-900 px-2 py-0.5 rounded uppercase tracking-wider">UP Registry</span>
+              </h1>
+            </div>
+            <p class="text-xs sm:text-sm text-teal-100 font-medium">
+              All Chemists & Stores Registry • Pharmacy Data & Drug Inventory Compliance Platform
+            </p>
+          </div>
+        </div>
+
+        <!-- Header Controls: Active Store Switcher & Auth Container -->
+        <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-end">
+          <div id="header-store-selector-container" class="hidden flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20">
+            <span class="text-xs text-teal-100 font-semibold whitespace-nowrap">
+              <i class="fa fa-building-o text-amber-400"></i> Active Store:
+            </span>
+            <select id="header-store-select" class="bg-white text-slate-800 text-xs font-semibold py-1.5 px-3 rounded-lg border-0 focus:ring-2 focus:ring-amber-400 cursor-pointer min-w-[200px] shadow-sm">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+
+          <div id="header-auth-controls">
+            <!-- Dynamically populated (Login or User info + Logout) -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Regulatory Advisory Ticker -->
+    <div class="bg-amber-500 text-slate-950 py-1 px-4 sm:px-8 text-xs font-semibold overflow-hidden border-b border-amber-600">
+      <div class="max-w-7xl mx-auto flex items-center gap-2">
+        <span class="bg-slate-900 text-amber-400 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap">
+          <i class="fa fa-bell"></i> Mandate Advisory
+        </span>
+        <marquee behavior="scroll" direction="left" scrollamount="6" class="text-xs">
+          All UP Pharmacy Owners are advised to maintain digital batch records for Schedule H & H1 medications. Ensure registered pharmacists have completed their Aadhaar-linked UPPC registration renewals. Form 20/21 renewals to be verified via official FSDA channels.
+        </marquee>
+      </div>
+    </div>
+
+    <!-- Navigation Bar (Shown when authenticated) -->
+    <nav id="portal-nav-bar" class="portal-nav shadow-md hidden">
+      <div class="max-w-7xl mx-auto px-4 sm:px-8 flex overflow-x-auto no-scrollbar">
+        <button data-tab="store-detail" class="nav-item-btn active py-3.5 px-4 text-xs sm:text-sm font-medium flex items-center gap-2 whitespace-nowrap">
+          <i class="fa fa-home"></i> Active Store Portal
+        </button>
+        <button data-tab="hosted-site" class="nav-item-btn py-3.5 px-4 text-xs sm:text-sm font-medium flex items-center gap-2 whitespace-nowrap text-amber-300">
+          <i class="fa fa-globe"></i> View Live Hosted Webpage
+        </button>
+        <button data-tab="stocks" class="nav-item-btn py-3.5 px-4 text-xs sm:text-sm font-medium flex items-center gap-2 whitespace-nowrap">
+          <i class="fa fa-medkit"></i> Medicine Stocks & Inventory
+        </button>
+        <button data-tab="staff" class="nav-item-btn py-3.5 px-4 text-xs sm:text-sm font-medium flex items-center gap-2 whitespace-nowrap">
+          <i class="fa fa-user-md"></i> Pharmacist & Staff Roster
+        </button>
+        <button data-tab="revenue" class="nav-item-btn py-3.5 px-4 text-xs sm:text-sm font-medium flex items-center gap-2 whitespace-nowrap">
+          <i class="fa fa-line-chart"></i> Revenue & Ledger
+        </button>
+        <button data-tab="directory" class="nav-item-btn py-3.5 px-4 text-xs sm:text-sm font-medium flex items-center gap-2 whitespace-nowrap">
+          <i class="fa fa-th-list"></i> Pharmacy Directory
+        </button>
+        <button data-tab="verify" class="nav-item-btn py-3.5 px-4 text-xs sm:text-sm font-medium flex items-center gap-2 whitespace-nowrap">
+          <i class="fa fa-shield"></i> UPPC License Verifier
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- ========================================== -->
+  <!-- MAIN APPLICATION CONTENT CONTAINER        -->
+  <!-- ========================================== -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 py-6">
+    <div id="main-view-container">
+      <!-- Dynamically filled by app.js router -->
+    </div>
+  </main>
+
+  <!-- ========================================== -->
+  <!-- GOVERNMENT PORTAL FOOTER                   -->
+  <!-- ========================================== -->
+  <footer class="bg-[#0b3447] text-slate-300 pt-10 pb-6 border-t-4 border-amber-400 no-print mt-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-8">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8 text-xs">
+        <div>
+          <div class="flex items-center gap-2 text-white font-bold text-base mb-2">
+            <span class="w-6 h-6 rounded bg-amber-400 text-slate-900 flex items-center justify-center font-black text-xs">A</span>
+            <span>ACS Pharmacy Syndicate</span>
+          </div>
+          <p class="text-slate-400 leading-relaxed">
+            Centralized data registry hosting pharmacy storefront details, registered UPPC pharmacist profiles, digital medicine stocks, and fiscal compliance ledgers.
+          </p>
+          <div class="mt-3">
+            <button onclick="window.acsApp.resetToDefaultData()" class="text-amber-400 hover:text-amber-300 underline font-semibold">
+              <i class="fa fa-refresh"></i> Reset Sample Pharmacy Database
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="text-white font-bold text-sm mb-3 uppercase tracking-wider">Statutory Links</h4>
+          <ul class="space-y-1.5 text-slate-400">
+            <li><a href="https://uppc.up.gov.in" target="_blank" class="hover:text-amber-400"><i class="fa fa-external-link text-[10px]"></i> UP Pharmacy Council (UPPC)</a></li>
+            <li><a href="https://fsda.up.gov.in" target="_blank" class="hover:text-amber-400"><i class="fa fa-external-link text-[10px]"></i> FSDA Uttar Pradesh</a></li>
+            <li><a href="http://niveshmitra.up.nic.in" target="_blank" class="hover:text-amber-400"><i class="fa fa-external-link text-[10px]"></i> UP Nivesh Mitra Portal</a></li>
+            <li><a href="https://pci.nic.in" target="_blank" class="hover:text-amber-400"><i class="fa fa-external-link text-[10px]"></i> Pharmacy Council of India (PCI)</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="text-white font-bold text-sm mb-3 uppercase tracking-wider">Key Modules</h4>
+          <ul class="space-y-1.5 text-slate-400">
+            <li><a href="javascript:void(0)" onclick="window.acsApp.switchTab('landing')" class="hover:text-amber-400">Portal Landing Gateway</a></li>
+            <li><a href="javascript:void(0)" onclick="window.acsApp.switchTab('hosted-site')" class="hover:text-amber-400">Live Hosted Pharmacy Webpage</a></li>
+            <li><a href="javascript:void(0)" onclick="window.acsApp.switchTab('stocks')" class="hover:text-amber-400">Schedule H/H1 Batch Tracking</a></li>
+            <li><a href="javascript:void(0)" onclick="window.acsApp.switchTab('staff')" class="hover:text-amber-400">Aadhaar Linked Pharmacist Vault</a></li>
+            <li><a href="javascript:void(0)" onclick="window.acsApp.switchTab('revenue')" class="hover:text-amber-400">Private Financial Ledger & GST</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="text-white font-bold text-sm mb-3 uppercase tracking-wider">Regulatory Inquiries</h4>
+          <p class="text-slate-400 leading-relaxed">
+            Uttar Pradesh Pharmacy Council Bhavan<br />
+            Lucknow - 226001, Uttar Pradesh<br />
+            Helpline: 0522-4150500<br />
+            Email: uppclko@gmail.com
+          </p>
+        </div>
+      </div>
+
+      <div class="border-t border-slate-700/80 pt-4 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-400">
+        <div>
+          © 2026 ACS Uttar Pradesh Pharmacy Central Syndicate. All rights reserved.
+        </div>
+        <div class="mt-2 sm:mt-0 flex gap-4">
+          <span>Drugs & Cosmetics Act 1940</span>
+          <span>Pharmacy Act 1948</span>
+          <span>DPDP Act Compliant</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ========================================== -->
+  <!-- REUSABLE GENERIC MODAL                     -->
+  <!-- ========================================== -->
+  <div id="modal-generic" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
+      <div class="p-4 sm:p-5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <h3 id="modal-generic-title" class="font-bold text-slate-800 text-base flex items-center gap-2">
+          <!-- Dynamic Modal Title -->
+        </h3>
+        <button onclick="window.acsApp.closeModal()" class="w-8 h-8 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center font-bold">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+
+      <div id="modal-generic-body" class="p-4 sm:p-6 overflow-y-auto flex-1">
+        <!-- Dynamic Modal Body Content -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Application Scripts -->
+  <script src="/data.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

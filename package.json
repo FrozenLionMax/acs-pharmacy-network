@@ -1,0 +1,8 @@
+{
+  "name": "acs-uttar-pradesh-pharmacy",
+  "version": "1.0.0",
+  "description": "All Chemists & Stores Registry - Uttar Pradesh Pharmacy Network",
+  "scripts": {
+    "start": "python server.py"
+  }
+}

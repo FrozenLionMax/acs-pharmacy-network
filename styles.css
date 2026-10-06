@@ -1,0 +1,267 @@
+/* 
+  ACS (All Chemists & Stores Registry)
+  Color Scheme Inspired by Uttar Pradesh Pharmacy Council (UPPC)
+  Primary: #135c7e (Deep Council Teal)
+  Secondary: #2c5895 (Council Royal Blue)
+  Accent: #f5a623 / #d97706 (Warm Amber Gold)
+*/
+
+:root {
+  --uppc-teal: #135c7e;
+  --uppc-teal-dark: #0d435d;
+  --uppc-teal-light: #1b7a9e;
+  --uppc-blue: #2c5895;
+  --uppc-blue-dark: #1e3e6b;
+  --uppc-gold: #f5a623;
+  --uppc-gold-hover: #e09419;
+  --bg-canvas: #f4f7fa;
+  --card-bg: #ffffff;
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --border-subtle: #e2e8f0;
+  --border-focus: #135c7e;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Header Styles */
+.top-notice-bar {
+  background: #0b3447;
+  color: #e2e8f0;
+  font-size: 0.8rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.main-brand-header {
+  background: linear-gradient(135deg, #0e445e 0%, #135c7e 60%, #1e4579 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+}
+
+.portal-nav {
+  background: #0f4b67;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.nav-item-btn {
+  position: relative;
+  transition: all 0.2s ease;
+  color: #e2e8f0;
+}
+
+.nav-item-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.nav-item-btn.active {
+  color: #ffffff;
+  background: #1e3e6b;
+  font-weight: 600;
+}
+
+.nav-item-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: var(--uppc-gold);
+}
+
+/* UPPC Badge & Emblem Styling */
+.council-emblem {
+  background: radial-gradient(circle, #fcd34d 0%, #d97706 100%);
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Privacy Masking for Financials */
+.privacy-blur {
+  filter: blur(8px);
+  user-select: none;
+  cursor: pointer;
+  transition: filter 0.25s ease;
+}
+
+.privacy-blur:hover {
+  filter: blur(4px);
+}
+
+/* Card Styling */
+.portal-card {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.portal-card-interactive:hover {
+  box-shadow: 0 8px 20px rgba(19, 92, 126, 0.12);
+  border-color: #cbd5e1;
+}
+
+/* Badge styles */
+.badge-schedule-h {
+  background-color: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.badge-schedule-h1 {
+  background-color: #fff1f2;
+  color: #9f1239;
+  border: 1px solid #fda4af;
+  font-weight: 700;
+}
+
+.badge-otc {
+  background-color: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.badge-uppc-verified {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+/* Browser Mockup Bar for Hosted Website */
+.browser-chrome {
+  background: #1e293b;
+  border-top-left-radius: 0.75rem;
+  border-top-right-radius: 0.75rem;
+  padding: 0.65rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+.browser-dots {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.browser-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.browser-address-bar {
+  flex: 1;
+  background: #0f172a;
+  border-radius: 0.375rem;
+  padding: 0.35rem 0.75rem;
+  color: #38bdf8;
+  font-family: monospace;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Live Hosted Public Webpage Styling */
+.hosted-website-frame {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+/* Toast Notifications */
+#toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.toast-msg {
+  pointer-events: auto;
+  padding: 0.85rem 1.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+  animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  color: #ffffff;
+  max-width: 400px;
+}
+
+.toast-success { background: #065f46; border-left: 4px solid #34d399; }
+.toast-info { background: #135c7e; border-left: 4px solid #60a5fa; }
+.toast-warning { background: #92400e; border-left: 4px solid #fbbf24; }
+.toast-danger { background: #991b1b; border-left: 4px solid #f87171; }
+
+@keyframes toastSlideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Print Friendly formatting */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .portal-card {
+    box-shadow: none !important;
+    border: 1px solid #999 !important;
+    break-inside: avoid;
+  }
+}
