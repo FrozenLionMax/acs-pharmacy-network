@@ -1332,9 +1332,12 @@ class ACSApp {
                               <span class="text-[10px] text-slate-400 block mt-0.5">${m.unit}</span>
                             </td>
                             <td class="py-3 px-3">
-                              <div class="text-slate-800 font-bold">MRP: ₹ ${m.mrp.toFixed(2)}</div>
+                              <div class="text-slate-900 font-extrabold text-xs">MRP: ₹ ${m.mrp.toFixed(2)}</div>
                               <div class="text-[11px] text-slate-500">Cost: ₹ ${m.purchaseRate.toFixed(2)}</div>
-                              <span class="text-[10px] text-emerald-700 font-bold">${margin}% Margin</span>
+                              <div class="flex items-center gap-1 mt-0.5">
+                                <span class="text-[10px] font-bold text-emerald-800">Profit: ₹ ${(m.mrp - m.purchaseRate).toFixed(2)}</span>
+                                <span class="text-[10px] font-black px-1.5 py-0.5 rounded ${margin >= 25 ? 'bg-emerald-100 text-emerald-800' : margin >= 15 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'}">${margin}%</span>
+                              </div>
                             </td>
                             <td class="py-3 px-3 text-right">
                               <div class="flex items-center justify-end gap-1">
@@ -2187,141 +2190,259 @@ class ACSApp {
       return matchSearch && matchSchedule && matchAlert;
     });
 
-    const totalValue = store.stocks.reduce((acc, curr) => acc + (curr.quantity * curr.purchaseRate), 0);
+    const totalCostValue = store.stocks.reduce((acc, curr) => acc + (curr.quantity * curr.purchaseRate), 0);
+    const totalRetailValue = store.stocks.reduce((acc, curr) => acc + (curr.quantity * curr.mrp), 0);
+    const totalMarginValue = totalRetailValue - totalCostValue;
+    const avgMarginPct = totalRetailValue > 0 ? Math.round((totalMarginValue / totalRetailValue) * 100) : 0;
     const lowStockCount = store.stocks.filter((m) => m.quantity <= (m.minAlertThreshold || 20)).length;
+    const expiringCount = store.stocks.filter((m) => {
+      const exp = new Date(m.expiryDate);
+      const diffMonths = (exp.getFullYear() - 2026) * 12 + (exp.getMonth() - 9);
+      return diffMonths <= 3;
+    }).length;
 
     return `
       <div class="space-y-6 animate-fade-in">
         <!-- Stock Top Management Bar -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <div>
-            <div class="flex items-center gap-2">
-              <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-50 text-emerald-800 font-bold text-sm">
-                <i class="fa fa-medkit"></i>
+            <div class="flex items-center gap-2.5">
+              <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-teal-50 text-[#135c7e] font-black text-base shadow-xs">
+                <i class="fa fa-cubes"></i>
               </span>
-              <h2 class="text-xl font-bold text-slate-800">Medicine Stock & Batch Inventory</h2>
+              <div>
+                <h2 class="text-xl font-black text-slate-800">Medicine Stock, Pricing & Margin Management</h2>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  Live inventory register for <strong>${store.name}</strong> • Real-time cost, MRP & margin editing.
+                </p>
+              </div>
             </div>
-            <p class="text-xs text-slate-500 mt-1">
-              Active stock register for <strong>${store.name}</strong> • ${store.stocks.length} active SKUs • Inventory Value: ₹ ${totalValue.toLocaleString('en-IN')}
-            </p>
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
-            <button id="btn-export-csv" class="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-lg text-xs font-semibold transition">
+            <button id="btn-export-csv" class="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold transition">
               <i class="fa fa-download"></i> Export CSV
             </button>
-            <button id="btn-import-csv" class="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-lg text-xs font-semibold transition">
+            <button id="btn-import-csv" class="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold transition">
               <i class="fa fa-upload"></i> Bulk CSV Import
             </button>
             <input type="file" id="csv-file-input" accept=".csv" class="hidden" />
-            <button id="btn-add-medicine" class="inline-flex items-center gap-1.5 bg-[#135c7e] hover:bg-[#0f4b67] text-white px-4 py-2 rounded-lg text-xs font-semibold shadow-sm transition">
+            <button id="btn-add-medicine" class="inline-flex items-center gap-1.5 bg-[#135c7e] hover:bg-[#0f4b67] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition">
               <i class="fa fa-plus"></i> Add New Medicine
             </button>
           </div>
         </div>
 
-        <!-- Filter Bar -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <!-- Profitability & Inventory Financial KPI Cards Deck -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+          <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
+            <span class="text-slate-500 text-[11px] font-semibold block">Active Catalog SKUs</span>
+            <span class="text-2xl font-black text-slate-900 mt-1 block">${store.stocks.length}</span>
+            <span class="text-[10px] text-teal-700 font-bold mt-1 block">Live in Database</span>
+          </div>
+
+          <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
+            <span class="text-slate-500 text-[11px] font-semibold block">Total Cost Valuation</span>
+            <span class="text-xl font-black text-slate-800 mt-1 block">₹ ${totalCostValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+            <span class="text-[10px] text-slate-400 mt-1 block">Stock Purchase Investment</span>
+          </div>
+
+          <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
+            <span class="text-slate-500 text-[11px] font-semibold block">Retail / MRP Valuation</span>
+            <span class="text-xl font-black text-[#135c7e] mt-1 block">₹ ${totalRetailValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+            <span class="text-[10px] text-emerald-700 font-bold mt-1 block">Gross Selling Potential</span>
+          </div>
+
+          <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
+            <span class="text-slate-500 text-[11px] font-semibold block">Projected Profit Margin</span>
+            <span class="text-xl font-black text-emerald-600 mt-1 block">₹ ${totalMarginValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+            <span class="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full inline-block mt-1">
+              ${avgMarginPct}% Gross Margin
+            </span>
+          </div>
+
+          <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
+            <span class="text-slate-500 text-[11px] font-semibold block">Low Stock Items</span>
+            <span class="text-2xl font-black ${lowStockCount > 0 ? 'text-rose-600' : 'text-slate-700'} mt-1 block">${lowStockCount}</span>
+            <span class="text-[10px] ${lowStockCount > 0 ? 'text-rose-500 font-bold' : 'text-slate-400'} mt-1 block">&le; 20 Units Threshold</span>
+          </div>
+
+          <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
+            <span class="text-slate-500 text-[11px] font-semibold block">Expiring &le; 90 Days</span>
+            <span class="text-2xl font-black ${expiringCount > 0 ? 'text-amber-600' : 'text-slate-700'} mt-1 block">${expiringCount}</span>
+            <span class="text-[10px] text-amber-600 font-bold mt-1 block">Priority FIFO Dispatch</span>
+          </div>
+        </div>
+
+        <!-- Filter & Search Controls Bar -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
           <div class="relative md:col-span-2">
             <i class="fa fa-search absolute left-3.5 top-3 text-slate-400 text-xs"></i>
             <input 
               type="text" 
               id="stock-search-input" 
-              placeholder="Search by brand name, salt/chemical composition, or batch..." 
+              placeholder="Search by brand name, salt/chemical composition, batch, or manufacturer..." 
               value="${this.stockSearchQuery}"
-              class="w-full pl-9 pr-4 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#135c7e]"
+              class="w-full pl-9 pr-4 py-2.5 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#135c7e]"
             />
           </div>
           <div>
-            <select id="stock-schedule-select" class="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#135c7e]">
-              <option value="ALL" ${this.stockScheduleFilter === "ALL" ? "selected" : ""}>All Schedules (H, H1, OTC)</option>
-              <option value="Schedule H" ${this.stockScheduleFilter === "Schedule H" ? "selected" : ""}>Schedule H</option>
-              <option value="Schedule H1" ${this.stockScheduleFilter === "Schedule H1" ? "selected" : ""}>Schedule H1 (High Alert)</option>
+            <select id="stock-schedule-select" class="w-full py-2.5 px-3 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#135c7e] bg-white">
+              <option value="ALL" ${this.stockScheduleFilter === "ALL" ? "selected" : ""}>All Schedules (H, H1, X, OTC)</option>
+              <option value="Schedule H" ${this.stockScheduleFilter === "Schedule H" ? "selected" : ""}>Schedule H (Prescription)</option>
+              <option value="Schedule H1" ${this.stockScheduleFilter === "Schedule H1" ? "selected" : ""}>Schedule H1 (High Alert / Antibiotic)</option>
+              <option value="Schedule X" ${this.stockScheduleFilter === "Schedule X" ? "selected" : ""}>Schedule X (Narcotics)</option>
               <option value="OTC" ${this.stockScheduleFilter === "OTC" ? "selected" : ""}>OTC / General</option>
             </select>
           </div>
           <div>
-            <select id="stock-alert-select" class="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#135c7e]">
-              <option value="ALL" ${this.stockAlertFilter === "ALL" ? "selected" : ""}>All Stock Levels</option>
-              <option value="LOW_STOCK" ${this.stockAlertFilter === "LOW_STOCK" ? "selected" : ""}>Low Stock Warning (${lowStockCount})</option>
-              <option value="EXPIRING" ${this.stockAlertFilter === "EXPIRING" ? "selected" : ""}>Expiring Within 90 Days</option>
+            <select id="stock-alert-select" class="w-full py-2.5 px-3 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#135c7e] bg-white">
+              <option value="ALL" ${this.stockAlertFilter === "ALL" ? "selected" : ""}>All Stock Alert Levels</option>
+              <option value="LOW_STOCK" ${this.stockAlertFilter === "LOW_STOCK" ? "selected" : ""}>Low Stock Critical (${lowStockCount})</option>
+              <option value="EXPIRING" ${this.stockAlertFilter === "EXPIRING" ? "selected" : ""}>Expiring Within 90 Days (${expiringCount})</option>
             </select>
           </div>
         </div>
 
-        <!-- Medicine Table -->
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <!-- Comprehensive Detailed Medicine Table with Inline Editing -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="p-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between text-xs text-slate-600">
+            <span class="font-bold flex items-center gap-1.5">
+              <i class="fa fa-info-circle text-[#135c7e]"></i> Tip: Edit Cost Price (Buy), Selling Price (MRP), or Stock Quantity directly in the fields below. Changes save instantly!
+            </span>
+            <span class="text-[11px] text-slate-500 font-mono">Showing ${filteredStocks.length} of ${store.stocks.length} SKUs</span>
+          </div>
+
           <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
               <thead>
-                <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
-                  <th class="py-3 px-4">Medicine & Generic Salt</th>
-                  <th class="py-3 px-3">Manufacturer</th>
-                  <th class="py-3 px-3">Batch No</th>
-                  <th class="py-3 px-3">Expiry</th>
-                  <th class="py-3 px-3">Schedule</th>
-                  <th class="py-3 px-3">Stock Qty</th>
-                  <th class="py-3 px-3">MRP / Buy</th>
-                  <th class="py-3 px-3">Rack</th>
-                  <th class="py-3 px-4 text-right">Actions</th>
+                <tr class="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                  <th class="py-3.5 px-4 min-w-[200px]">Medicine & Generic Salt</th>
+                  <th class="py-3.5 px-3 min-w-[120px]">Batch & Rack</th>
+                  <th class="py-3.5 px-3 min-w-[100px]">Expiry</th>
+                  <th class="py-3.5 px-3">Schedule</th>
+                  <th class="py-3.5 px-3 min-w-[130px] text-center">In-Stock Qty</th>
+                  <th class="py-3.5 px-3 min-w-[110px]">Cost Price (Buy)</th>
+                  <th class="py-3.5 px-3 min-w-[110px]">Selling Price (MRP)</th>
+                  <th class="py-3.5 px-3 min-w-[130px]">Profit Margin</th>
+                  <th class="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100">
                 ${filteredStocks.length === 0 ? `
                   <tr>
-                    <td colspan="9" class="py-12 text-center text-slate-400">
-                      <i class="fa fa-cubes text-3xl mb-2 text-slate-300 block"></i>
+                    <td colspan="9" class="py-14 text-center text-slate-400">
+                      <i class="fa fa-cubes text-4xl mb-2 text-slate-300 block"></i>
                       No medicine records found matching your filters.
                     </td>
                   </tr>
                 ` : filteredStocks.map((m) => {
                   const isLow = m.quantity <= (m.minAlertThreshold || 20);
                   const expDate = new Date(m.expiryDate);
-                  const isExpiringSoon = expDate.getFullYear() === 2026 && expDate.getMonth() <= 11;
+                  const diffMonths = (expDate.getFullYear() - 2026) * 12 + (expDate.getMonth() - 9);
+                  const isExpiringSoon = diffMonths <= 3;
+                  const unitMargin = m.mrp - m.purchaseRate;
+                  const marginPct = m.mrp > 0 ? Math.round((unitMargin / m.mrp) * 100) : 0;
+                  const lotProfit = unitMargin * m.quantity;
 
-                  let scheduleBadge = `<span class="badge-otc px-2 py-0.5 rounded text-[10px] font-semibold">${m.schedule}</span>`;
+                  let scheduleBadge = `<span class="bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded text-[10px] font-bold">${m.schedule}</span>`;
                   if (m.schedule.includes("H1")) {
-                    scheduleBadge = `<span class="badge-schedule-h1 px-2 py-0.5 rounded text-[10px] font-bold"><i class="fa fa-exclamation-circle"></i> ${m.schedule}</span>`;
+                    scheduleBadge = `<span class="bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded text-[10px] font-bold"><i class="fa fa-exclamation-circle"></i> ${m.schedule}</span>`;
                   } else if (m.schedule.includes("H")) {
-                    scheduleBadge = `<span class="badge-schedule-h px-2 py-0.5 rounded text-[10px] font-semibold">${m.schedule}</span>`;
+                    scheduleBadge = `<span class="bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded text-[10px] font-bold">${m.schedule}</span>`;
                   }
 
                   return `
                     <tr class="hover:bg-slate-50/80 transition">
-                      <td class="py-3 px-4">
-                        <div class="font-bold text-slate-900 text-sm">${m.name}</div>
+                      <td class="py-3.5 px-4">
+                        <div class="font-extrabold text-slate-900 text-sm">${m.name}</div>
                         <div class="text-[11px] text-slate-500 font-mono mt-0.5">${m.saltName}</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">${m.manufacturer}</div>
                       </td>
-                      <td class="py-3 px-3 text-slate-700">${m.manufacturer}</td>
-                      <td class="py-3 px-3 font-mono font-medium text-slate-600">${m.batchNo}</td>
-                      <td class="py-3 px-3">
-                        <span class="font-mono ${isExpiringSoon ? 'text-rose-600 font-bold' : 'text-slate-700'}">
+                      <td class="py-3.5 px-3">
+                        <div class="font-mono font-semibold text-slate-700 text-xs">${m.batchNo}</div>
+                        <div class="mt-1 flex items-center gap-1">
+                          <span class="text-[10px] text-slate-400">Rack:</span>
+                          <input 
+                            type="text" 
+                            value="${m.rackLocation || 'Shelf'}" 
+                            onchange="window.acsApp.updateStockInline('${m.id}', 'rackLocation', this.value)"
+                            class="w-16 px-1.5 py-0.5 bg-slate-100 hover:bg-white focus:bg-white border border-slate-200 rounded font-mono text-[10px] text-slate-700 font-bold focus:ring-1 focus:ring-[#135c7e] transition"
+                            title="Edit rack location directly"
+                          />
+                        </div>
+                      </td>
+                      <td class="py-3.5 px-3">
+                        <span class="font-mono text-xs ${isExpiringSoon ? 'text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-bold' : 'text-slate-700 font-medium'}">
                           ${m.expiryDate}
                         </span>
-                        ${isExpiringSoon ? `<span class="block text-[10px] text-rose-500 font-bold">Near Expiry</span>` : ''}
+                        ${isExpiringSoon ? `<span class="block text-[10px] text-amber-700 font-bold mt-0.5">Near Expiry</span>` : ''}
                       </td>
-                      <td class="py-3 px-3">${scheduleBadge}</td>
-                      <td class="py-3 px-3">
-                        <div class="flex items-center gap-2">
-                          <button onclick="window.acsApp.adjustStockQty('${m.id}', -5)" class="w-5 h-5 flex items-center justify-center rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold">-</button>
-                          <span class="font-bold ${isLow ? 'text-rose-600' : 'text-slate-800'} text-sm min-w-8 text-center">
-                            ${m.quantity}
-                          </span>
-                          <button onclick="window.acsApp.adjustStockQty('${m.id}', 5)" class="w-5 h-5 flex items-center justify-center rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold">+</button>
+                      <td class="py-3.5 px-3">${scheduleBadge}</td>
+                      <td class="py-3.5 px-3 text-center">
+                        <div class="inline-flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+                          <button onclick="window.acsApp.adjustStockQty('${m.id}', -5)" class="w-6 h-6 flex items-center justify-center rounded-lg bg-white hover:bg-slate-200 text-slate-700 font-black shadow-xs transition">-</button>
+                          <input 
+                            type="number" 
+                            min="0" 
+                            value="${m.quantity}" 
+                            onchange="window.acsApp.updateStockInline('${m.id}', 'quantity', this.value)"
+                            class="w-12 text-center bg-transparent font-black ${isLow ? 'text-rose-600' : 'text-slate-800'} text-sm outline-none"
+                            title="Direct edit quantity"
+                          />
+                          <button onclick="window.acsApp.adjustStockQty('${m.id}', 5)" class="w-6 h-6 flex items-center justify-center rounded-lg bg-white hover:bg-slate-200 text-slate-700 font-black shadow-xs transition">+</button>
                         </div>
-                        <span class="text-[10px] text-slate-400 block">${m.unit}</span>
+                        <span class="text-[10px] text-slate-400 block mt-0.5">${m.unit}</span>
                       </td>
-                      <td class="py-3 px-3">
-                        <div class="font-bold text-slate-800">₹ ${m.mrp.toFixed(2)}</div>
-                        <div class="text-[10px] text-slate-400">Buy: ₹ ${m.purchaseRate.toFixed(2)}</div>
+                      <td class="py-3.5 px-3">
+                        <div class="flex items-center gap-1 bg-slate-50 hover:bg-white focus-within:bg-white border border-slate-200 focus-within:border-[#135c7e] rounded-lg px-2 py-1.5 transition">
+                          <span class="text-slate-400 font-bold text-xs">₹</span>
+                          <input 
+                            type="number" 
+                            step="0.1" 
+                            min="0" 
+                            value="${m.purchaseRate.toFixed(2)}" 
+                            onchange="window.acsApp.updateStockInline('${m.id}', 'purchaseRate', this.value)"
+                            class="w-16 bg-transparent text-slate-800 font-bold text-xs outline-none"
+                            title="Edit Cost Price (Purchase Rate)"
+                          />
+                        </div>
+                        <span class="text-[10px] text-slate-400 block mt-0.5">Per unit cost</span>
                       </td>
-                      <td class="py-3 px-3 text-slate-600 font-mono text-[11px]">${m.rackLocation}</td>
-                      <td class="py-3 px-4 text-right">
+                      <td class="py-3.5 px-3">
+                        <div class="flex items-center gap-1 bg-emerald-50/60 hover:bg-white focus-within:bg-white border border-emerald-200 focus-within:border-emerald-500 rounded-lg px-2 py-1.5 transition">
+                          <span class="text-emerald-700 font-bold text-xs">₹</span>
+                          <input 
+                            type="number" 
+                            step="0.1" 
+                            min="0" 
+                            value="${m.mrp.toFixed(2)}" 
+                            onchange="window.acsApp.updateStockInline('${m.id}', 'mrp', this.value)"
+                            class="w-16 bg-transparent text-emerald-800 font-black text-xs outline-none"
+                            title="Edit Selling Price (MRP)"
+                          />
+                        </div>
+                        <span class="text-[10px] text-emerald-700 font-semibold block mt-0.5">Public MRP</span>
+                      </td>
+                      <td class="py-3.5 px-3">
+                        <div class="flex items-center gap-1.5">
+                          <span class="text-xs font-black text-slate-800">₹ ${unitMargin.toFixed(2)}</span>
+                          <span class="px-2 py-0.5 rounded-full font-black text-[10px] ${
+                            marginPct >= 25 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                            marginPct >= 15 ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                            'bg-rose-100 text-rose-800 border border-rose-200'
+                          }">
+                            ${marginPct}%
+                          </span>
+                        </div>
+                        <span class="text-[10px] text-slate-500 block mt-0.5">Lot: ₹ ${lotProfit.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                      </td>
+                      <td class="py-3.5 px-4 text-right">
                         <div class="flex items-center justify-end gap-1.5">
-                          <button onclick="window.acsApp.openEditMedicineModal('${m.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit Medicine">
+                          <button onclick="window.acsApp.openEditMedicineModal('${m.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Full Edit (Batch, Salt, Price)">
                             <i class="fa fa-pencil"></i>
                           </button>
-                          <button onclick="window.acsApp.deleteMedicine('${m.id}')" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded" title="Delete Medicine">
+                          <button onclick="window.acsApp.deleteMedicine('${m.id}')" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition" title="Delete Medicine">
                             <i class="fa fa-trash"></i>
                           </button>
                         </div>
@@ -2388,6 +2509,29 @@ class ACSApp {
         this.handleCsvUpload(e);
       });
     }
+  }
+
+  updateStockInline(medicineId, field, rawValue) {
+    const store = this.getCurrentStore();
+    const item = store.stocks.find((m) => m.id === medicineId);
+    if (!item) return;
+
+    let value = rawValue;
+    if (field === "quantity") {
+      value = Math.max(0, parseInt(rawValue) || 0);
+    } else if (field === "mrp" || field === "purchaseRate") {
+      value = Math.max(0, parseFloat(rawValue) || 0);
+    } else if (typeof rawValue === "string") {
+      value = rawValue.trim();
+    }
+
+    item[field] = value;
+    this.saveStores();
+    this.renderCurrentView();
+
+    const marginPct = item.mrp > 0 ? Math.round(((item.mrp - item.purchaseRate) / item.mrp) * 100) : 0;
+    const unitMargin = (item.mrp - item.purchaseRate).toFixed(2);
+    this.showToast(`Updated "${item.name}": Selling ₹${item.mrp.toFixed(2)}, Cost ₹${item.purchaseRate.toFixed(2)} (${marginPct}% Margin, ₹${unitMargin}/unit)`, "success");
   }
 
   adjustStockQty(medicineId, delta) {
@@ -3408,31 +3552,95 @@ class ACSApp {
 
         <div class="grid grid-cols-4 gap-3">
           <div>
-            <label class="block font-semibold text-slate-700 mb-1">Initial Qty</label>
-            <input type="number" id="med-qty" required min="1" value="50" class="w-full px-3 py-2 border rounded-lg" />
+            <label class="block font-semibold text-slate-700 mb-1">Initial Qty *</label>
+            <input type="number" id="med-qty" required min="1" value="50" class="w-full px-3 py-2 border rounded-xl" />
           </div>
           <div>
-            <label class="block font-semibold text-slate-700 mb-1">Unit</label>
-            <input type="text" id="med-unit" value="Strips" class="w-full px-3 py-2 border rounded-lg" />
+            <label class="block font-semibold text-slate-700 mb-1">Packaging Unit</label>
+            <input type="text" id="med-unit" value="Strips" class="w-full px-3 py-2 border rounded-xl" />
           </div>
           <div>
-            <label class="block font-semibold text-slate-700 mb-1">MRP (₹)</label>
-            <input type="number" id="med-mrp" step="0.01" required value="120" class="w-full px-3 py-2 border rounded-lg" />
+            <label class="block font-semibold text-slate-700 mb-1">Cost Price (Buy ₹) *</label>
+            <input type="number" id="med-buy" step="0.01" min="0" required value="85" class="w-full px-3 py-2 border rounded-xl font-bold text-slate-800" />
           </div>
           <div>
-            <label class="block font-semibold text-slate-700 mb-1">Purchase Rate (₹)</label>
-            <input type="number" id="med-buy" step="0.01" required value="85" class="w-full px-3 py-2 border rounded-lg" />
+            <label class="block font-semibold text-slate-700 mb-1">Selling Price (MRP ₹) *</label>
+            <input type="number" id="med-mrp" step="0.01" min="0" required value="120" class="w-full px-3 py-2 border rounded-xl font-extrabold text-emerald-800" />
+          </div>
+        </div>
+
+        <!-- Live Margin Calculator Preview in Add Modal -->
+        <div class="p-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 border border-emerald-200 rounded-xl">
+          <div class="flex items-center justify-between text-xs mb-2">
+            <span class="font-bold text-emerald-950 flex items-center gap-1.5">
+              <i class="fa fa-calculator text-emerald-600"></i> Live Margin Intelligence
+            </span>
+            <span id="add-modal-margin-badge" class="px-2.5 py-0.5 rounded-full font-black text-[11px] bg-emerald-100 text-emerald-800 border border-emerald-300">
+              29% Margin
+            </span>
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-[11px]">
+            <div>
+              <span class="text-slate-500 block">Unit Profit:</span>
+              <strong id="add-modal-unit-profit" class="text-slate-900 font-mono font-bold text-xs">₹ 35.00</strong>
+            </div>
+            <div>
+              <span class="text-slate-500 block">Total Lot Cost:</span>
+              <strong id="add-modal-lot-cost" class="text-slate-900 font-mono text-xs">₹ 4,250</strong>
+            </div>
+            <div>
+              <span class="text-slate-500 block">Projected Lot Profit:</span>
+              <strong id="add-modal-lot-profit" class="text-emerald-700 font-mono font-black text-xs">₹ 1,750</strong>
+            </div>
           </div>
         </div>
 
         <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
-          <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-lg text-slate-600">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-[#135c7e] text-white rounded-lg font-semibold">Add to Stock</button>
+          <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50">Cancel</button>
+          <button type="submit" class="px-5 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-xl font-bold shadow-sm transition">Add to Stock</button>
         </div>
       </form>
     `;
 
     modal.classList.remove("hidden");
+
+    // Dynamic calculator on input
+    const recalcAdd = () => {
+      const buy = parseFloat(document.getElementById("med-buy")?.value) || 0;
+      const mrp = parseFloat(document.getElementById("med-mrp")?.value) || 0;
+      const qty = parseInt(document.getElementById("med-qty")?.value) || 0;
+
+      const unitProfit = mrp - buy;
+      const marginPct = mrp > 0 ? Math.round((unitProfit / mrp) * 100) : 0;
+      const lotCost = buy * qty;
+      const lotProfit = unitProfit * qty;
+
+      const badge = document.getElementById("add-modal-margin-badge");
+      if (badge) {
+        badge.textContent = `${marginPct}% Margin`;
+        badge.className = `px-2.5 py-0.5 rounded-full font-black text-[11px] ${
+          marginPct >= 25 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+          marginPct >= 15 ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+          'bg-rose-100 text-rose-800 border border-rose-300'
+        }`;
+      }
+
+      const elUnit = document.getElementById("add-modal-unit-profit");
+      if (elUnit) elUnit.textContent = `₹ ${unitProfit.toFixed(2)}`;
+
+      const elLotCost = document.getElementById("add-modal-lot-cost");
+      if (elLotCost) elLotCost.textContent = `₹ ${lotCost.toLocaleString('en-IN')}`;
+
+      const elLotProfit = document.getElementById("add-modal-lot-profit");
+      if (elLotProfit) {
+        elLotProfit.textContent = `₹ ${lotProfit.toLocaleString('en-IN')}`;
+        elLotProfit.className = `font-mono font-black text-xs ${lotProfit >= 0 ? 'text-emerald-700' : 'text-rose-600'}`;
+      }
+    };
+
+    document.getElementById("med-buy")?.addEventListener("input", recalcAdd);
+    document.getElementById("med-mrp")?.addEventListener("input", recalcAdd);
+    document.getElementById("med-qty")?.addEventListener("input", recalcAdd);
 
     document.getElementById("form-add-med").onsubmit = (e) => {
       e.preventDefault();
@@ -3471,54 +3679,166 @@ class ACSApp {
     const body = document.getElementById("modal-generic-body");
     if (!modal || !title || !body) return;
 
-    title.innerHTML = `<i class="fa fa-pencil text-teal-700"></i> Edit Medicine: ${med.name}`;
+    const initialMargin = med.mrp > 0 ? Math.round(((med.mrp - med.purchaseRate) / med.mrp) * 100) : 0;
+    const initialUnitProfit = med.mrp - med.purchaseRate;
+
+    title.innerHTML = `<i class="fa fa-pencil-square-o text-teal-700"></i> Edit Medicine & Margins: ${med.name}`;
     body.innerHTML = `
       <form id="form-edit-med" class="space-y-4 text-xs">
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block font-semibold text-slate-700 mb-1">Brand Name</label>
-            <input type="text" id="edit-med-name" value="${med.name}" class="w-full px-3 py-2 border rounded-lg" />
+            <label class="block font-bold text-slate-700 mb-1">Brand Name *</label>
+            <input type="text" id="edit-med-name" required value="${med.name}" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-[#135c7e]" />
           </div>
           <div>
-            <label class="block font-semibold text-slate-700 mb-1">Salt / Generic</label>
-            <input type="text" id="edit-med-salt" value="${med.saltName}" class="w-full px-3 py-2 border rounded-lg" />
+            <label class="block font-bold text-slate-700 mb-1">Salt / Generic Composition *</label>
+            <input type="text" id="edit-med-salt" required value="${med.saltName}" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-[#135c7e]" />
           </div>
         </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Manufacturer *</label>
+            <input type="text" id="edit-med-mfg" required value="${med.manufacturer}" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-[#135c7e]" />
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Schedule Category *</label>
+            <select id="edit-med-sched" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-[#135c7e] bg-white">
+              <option value="Schedule H" ${med.schedule === 'Schedule H' ? 'selected' : ''}>Schedule H (Prescription)</option>
+              <option value="Schedule H1" ${med.schedule === 'Schedule H1' ? 'selected' : ''}>Schedule H1 (High Alert / Antibiotic)</option>
+              <option value="OTC" ${med.schedule === 'OTC' ? 'selected' : ''}>OTC / General</option>
+              <option value="Schedule X" ${med.schedule === 'Schedule X' ? 'selected' : ''}>Schedule X (Narcotics)</option>
+            </select>
+          </div>
+        </div>
+
         <div class="grid grid-cols-3 gap-3">
           <div>
-            <label class="block font-semibold text-slate-700 mb-1">Stock Qty</label>
-            <input type="number" id="edit-med-qty" value="${med.quantity}" class="w-full px-3 py-2 border rounded-lg" />
+            <label class="block font-bold text-slate-700 mb-1">Batch Number *</label>
+            <input type="text" id="edit-med-batch" required value="${med.batchNo}" class="w-full px-3 py-2 border rounded-xl font-mono uppercase focus:ring-2 focus:ring-[#135c7e]" />
           </div>
           <div>
-            <label class="block font-semibold text-slate-700 mb-1">MRP (₹)</label>
-            <input type="number" step="0.01" id="edit-med-mrp" value="${med.mrp}" class="w-full px-3 py-2 border rounded-lg" />
+            <label class="block font-bold text-slate-700 mb-1">Expiry Date *</label>
+            <input type="date" id="edit-med-exp" required value="${med.expiryDate}" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-[#135c7e]" />
           </div>
           <div>
-            <label class="block font-semibold text-slate-700 mb-1">Purchase Rate (₹)</label>
-            <input type="number" step="0.01" id="edit-med-buy" value="${med.purchaseRate}" class="w-full px-3 py-2 border rounded-lg" />
+            <label class="block font-bold text-slate-700 mb-1">Rack / Bay Location</label>
+            <input type="text" id="edit-med-rack" value="${med.rackLocation}" class="w-full px-3 py-2 border rounded-xl font-mono focus:ring-2 focus:ring-[#135c7e]" />
           </div>
         </div>
+
+        <div class="grid grid-cols-4 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Stock Quantity *</label>
+            <input type="number" id="edit-med-qty" min="0" required value="${med.quantity}" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-[#135c7e]" />
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Packaging Unit</label>
+            <input type="text" id="edit-med-unit" value="${med.unit}" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-[#135c7e]" />
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Cost Price (Buy ₹) *</label>
+            <input type="number" step="0.01" min="0" required id="edit-med-buy" value="${med.purchaseRate}" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-[#135c7e] font-bold text-slate-800" />
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Selling Price (MRP ₹) *</label>
+            <input type="number" step="0.01" min="0" required id="edit-med-mrp" value="${med.mrp}" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-emerald-500 font-extrabold text-emerald-800" />
+          </div>
+        </div>
+
+        <!-- Real-Time Dynamic Profit Margin Preview Card -->
+        <div id="edit-margin-preview-box" class="p-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 border border-emerald-200 rounded-xl">
+          <div class="flex items-center justify-between text-xs mb-2">
+            <span class="font-bold text-emerald-950 flex items-center gap-1.5">
+              <i class="fa fa-calculator text-emerald-600"></i> Live Margin Intelligence Preview
+            </span>
+            <span id="edit-modal-margin-badge" class="px-2.5 py-0.5 rounded-full font-black text-[11px] bg-emerald-100 text-emerald-800 border border-emerald-300">
+              ${initialMargin}% Margin
+            </span>
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-[11px]">
+            <div>
+              <span class="text-slate-500 block">Profit Per Unit:</span>
+              <strong id="edit-modal-unit-profit" class="text-slate-900 font-mono font-bold text-xs">₹ ${initialUnitProfit.toFixed(2)}</strong>
+            </div>
+            <div>
+              <span class="text-slate-500 block">Total Lot Cost:</span>
+              <strong id="edit-modal-lot-cost" class="text-slate-900 font-mono text-xs">₹ ${(med.purchaseRate * med.quantity).toLocaleString('en-IN')}</strong>
+            </div>
+            <div>
+              <span class="text-slate-500 block">Total Lot Profit:</span>
+              <strong id="edit-modal-lot-profit" class="text-emerald-700 font-mono font-black text-xs">₹ ${(initialUnitProfit * med.quantity).toLocaleString('en-IN')}</strong>
+            </div>
+          </div>
+        </div>
+
         <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
-          <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-lg text-slate-600">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-[#135c7e] text-white rounded-lg font-semibold">Save Changes</button>
+          <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50">Cancel</button>
+          <button type="submit" class="px-5 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-xl font-bold shadow-sm transition">Save Changes & Update Live Site</button>
         </div>
       </form>
     `;
 
     modal.classList.remove("hidden");
 
+    // Dynamic calculator on input
+    const recalc = () => {
+      const buy = parseFloat(document.getElementById("edit-med-buy").value) || 0;
+      const mrp = parseFloat(document.getElementById("edit-med-mrp").value) || 0;
+      const qty = parseInt(document.getElementById("edit-med-qty").value) || 0;
+
+      const unitProfit = mrp - buy;
+      const marginPct = mrp > 0 ? Math.round((unitProfit / mrp) * 100) : 0;
+      const lotCost = buy * qty;
+      const lotProfit = unitProfit * qty;
+
+      const badge = document.getElementById("edit-modal-margin-badge");
+      if (badge) {
+        badge.textContent = `${marginPct}% Margin`;
+        badge.className = `px-2.5 py-0.5 rounded-full font-black text-[11px] ${
+          marginPct >= 25 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+          marginPct >= 15 ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+          'bg-rose-100 text-rose-800 border border-rose-300'
+        }`;
+      }
+
+      const elUnit = document.getElementById("edit-modal-unit-profit");
+      if (elUnit) elUnit.textContent = `₹ ${unitProfit.toFixed(2)}`;
+
+      const elLotCost = document.getElementById("edit-modal-lot-cost");
+      if (elLotCost) elLotCost.textContent = `₹ ${lotCost.toLocaleString('en-IN')}`;
+
+      const elLotProfit = document.getElementById("edit-modal-lot-profit");
+      if (elLotProfit) {
+        elLotProfit.textContent = `₹ ${lotProfit.toLocaleString('en-IN')}`;
+        elLotProfit.className = `font-mono font-black text-xs ${lotProfit >= 0 ? 'text-emerald-700' : 'text-rose-600'}`;
+      }
+    };
+
+    document.getElementById("edit-med-buy").addEventListener("input", recalc);
+    document.getElementById("edit-med-mrp").addEventListener("input", recalc);
+    document.getElementById("edit-med-qty").addEventListener("input", recalc);
+
     document.getElementById("form-edit-med").onsubmit = (e) => {
       e.preventDefault();
-      med.name = document.getElementById("edit-med-name").value;
-      med.saltName = document.getElementById("edit-med-salt").value;
+      med.name = document.getElementById("edit-med-name").value.trim();
+      med.saltName = document.getElementById("edit-med-salt").value.trim();
+      med.manufacturer = document.getElementById("edit-med-mfg").value.trim();
+      med.schedule = document.getElementById("edit-med-sched").value;
+      med.batchNo = document.getElementById("edit-med-batch").value.trim();
+      med.expiryDate = document.getElementById("edit-med-exp").value;
+      med.rackLocation = document.getElementById("edit-med-rack").value.trim() || "General Shelf";
       med.quantity = parseInt(document.getElementById("edit-med-qty").value) || 0;
+      med.unit = document.getElementById("edit-med-unit").value.trim() || "Strips";
       med.mrp = parseFloat(document.getElementById("edit-med-mrp").value) || 0;
       med.purchaseRate = parseFloat(document.getElementById("edit-med-buy").value) || 0;
 
       this.saveStores();
       this.closeModal();
       this.renderCurrentView();
-      this.showToast(`Updated "${med.name}"`, "success");
+
+      const finalMargin = med.mrp > 0 ? Math.round(((med.mrp - med.purchaseRate) / med.mrp) * 100) : 0;
+      this.showToast(`Updated "${med.name}": Selling ₹${med.mrp.toFixed(2)}, Cost ₹${med.purchaseRate.toFixed(2)} (${finalMargin}% Margin)`, "success");
     };
   }
 
