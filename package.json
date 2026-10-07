@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "All Chemists & Stores Registry - Uttar Pradesh Pharmacy Network",
   "scripts": {
-    "start": "python server.py"
+    "start": "python server.py",
+    "test": "node test_app_views.js"
   }
 }
