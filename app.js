@@ -1848,7 +1848,6 @@ class ACSApp {
                         const exp = new Date(m.expiryDate);
                         const diffMonths = (exp.getFullYear() - 2026) * 12 + (exp.getMonth() - 9);
                         const isExpiring = diffMonths <= 3;
-                        const margin = Math.round(((m.mrp - m.purchaseRate) / m.mrp) * 100);
 
                         return `
                           <tr class="hover:bg-slate-50/80 transition">
@@ -1887,12 +1886,8 @@ class ACSApp {
                               <span class="text-[10px] text-slate-400 block mt-0.5">${m.unit}</span>
                             </td>
                             <td class="py-3 px-3">
-                              <div class="text-slate-900 font-extrabold text-xs">MRP: ₹ ${m.mrp.toFixed(2)}</div>
-                              <div class="text-[11px] text-slate-500">Cost: ₹ ${m.purchaseRate.toFixed(2)}</div>
-                              <div class="flex items-center gap-1 mt-0.5">
-                                <span class="text-[10px] font-bold text-emerald-800">Profit: ₹ ${(m.mrp - m.purchaseRate).toFixed(2)}</span>
-                                <span class="text-[10px] font-black px-1.5 py-0.5 rounded ${margin >= 25 ? 'bg-emerald-100 text-emerald-800' : margin >= 15 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'}">${margin}%</span>
-                              </div>
+                              <div class="text-slate-900 font-bold text-xs">Selling Price: ₹ ${m.mrp.toFixed(2)}</div>
+                              <div class="text-[11px] text-slate-600 font-semibold mt-0.5">Buying Cost: ₹ ${m.purchaseRate.toFixed(2)}</div>
                             </td>
                             <td class="py-3 px-3 text-right">
                               <div class="flex items-center justify-end gap-1">
@@ -2808,8 +2803,6 @@ class ACSApp {
 
     const totalCostValue = store.stocks.reduce((acc, curr) => acc + (curr.quantity * curr.purchaseRate), 0);
     const totalRetailValue = store.stocks.reduce((acc, curr) => acc + (curr.quantity * curr.mrp), 0);
-    const totalMarginValue = totalRetailValue - totalCostValue;
-    const avgMarginPct = totalRetailValue > 0 ? Math.round((totalMarginValue / totalRetailValue) * 100) : 0;
     const lowStockCount = store.stocks.filter((m) => m.quantity <= (m.minAlertThreshold || 20)).length;
     const expiringCount = store.stocks.filter((m) => {
       const exp = new Date(m.expiryDate);
@@ -2827,9 +2820,9 @@ class ACSApp {
                 <i class="fa fa-cubes"></i>
               </span>
               <div>
-                <h2 class="text-xl font-black text-slate-800">Medicine Stock, Pricing & Margin Management</h2>
+                <h2 class="text-xl font-black text-slate-800">Medicine Stock & Inventory Register</h2>
                 <p class="text-xs text-slate-500 mt-0.5">
-                  Live inventory register for <strong>${store.name}</strong> • Real-time cost, MRP & margin editing.
+                  Live inventory register for <strong>${store.name}</strong> • Real-time buying cost & selling price (MRP) management.
                 </p>
               </div>
             </div>
@@ -2839,8 +2832,8 @@ class ACSApp {
             <button onclick="window.acsApp.openReorderPoModal()" class="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm transition">
               <i class="fa fa-file-text-o"></i> Generate Supplier PO Draft
             </button>
-            <button onclick="window.acsApp.openBulkMarginModal()" class="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-black shadow-sm transition">
-              <i class="fa fa-percent"></i> Bulk Margin Adjuster
+            <button onclick="window.acsApp.openBulkPriceModal()" class="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-black shadow-sm transition">
+              <i class="fa fa-calculator"></i> Bulk Price Adjuster
             </button>
             <button id="btn-export-csv" class="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold transition">
               <i class="fa fa-download"></i> Export CSV
@@ -2855,7 +2848,7 @@ class ACSApp {
           </div>
         </div>
 
-        <!-- Profitability & Inventory Financial KPI Cards Deck -->
+        <!-- Inventory Financial KPI Cards Deck -->
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
           <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
             <span class="text-slate-500 text-[11px] font-semibold block">Active Catalog SKUs</span>
@@ -2876,11 +2869,9 @@ class ACSApp {
           </div>
 
           <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
-            <span class="text-slate-500 text-[11px] font-semibold block">Projected Profit Margin</span>
-            <span class="text-xl font-black text-emerald-600 mt-1 block">₹ ${totalMarginValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
-            <span class="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full inline-block mt-1">
-              ${avgMarginPct}% Gross Margin
-            </span>
+            <span class="text-slate-500 text-[11px] font-semibold block">Total Stock Units</span>
+            <span class="text-xl font-black text-indigo-700 mt-1 block">${store.stocks.reduce((acc, curr) => acc + curr.quantity, 0).toLocaleString('en-IN')}</span>
+            <span class="text-[10px] text-indigo-600 font-bold mt-1 block">Physical Package Units</span>
           </div>
 
           <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
@@ -2961,16 +2952,15 @@ class ACSApp {
                   <th class="py-3.5 px-3 min-w-[100px]">Expiry</th>
                   <th class="py-3.5 px-3">Schedule</th>
                   <th class="py-3.5 px-3 min-w-[130px] text-center">In-Stock Qty</th>
-                  <th class="py-3.5 px-3 min-w-[110px]">Cost Price (Buy)</th>
-                  <th class="py-3.5 px-3 min-w-[110px]">Selling Price (MRP)</th>
-                  <th class="py-3.5 px-3 min-w-[130px]">Profit Margin</th>
+                  <th class="py-3.5 px-3 min-w-[120px]">Buying Cost (CP)</th>
+                  <th class="py-3.5 px-3 min-w-[120px]">Selling Cost (MRP)</th>
                   <th class="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100">
                 ${filteredStocks.length === 0 ? `
                   <tr>
-                    <td colspan="9" class="py-14 text-center text-slate-400">
+                    <td colspan="8" class="py-14 text-center text-slate-400">
                       <i class="fa fa-cubes text-4xl mb-2 text-slate-300 block"></i>
                       No medicine records found matching your filters.
                     </td>
@@ -2980,9 +2970,6 @@ class ACSApp {
                   const expDate = new Date(m.expiryDate);
                   const diffMonths = (expDate.getFullYear() - 2026) * 12 + (expDate.getMonth() - 9);
                   const isExpiringSoon = diffMonths <= 3;
-                  const unitMargin = m.mrp - m.purchaseRate;
-                  const marginPct = m.mrp > 0 ? Math.round((unitMargin / m.mrp) * 100) : 0;
-                  const lotProfit = unitMargin * m.quantity;
 
                   let scheduleBadge = `<span class="bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded text-[10px] font-bold">${m.schedule}</span>`;
                   if (m.schedule.includes("H1")) {
@@ -3062,19 +3049,6 @@ class ACSApp {
                           />
                         </div>
                         <span class="text-[10px] text-emerald-700 font-semibold block mt-0.5">Public MRP</span>
-                      </td>
-                      <td class="py-3.5 px-3">
-                        <div class="flex items-center gap-1.5">
-                          <span class="text-xs font-black text-slate-800">₹ ${unitMargin.toFixed(2)}</span>
-                          <span class="px-2 py-0.5 rounded-full font-black text-[10px] ${
-                            marginPct >= 25 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                            marginPct >= 15 ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-                            'bg-rose-100 text-rose-800 border border-rose-200'
-                          }">
-                            ${marginPct}%
-                          </span>
-                        </div>
-                        <span class="text-[10px] text-slate-500 block mt-0.5">Lot: ₹ ${lotProfit.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
                       </td>
                       <td class="py-3.5 px-4 text-right">
                         <div class="flex items-center justify-end gap-1.5">
@@ -3168,9 +3142,7 @@ class ACSApp {
     this.saveStores();
     this.renderCurrentView();
 
-    const marginPct = item.mrp > 0 ? Math.round(((item.mrp - item.purchaseRate) / item.mrp) * 100) : 0;
-    const unitMargin = (item.mrp - item.purchaseRate).toFixed(2);
-    this.showToast(`Updated "${item.name}": Selling ₹${item.mrp.toFixed(2)}, Cost ₹${item.purchaseRate.toFixed(2)} (${marginPct}% Margin, ₹${unitMargin}/unit)`, "success");
+    this.showToast(`Updated "${item.name}": Selling Price ₹${item.mrp.toFixed(2)}, Buying Cost ₹${item.purchaseRate.toFixed(2)}`, "success");
   }
 
   adjustStockQty(medicineId, delta) {
@@ -3548,12 +3520,12 @@ class ACSApp {
           </div>
 
           <div class="portal-card bg-white p-5 border-l-4 border-l-blue-600">
-            <span class="text-xs text-slate-500 font-semibold block uppercase">Avg Gross Margin</span>
+            <span class="text-xs text-slate-500 font-semibold block uppercase">Total Monthly Invoices</span>
             <div class="text-2xl font-black text-blue-700 mt-1 ${this.financialsVisible ? '' : 'privacy-blur'}">
-              ${rev.avgGrossMarginPercent}%
+              ${rev.totalOrdersThisMonth || 520}
             </div>
             <span class="text-[11px] text-slate-500 font-medium mt-1 block">
-              Based on wholesale purchase rate
+              Dispensed Retail Tax Invoices
             </span>
           </div>
 
@@ -4123,7 +4095,7 @@ class ACSApp {
   }
 
   openEditStoreModal(storeId) {
-    const store = this.stores.find(s => s.id === storeId);
+    const store = this.stores.find((s) => s.id === storeId);
     if (!store) return;
 
     const modal = document.getElementById("modal-generic");
@@ -4131,54 +4103,221 @@ class ACSApp {
     const body = document.getElementById("modal-generic-body");
     if (!modal || !title || !body) return;
 
-    title.innerHTML = `<i class="fa fa-pencil text-teal-700"></i> Edit Store & Live Website Info: ${store.name}`;
+    title.innerHTML = `<i class="fa fa-pencil-square-o text-teal-700"></i> Edit Pharmacy & Live Hosted Webpage: ${store.name}`;
     body.innerHTML = `
       <form id="form-edit-store" class="space-y-4 text-xs">
-        <div>
-          <label class="block font-semibold text-slate-700 mb-1">Store / Firm Name *</label>
-          <input type="text" id="edit-store-name" required value="${store.name}" class="w-full px-3 py-2 border rounded-lg" />
+        <!-- Photo Management & Live Preview Card -->
+        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
+              <i class="fa fa-camera text-teal-700"></i> Storefront Photo & Signboard
+            </span>
+            <span class="text-[10px] text-slate-500 font-medium">Shown on your public live webpage</span>
+          </div>
+
+          <!-- Live Image Preview Banner -->
+          <div class="relative h-40 w-full rounded-xl overflow-hidden bg-slate-800 border-2 border-slate-300 shadow-inner group">
+            <img id="edit-store-photo-preview" src="${store.photoUrl}" alt="${store.name}" class="w-full h-full object-cover" />
+            <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-3">
+              <span class="text-white font-bold text-xs" id="edit-store-preview-caption">${store.name}</span>
+            </div>
+          </div>
+
+          <!-- Photo Edit Actions (Device Upload + URL + Presets) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Upload New Photo From Device</label>
+              <input type="file" id="edit-store-photo-file" accept="image/*" class="w-full text-[11px] file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-teal-700 file:text-white hover:file:bg-teal-800 cursor-pointer" />
+              <span class="text-[10px] text-slate-400 mt-0.5 block">Select JPG, PNG, or WEBP from phone or PC</span>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Or Paste Direct Photo URL</label>
+              <input type="text" id="edit-store-photo" value="${store.photoUrl}" placeholder="https://..." class="w-full px-3 py-1.5 border rounded-lg bg-white font-mono text-[11px]" />
+              <span class="text-[10px] text-slate-400 mt-0.5 block">Auto-updates preview on change</span>
+            </div>
+          </div>
+
+          <!-- Preset Gallery Selector -->
+          <div class="pt-2 border-t border-slate-200">
+            <span class="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Or Choose an Official Preset Photo:</span>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button type="button" onclick="window.acsApp.applyStorePhotoPreset('https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80', 'Retail Pharmacy')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex items-center gap-2">
+                <img src="https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=120&q=80" class="w-8 h-8 rounded object-cover flex-shrink-0" />
+                <span class="text-[10px] font-semibold text-slate-700 leading-tight">Standard Chemist</span>
+              </button>
+              <button type="button" onclick="window.acsApp.applyStorePhotoPreset('https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=800&q=80', 'Clinical Pharmacy')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex items-center gap-2">
+                <img src="https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=120&q=80" class="w-8 h-8 rounded object-cover flex-shrink-0" />
+                <span class="text-[10px] font-semibold text-slate-700 leading-tight">Clinical Care</span>
+              </button>
+              <button type="button" onclick="window.acsApp.applyStorePhotoPreset('https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=800&q=80', 'Hospital Dispensary')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex items-center gap-2">
+                <img src="https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=120&q=80" class="w-8 h-8 rounded object-cover flex-shrink-0" />
+                <span class="text-[10px] font-semibold text-slate-700 leading-tight">Dispensary</span>
+              </button>
+              <button type="button" onclick="window.acsApp.applyStorePhotoPreset('https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=800&q=80', 'Emergency Medicos')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex items-center gap-2">
+                <img src="https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=120&q=80" class="w-8 h-8 rounded object-cover flex-shrink-0" />
+                <span class="text-[10px] font-semibold text-slate-700 leading-tight">24x7 Medicos</span>
+              </button>
+            </div>
+          </div>
         </div>
+
+        <!-- Store Identification & Owner Details -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Pharmacy / Chemist Firm Name *</label>
+            <input type="text" id="edit-store-name" required value="${store.name}" class="w-full px-3 py-2 border rounded-lg font-bold text-slate-900" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Proprietor / Pharmacist Incharge Name *</label>
+            <input type="text" id="edit-store-owner" required value="${store.ownerName || ''}" class="w-full px-3 py-2 border rounded-lg" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">District (Uttar Pradesh) *</label>
+            <input type="text" id="edit-store-district" required value="${store.district}" class="w-full px-3 py-2 border rounded-lg font-semibold" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">City / Town *</label>
+            <input type="text" id="edit-store-city" required value="${store.city || store.district}" class="w-full px-3 py-2 border rounded-lg" />
+          </div>
+        </div>
+
         <div>
-          <label class="block font-semibold text-slate-700 mb-1">Shop Address *</label>
+          <label class="block font-semibold text-slate-700 mb-1">Licensed Premises Address *</label>
           <input type="text" id="edit-store-address" required value="${store.address}" class="w-full px-3 py-2 border rounded-lg" />
         </div>
-        <div class="grid grid-cols-2 gap-3">
+
+        <!-- Licenses & GSTIN -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label class="block font-semibold text-slate-700 mb-1">Phone Helpline</label>
-            <input type="text" id="edit-store-phone" value="${store.phone}" class="w-full px-3 py-2 border rounded-lg" />
+            <label class="block font-semibold text-slate-700 mb-1">Form 20 Retail Drug Lic *</label>
+            <input type="text" id="edit-store-lic20" required value="${store.license20}" class="w-full px-3 py-2 border rounded-lg font-mono font-bold" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Form 21 Biological Lic *</label>
+            <input type="text" id="edit-store-lic21" required value="${store.license21}" class="w-full px-3 py-2 border rounded-lg font-mono font-bold" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">GSTIN (Tax ID)</label>
+            <input type="text" id="edit-store-gstin" value="${store.gstin}" class="w-full px-3 py-2 border rounded-lg font-mono" />
+          </div>
+        </div>
+
+        <!-- Contact & Operating Hours -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Phone Helpline *</label>
+            <input type="text" id="edit-store-phone" required value="${store.phone}" class="w-full px-3 py-2 border rounded-lg" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">WhatsApp Order Number</label>
+            <input type="text" id="edit-store-whatsapp" value="${store.whatsapp || ''}" class="w-full px-3 py-2 border rounded-lg font-mono" />
           </div>
           <div>
             <label class="block font-semibold text-slate-700 mb-1">Operating Hours</label>
             <input type="text" id="edit-store-hours" value="${store.operatingHours}" class="w-full px-3 py-2 border rounded-lg" />
           </div>
         </div>
-        <div>
-          <label class="block font-semibold text-slate-700 mb-1">Storefront Photo URL</label>
-          <input type="text" id="edit-store-photo" value="${store.photoUrl}" class="w-full px-3 py-2 border rounded-lg" />
+
+        <div class="p-3 bg-teal-50 border border-teal-200 rounded-xl flex items-center justify-between">
+          <label class="flex items-center gap-2 cursor-pointer font-bold text-teal-950">
+            <input type="checkbox" id="edit-store-24x7" ${store.is24x7 ? "checked" : ""} class="w-4 h-4 text-teal-700 rounded" />
+            <span>24x7 Emergency All-Night Service Available</span>
+          </label>
+          <span class="text-[11px] text-teal-800">Badge shown on Google & storefront</span>
         </div>
-        <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
-          <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-lg text-slate-600">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-[#135c7e] text-white rounded-lg font-semibold">Save & Update Hosted Site</button>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+          <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-lg text-slate-600 hover:bg-slate-50">Cancel</button>
+          <button type="submit" class="px-6 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-lg font-bold shadow-md transition flex items-center gap-2">
+            <i class="fa fa-check"></i> Save & Synchronize Live Webpage
+          </button>
         </div>
       </form>
     `;
 
     modal.classList.remove("hidden");
 
+    // Real-time photo preview listeners
+    const fileInput = document.getElementById("edit-store-photo-file");
+    const urlInput = document.getElementById("edit-store-photo");
+    const previewImg = document.getElementById("edit-store-photo-preview");
+
+    if (fileInput) {
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (loadEvt) => {
+            if (previewImg) previewImg.src = loadEvt.target.result;
+            if (urlInput) urlInput.value = loadEvt.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+
+    if (urlInput) {
+      urlInput.addEventListener("input", (e) => {
+        if (previewImg && e.target.value.trim()) {
+          previewImg.src = e.target.value.trim();
+        }
+      });
+    }
+
+    const nameInput = document.getElementById("edit-store-name");
+    const captionEl = document.getElementById("edit-store-preview-caption");
+    if (nameInput && captionEl) {
+      nameInput.addEventListener("input", (e) => {
+        captionEl.textContent = e.target.value || "My Pharmacy";
+      });
+    }
+
     document.getElementById("form-edit-store").onsubmit = (e) => {
       e.preventDefault();
-      store.name = document.getElementById("edit-store-name").value;
-      store.address = document.getElementById("edit-store-address").value;
-      store.phone = document.getElementById("edit-store-phone").value;
-      store.operatingHours = document.getElementById("edit-store-hours").value;
-      store.photoUrl = document.getElementById("edit-store-photo").value;
-      
+      store.name = document.getElementById("edit-store-name").value.trim();
+      store.ownerName = document.getElementById("edit-store-owner").value.trim();
+      store.district = document.getElementById("edit-store-district").value.trim();
+      store.city = document.getElementById("edit-store-city").value.trim();
+      store.address = document.getElementById("edit-store-address").value.trim();
+      store.license20 = document.getElementById("edit-store-lic20").value.trim();
+      store.license21 = document.getElementById("edit-store-lic21").value.trim();
+      store.gstin = document.getElementById("edit-store-gstin").value.trim();
+      store.phone = document.getElementById("edit-store-phone").value.trim();
+      store.whatsapp = (document.getElementById("edit-store-whatsapp").value || store.phone).replace(/[^0-9]/g, "");
+      store.operatingHours = document.getElementById("edit-store-hours").value.trim();
+      store.is24x7 = document.getElementById("edit-store-24x7").checked;
+      store.photoUrl = document.getElementById("edit-store-photo").value.trim() || store.photoUrl;
+
+      // Keep user session store name in sync if logged-in owner
+      if (this.currentUser && this.currentUser.storeId === store.id) {
+        this.currentUser.storeName = store.name;
+        this.currentUser.name = store.ownerName || this.currentUser.name;
+        this.saveUserSession();
+      }
+
       this.saveStores();
       this.closeModal();
       this.renderHeaderBar();
       this.renderCurrentView();
-      this.showToast("Store details & live hosted website updated successfully!", "success");
+
+      // Trigger cross-tab sync
+      try {
+        window.dispatchEvent(new Event("storage"));
+      } catch (err) {}
+
+      this.showToast(`🎉 Pharmacy profile & storefront photo updated! Live hosted website synchronized.`, "success");
     };
+  }
+
+  applyStorePhotoPreset(photoUrl, label) {
+    const previewImg = document.getElementById("edit-store-photo-preview");
+    const urlInput = document.getElementById("edit-store-photo");
+    if (previewImg) previewImg.src = photoUrl;
+    if (urlInput) urlInput.value = photoUrl;
+    this.showToast(`Applied preset: ${label}`, "info");
   }
 
   openPhotoUpdateModal(storeId) {
@@ -4255,32 +4394,6 @@ class ACSApp {
           </div>
         </div>
 
-        <!-- Live Margin Calculator Preview in Add Modal -->
-        <div class="p-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 border border-emerald-200 rounded-xl">
-          <div class="flex items-center justify-between text-xs mb-2">
-            <span class="font-bold text-emerald-950 flex items-center gap-1.5">
-              <i class="fa fa-calculator text-emerald-600"></i> Live Margin Intelligence
-            </span>
-            <span id="add-modal-margin-badge" class="px-2.5 py-0.5 rounded-full font-black text-[11px] bg-emerald-100 text-emerald-800 border border-emerald-300">
-              29% Margin
-            </span>
-          </div>
-          <div class="grid grid-cols-3 gap-2 text-[11px]">
-            <div>
-              <span class="text-slate-500 block">Unit Profit:</span>
-              <strong id="add-modal-unit-profit" class="text-slate-900 font-mono font-bold text-xs">₹ 35.00</strong>
-            </div>
-            <div>
-              <span class="text-slate-500 block">Total Lot Cost:</span>
-              <strong id="add-modal-lot-cost" class="text-slate-900 font-mono text-xs">₹ 4,250</strong>
-            </div>
-            <div>
-              <span class="text-slate-500 block">Projected Lot Profit:</span>
-              <strong id="add-modal-lot-profit" class="text-emerald-700 font-mono font-black text-xs">₹ 1,750</strong>
-            </div>
-          </div>
-        </div>
-
         <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
           <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50">Cancel</button>
           <button type="submit" class="px-5 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-xl font-bold shadow-sm transition">Add to Stock</button>
@@ -4289,44 +4402,6 @@ class ACSApp {
     `;
 
     modal.classList.remove("hidden");
-
-    // Dynamic calculator on input
-    const recalcAdd = () => {
-      const buy = parseFloat(document.getElementById("med-buy")?.value) || 0;
-      const mrp = parseFloat(document.getElementById("med-mrp")?.value) || 0;
-      const qty = parseInt(document.getElementById("med-qty")?.value) || 0;
-
-      const unitProfit = mrp - buy;
-      const marginPct = mrp > 0 ? Math.round((unitProfit / mrp) * 100) : 0;
-      const lotCost = buy * qty;
-      const lotProfit = unitProfit * qty;
-
-      const badge = document.getElementById("add-modal-margin-badge");
-      if (badge) {
-        badge.textContent = `${marginPct}% Margin`;
-        badge.className = `px-2.5 py-0.5 rounded-full font-black text-[11px] ${
-          marginPct >= 25 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
-          marginPct >= 15 ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-          'bg-rose-100 text-rose-800 border border-rose-300'
-        }`;
-      }
-
-      const elUnit = document.getElementById("add-modal-unit-profit");
-      if (elUnit) elUnit.textContent = `₹ ${unitProfit.toFixed(2)}`;
-
-      const elLotCost = document.getElementById("add-modal-lot-cost");
-      if (elLotCost) elLotCost.textContent = `₹ ${lotCost.toLocaleString('en-IN')}`;
-
-      const elLotProfit = document.getElementById("add-modal-lot-profit");
-      if (elLotProfit) {
-        elLotProfit.textContent = `₹ ${lotProfit.toLocaleString('en-IN')}`;
-        elLotProfit.className = `font-mono font-black text-xs ${lotProfit >= 0 ? 'text-emerald-700' : 'text-rose-600'}`;
-      }
-    };
-
-    document.getElementById("med-buy")?.addEventListener("input", recalcAdd);
-    document.getElementById("med-mrp")?.addEventListener("input", recalcAdd);
-    document.getElementById("med-qty")?.addEventListener("input", recalcAdd);
 
     document.getElementById("form-add-med").onsubmit = (e) => {
       e.preventDefault();
@@ -4365,10 +4440,7 @@ class ACSApp {
     const body = document.getElementById("modal-generic-body");
     if (!modal || !title || !body) return;
 
-    const initialMargin = med.mrp > 0 ? Math.round(((med.mrp - med.purchaseRate) / med.mrp) * 100) : 0;
-    const initialUnitProfit = med.mrp - med.purchaseRate;
-
-    title.innerHTML = `<i class="fa fa-pencil-square-o text-teal-700"></i> Edit Medicine & Margins: ${med.name}`;
+    title.innerHTML = `<i class="fa fa-pencil-square-o text-teal-700"></i> Edit Medicine Details: ${med.name}`;
     body.innerHTML = `
       <form id="form-edit-med" class="space-y-4 text-xs">
         <div class="grid grid-cols-2 gap-3">
@@ -4432,32 +4504,6 @@ class ACSApp {
           </div>
         </div>
 
-        <!-- Real-Time Dynamic Profit Margin Preview Card -->
-        <div id="edit-margin-preview-box" class="p-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 border border-emerald-200 rounded-xl">
-          <div class="flex items-center justify-between text-xs mb-2">
-            <span class="font-bold text-emerald-950 flex items-center gap-1.5">
-              <i class="fa fa-calculator text-emerald-600"></i> Live Margin Intelligence Preview
-            </span>
-            <span id="edit-modal-margin-badge" class="px-2.5 py-0.5 rounded-full font-black text-[11px] bg-emerald-100 text-emerald-800 border border-emerald-300">
-              ${initialMargin}% Margin
-            </span>
-          </div>
-          <div class="grid grid-cols-3 gap-2 text-[11px]">
-            <div>
-              <span class="text-slate-500 block">Profit Per Unit:</span>
-              <strong id="edit-modal-unit-profit" class="text-slate-900 font-mono font-bold text-xs">₹ ${initialUnitProfit.toFixed(2)}</strong>
-            </div>
-            <div>
-              <span class="text-slate-500 block">Total Lot Cost:</span>
-              <strong id="edit-modal-lot-cost" class="text-slate-900 font-mono text-xs">₹ ${(med.purchaseRate * med.quantity).toLocaleString('en-IN')}</strong>
-            </div>
-            <div>
-              <span class="text-slate-500 block">Total Lot Profit:</span>
-              <strong id="edit-modal-lot-profit" class="text-emerald-700 font-mono font-black text-xs">₹ ${(initialUnitProfit * med.quantity).toLocaleString('en-IN')}</strong>
-            </div>
-          </div>
-        </div>
-
         <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
           <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50">Cancel</button>
           <button type="submit" class="px-5 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-xl font-bold shadow-sm transition">Save Changes & Update Live Site</button>
@@ -4466,44 +4512,6 @@ class ACSApp {
     `;
 
     modal.classList.remove("hidden");
-
-    // Dynamic calculator on input
-    const recalc = () => {
-      const buy = parseFloat(document.getElementById("edit-med-buy").value) || 0;
-      const mrp = parseFloat(document.getElementById("edit-med-mrp").value) || 0;
-      const qty = parseInt(document.getElementById("edit-med-qty").value) || 0;
-
-      const unitProfit = mrp - buy;
-      const marginPct = mrp > 0 ? Math.round((unitProfit / mrp) * 100) : 0;
-      const lotCost = buy * qty;
-      const lotProfit = unitProfit * qty;
-
-      const badge = document.getElementById("edit-modal-margin-badge");
-      if (badge) {
-        badge.textContent = `${marginPct}% Margin`;
-        badge.className = `px-2.5 py-0.5 rounded-full font-black text-[11px] ${
-          marginPct >= 25 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
-          marginPct >= 15 ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-          'bg-rose-100 text-rose-800 border border-rose-300'
-        }`;
-      }
-
-      const elUnit = document.getElementById("edit-modal-unit-profit");
-      if (elUnit) elUnit.textContent = `₹ ${unitProfit.toFixed(2)}`;
-
-      const elLotCost = document.getElementById("edit-modal-lot-cost");
-      if (elLotCost) elLotCost.textContent = `₹ ${lotCost.toLocaleString('en-IN')}`;
-
-      const elLotProfit = document.getElementById("edit-modal-lot-profit");
-      if (elLotProfit) {
-        elLotProfit.textContent = `₹ ${lotProfit.toLocaleString('en-IN')}`;
-        elLotProfit.className = `font-mono font-black text-xs ${lotProfit >= 0 ? 'text-emerald-700' : 'text-rose-600'}`;
-      }
-    };
-
-    document.getElementById("edit-med-buy").addEventListener("input", recalc);
-    document.getElementById("edit-med-mrp").addEventListener("input", recalc);
-    document.getElementById("edit-med-qty").addEventListener("input", recalc);
 
     document.getElementById("form-edit-med").onsubmit = (e) => {
       e.preventDefault();
@@ -4523,8 +4531,7 @@ class ACSApp {
       this.closeModal();
       this.renderCurrentView();
 
-      const finalMargin = med.mrp > 0 ? Math.round(((med.mrp - med.purchaseRate) / med.mrp) * 100) : 0;
-      this.showToast(`Updated "${med.name}": Selling ₹${med.mrp.toFixed(2)}, Cost ₹${med.purchaseRate.toFixed(2)} (${finalMargin}% Margin)`, "success");
+      this.showToast(`Updated "${med.name}": Selling Price ₹${med.mrp.toFixed(2)}, Buying Cost ₹${med.purchaseRate.toFixed(2)}`, "success");
     };
   }
 
@@ -5276,7 +5283,7 @@ class ACSApp {
     this.showToast(`Restocked ${lowStockItems.length} items with +50 units each! Database updated in real time.`, "success");
   }
 
-  openBulkMarginModal() {
+  openBulkPriceModal() {
     const store = this.getCurrentStore();
     if (!store) return;
 
@@ -5285,27 +5292,28 @@ class ACSApp {
     const body = document.getElementById("modal-generic-body");
     if (!modal || !title || !body) return;
 
-    title.innerHTML = `<i class="fa fa-percent text-amber-500"></i> Wholesale Markup & Profit Margin Intelligence Tool`;
+    title.innerHTML = `<i class="fa fa-calculator text-amber-500"></i> Bulk Selling Price (MRP) Calculator`;
     body.innerHTML = `
-      <form id="form-bulk-margin" class="space-y-4 text-xs">
-        <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-950">
-          <strong class="block text-sm">Automated Price Markup Calculator</strong>
-          <span class="text-xs text-slate-600">Apply a target gross profit margin across your pharmacy's catalog to recalculate MRP based on purchase rates.</span>
+      <form id="form-bulk-price" class="space-y-4 text-xs">
+        <div class="p-3 bg-teal-50 border border-teal-200 rounded-xl text-teal-950">
+          <strong class="block text-sm">Automated Wholesale to Retail Pricing</strong>
+          <span class="text-xs text-slate-600">Calculate official selling prices (MRP) across your catalog using standard buying cost multipliers.</span>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block font-semibold text-slate-700 mb-1">Target Gross Margin % *</label>
-            <select id="bulk-margin-pct" class="w-full px-3 py-2 border rounded-lg bg-white font-bold text-sm">
-              <option value="15">15% Standard Wholesale Margin</option>
-              <option value="20">20% Competitive Retail Margin</option>
-              <option value="25" selected>25% Recommended Pharmacy Margin</option>
-              <option value="30">30% High Margin / Specialty Lot</option>
+            <label class="block font-semibold text-slate-700 mb-1">Selling Price Multiplier *</label>
+            <select id="bulk-price-factor" class="w-full px-3 py-2 border rounded-lg bg-white font-bold text-sm">
+              <option value="1.15">1.15x Buying Cost (Standard Wholesale)</option>
+              <option value="1.20">1.20x Buying Cost (Competitive Retail)</option>
+              <option value="1.25" selected>1.25x Buying Cost (Standard Retail)</option>
+              <option value="1.30">1.30x Buying Cost (Institutional / Remote)</option>
+              <option value="1.35">1.35x Buying Cost (Specialty Formulation)</option>
             </select>
           </div>
           <div>
             <label class="block font-semibold text-slate-700 mb-1">Target Medicine Category *</label>
-            <select id="bulk-margin-schedule" class="w-full px-3 py-2 border rounded-lg bg-white font-medium">
+            <select id="bulk-price-schedule" class="w-full px-3 py-2 border rounded-lg bg-white font-medium">
               <option value="ALL">All Medicines in Stock (${store.stocks.length} SKUs)</option>
               <option value="OTC">OTC / General Only</option>
               <option value="Schedule H">Schedule H (Prescription)</option>
@@ -5315,14 +5323,14 @@ class ACSApp {
 
         <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-slate-600">
           <strong class="text-slate-800 text-xs block">Pricing Formula Applied:</strong>
-          <p class="font-mono text-[11px] text-teal-800">Selling Price (MRP) = Purchase Rate / (1 - Target Margin %)</p>
-          <p class="text-[11px]">Ensures regulatory compliance with National Pharmaceutical Pricing Authority (NPPA) ceiling limits.</p>
+          <p class="font-mono text-[11px] text-teal-800">Selling Price (MRP) = Buying Cost (CP) × Selected Multiplier</p>
+          <p class="text-[11px]">Complies with NPPA drug pricing guidelines and UP retail pharmacy standards.</p>
         </div>
 
         <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
           <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-lg text-slate-600">Cancel</button>
           <button type="submit" class="px-5 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white font-bold rounded-lg shadow transition">
-            Apply Margin Across Stock
+            Apply Selling Prices Across Stock
           </button>
         </div>
       </form>
@@ -5330,34 +5338,39 @@ class ACSApp {
 
     modal.classList.remove("hidden");
 
-    document.getElementById("form-bulk-margin").onsubmit = (e) => {
+    document.getElementById("form-bulk-price").onsubmit = (e) => {
       e.preventDefault();
-      const margin = parseFloat(document.getElementById("bulk-margin-pct").value) || 25;
-      const sched = document.getElementById("bulk-margin-schedule").value;
-      this.applyBulkMargin(margin, sched);
+      const factor = parseFloat(document.getElementById("bulk-price-factor").value) || 1.25;
+      const sched = document.getElementById("bulk-price-schedule").value;
+      this.applyBulkPrice(factor, sched);
     };
   }
 
-  applyBulkMargin(marginPercent, targetSchedule) {
+  openBulkMarginModal() {
+    this.openBulkPriceModal();
+  }
+
+  applyBulkPrice(multiplier, targetSchedule) {
     const store = this.getCurrentStore();
     if (!store) return;
 
     let count = 0;
     store.stocks.forEach((m) => {
       if (targetSchedule === "ALL" || m.schedule.includes(targetSchedule)) {
-        const factor = 1 - (marginPercent / 100);
-        if (factor > 0) {
-          const newMrp = Math.round((m.purchaseRate / factor) * 10) / 10;
-          m.mrp = Math.max(m.purchaseRate + 2, newMrp);
-          count++;
-        }
+        const newMrp = Math.round(m.purchaseRate * multiplier * 10) / 10;
+        m.mrp = Math.max(m.purchaseRate + 2, newMrp);
+        count++;
       }
     });
 
     this.saveStores();
     this.closeModal();
     this.renderCurrentView();
-    this.showToast(`Applied ${marginPercent}% profit margin across ${count} medicines!`, "success");
+    this.showToast(`Updated selling prices across ${count} medicines based on ${multiplier}x buying cost!`, "success");
+  }
+
+  applyBulkMargin(marginPercent, targetSchedule) {
+    this.applyBulkPrice(1 + (marginPercent / 100), targetSchedule);
   }
 
   closeModal() {
