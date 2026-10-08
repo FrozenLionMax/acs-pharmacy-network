@@ -24,7 +24,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         # Serve static assets from root regardless of nested subpath
         filename = os.path.basename(path)
-        if any(path.endswith(ext) for ext in [".css", ".js", ".png", ".jpg", ".jpeg", ".svg", ".ico", ".json", ".map", ".woff", ".woff2"]):
+        if any(path.endswith(ext) for ext in [".css", ".js", ".png", ".jpg", ".jpeg", ".svg", ".ico", ".json", ".map", ".woff", ".woff2", ".txt", ".xml"]):
             self.path = f"/{filename}"
             return super().do_GET()
 

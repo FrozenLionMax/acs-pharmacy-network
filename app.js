@@ -412,6 +412,7 @@ class ACSApp {
     }
 
     const store = this.getCurrentStore();
+    this.updatePageSeo(store);
 
     switch (this.activeTab) {
       case "landing":
@@ -450,6 +451,113 @@ class ACSApp {
       default:
         container.innerHTML = this.getLandingPageViewHtml();
         this.bindLandingEvents();
+    }
+  }
+
+  updatePageSeo(store) {
+    const metaDesc = document.getElementById("meta-description");
+    const metaKeywords = document.getElementById("meta-keywords");
+    const canonical = document.getElementById("canonical-url");
+    const ogTitle = document.getElementById("og-title");
+    const ogDesc = document.getElementById("og-description");
+    const ogUrl = document.getElementById("og-url");
+    const ogImg = document.getElementById("og-image");
+    const twitterTitle = document.getElementById("twitter-title");
+    const twitterDesc = document.getElementById("twitter-description");
+    const schemaScript = document.getElementById("seo-schema");
+
+    const setAttr = (el, attr, val) => {
+      if (el) {
+        if (typeof el.setAttribute === "function") el.setAttribute(attr, val);
+        el[attr] = val;
+      }
+    };
+
+    if (this.activeTab === "hosted-site" && store) {
+      document.title = `${store.name} - UP FSDA Licensed Retail Pharmacy | ${store.district}, UP`;
+      const desc = `${store.name} in ${store.district}, Uttar Pradesh. Official licensed retail pharmacy (Form 20 Lic: ${store.license20}, Form 21 Lic: ${store.license21}). UPPC registered pharmacist on duty. Search live medicine availability, verify drug prices, and order online.`;
+      const keywords = `${store.name}, ${store.name} ${store.district}, pharmacy in ${store.city}, chemist ${store.district}, buy medicine ${store.district}, UPPC registered pharmacist, Form 20 ${store.license20}, Schedule H drugs, retail pharmacy Uttar Pradesh`;
+      const storeUrl = `https://acs-pharmacy-network.vercel.app/pharmacy/${store.slug}`;
+
+      setAttr(metaDesc, "content", desc);
+      setAttr(metaKeywords, "content", keywords);
+      setAttr(canonical, "href", storeUrl);
+      setAttr(ogTitle, "content", `${store.name} | UP FSDA Licensed Pharmacy`);
+      setAttr(ogDesc, "content", desc);
+      setAttr(ogUrl, "content", storeUrl);
+      setAttr(ogImg, "content", store.photoUrl);
+      setAttr(twitterTitle, "content", `${store.name} | UP FSDA Licensed Pharmacy`);
+      setAttr(twitterDesc, "content", desc);
+
+      if (schemaScript) {
+        schemaScript.textContent = JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Pharmacy",
+          "name": store.name,
+          "description": desc,
+          "image": store.photoUrl,
+          "telephone": store.phone,
+          "url": storeUrl,
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": store.address,
+            "addressLocality": store.city,
+            "addressRegion": "Uttar Pradesh",
+            "addressCountry": "IN"
+          },
+          "priceRange": "₹₹",
+          "currenciesAccepted": "INR",
+          "paymentAccepted": "Cash, UPI, Credit Card, Debit Card",
+          "openingHours": store.is24x7 ? "Mo-Su 00:00-24:00" : store.operatingHours,
+          "hasMap": `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.name + ' ' + store.address)}`,
+          "identifier": [
+            {
+              "@type": "PropertyValue",
+              "name": "Form 20 Retail Drug License",
+              "value": store.license20
+            },
+            {
+              "@type": "PropertyValue",
+              "name": "Form 21 Retail Drug License",
+              "value": store.license21
+            },
+            {
+              "@type": "PropertyValue",
+              "name": "GSTIN",
+              "value": store.gstin
+            }
+          ]
+        }, null, 2);
+      }
+    } else {
+      document.title = "ACS - All Chemists & Stores Registry | Uttar Pradesh Pharmacy Network";
+      const desc = "Official Uttar Pradesh retail pharmacy network and chemists registry. Search live licensed pharmacies, Form 20/21 licenses, UPPC registered pharmacists on duty, and real-time medicine stocks across UP.";
+      const keywords = "pharmacy Uttar Pradesh, chemists registry UP, UPPC registered pharmacist, drug license Form 20 Form 21, Anand Chemist, Sanjeevani Medicos, retail pharmacy compliance FSDA, medicine stock availability";
+      const siteUrl = "https://acs-pharmacy-network.vercel.app/";
+
+      setAttr(metaDesc, "content", desc);
+      setAttr(metaKeywords, "content", keywords);
+      setAttr(canonical, "href", siteUrl);
+      setAttr(ogTitle, "content", document.title);
+      setAttr(ogDesc, "content", desc);
+      setAttr(ogUrl, "content", siteUrl);
+      setAttr(twitterTitle, "content", document.title);
+      setAttr(twitterDesc, "content", desc);
+
+      if (schemaScript) {
+        schemaScript.textContent = JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "MedicalOrganization",
+          "name": "ACS Uttar Pradesh Pharmacy Network",
+          "url": siteUrl,
+          "logo": "https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=500&q=80",
+          "description": desc,
+          "areaServed": {
+            "@type": "AdministrativeArea",
+            "name": "Uttar Pradesh"
+          }
+        }, null, 2);
+      }
     }
   }
 

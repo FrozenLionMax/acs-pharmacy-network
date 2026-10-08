@@ -1,0 +1,9 @@
+# Robots.txt for ACS Uttar Pradesh Pharmacy Network
+# Allows Googlebot and all search engine crawlers to index individual pharmacy storefronts
+User-agent: *
+Allow: /
+Allow: /pharmacy/*
+Allow: /sitemap.xml
+
+# XML Sitemap listing all hosted retail pharmacies in Uttar Pradesh
+Sitemap: https://acs-pharmacy-network.vercel.app/sitemap.xml
