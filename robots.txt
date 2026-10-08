@@ -6,4 +6,5 @@ Allow: /pharmacy/*
 Allow: /sitemap.xml
 
 # XML Sitemap listing all hosted retail pharmacies in Uttar Pradesh
+Sitemap: https://acsakhil.com/sitemap.xml
 Sitemap: https://acs-pharmacy-network.vercel.app/sitemap.xml
