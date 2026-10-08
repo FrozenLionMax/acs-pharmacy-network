@@ -1,7 +1,7 @@
 {
   "name": "acs-uttar-pradesh-pharmacy",
-  "version": "1.0.0",
-  "description": "All Chemists & Stores Registry - Uttar Pradesh Pharmacy Network",
+  "version": "1.1.0",
+  "description": "Akhil Consultancy Services (ACS) - Uttar Pradesh Pharmacy Network & Compliance Platform",
   "scripts": {
     "start": "python server.py",
     "test": "node test_app_views.js"
