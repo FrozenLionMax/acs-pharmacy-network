@@ -17,6 +17,16 @@ class ACSApp {
     this.stockScheduleFilter = "ALL";
     this.stockAlertFilter = "ALL"; // 'ALL', 'LOW_STOCK', 'EXPIRING'
     this.stockHorizonFilter = "ALL"; // 'ALL', 'HEALTHY', 'EXPIRING', 'LOW_STOCK'
+    this.stockRackFilter = "ALL";
+    try {
+      const savedColPrefs = typeof localStorage !== 'undefined' ? localStorage.getItem("ACS_STOCK_COL_PREFS") : null;
+      this.stockColumnPrefs = savedColPrefs ? JSON.parse(savedColPrefs) : { salt: true, mfg: true, batch: true, rack: true, exp: true, sched: true, buyCost: true, sellMrp: true };
+    } catch (e) {
+      this.stockColumnPrefs = { salt: true, mfg: true, batch: true, rack: true, exp: true, sched: true, buyCost: true, sellMrp: true };
+    }
+    this.isVoiceRecording = false;
+    this.speechRecognition = null;
+    this.scannerStream = null;
 
     // Hosted site search & sub-tab (Page 1 vs Page 2)
     this.hostedStockSearch = "";
@@ -3287,14 +3297,21 @@ class ACSApp {
   getStocksViewHtml(store) {
     if (!store) return ``;
 
+    const existingRacks = Array.from(new Set(store.stocks.map(m => (m.rackLocation || "General Shelf").trim()))).filter(Boolean).sort();
+    const colPrefs = this.stockColumnPrefs || { salt: true, mfg: true, batch: true, rack: true, exp: true, sched: true, buyCost: true, sellMrp: true };
+
+    const q = (this.stockSearchQuery || "").toLowerCase();
     let filteredStocks = store.stocks.filter((m) => {
       const matchSearch =
-        m.name.toLowerCase().includes(this.stockSearchQuery.toLowerCase()) ||
-        m.saltName.toLowerCase().includes(this.stockSearchQuery.toLowerCase()) ||
-        m.batchNo.toLowerCase().includes(this.stockSearchQuery.toLowerCase()) ||
-        m.manufacturer.toLowerCase().includes(this.stockSearchQuery.toLowerCase());
+        !q ||
+        (m.name && m.name.toLowerCase().includes(q)) ||
+        (m.saltName && m.saltName.toLowerCase().includes(q)) ||
+        (m.batchNo && m.batchNo.toLowerCase().includes(q)) ||
+        (m.manufacturer && m.manufacturer.toLowerCase().includes(q)) ||
+        (m.rackLocation && m.rackLocation.toLowerCase().includes(q));
 
-      const matchSchedule = this.stockScheduleFilter === "ALL" || m.schedule.includes(this.stockScheduleFilter);
+      const matchSchedule = this.stockScheduleFilter === "ALL" || (m.schedule && m.schedule.includes(this.stockScheduleFilter));
+      const matchRack = !this.stockRackFilter || this.stockRackFilter === "ALL" || (m.rackLocation || "General Shelf") === this.stockRackFilter;
 
       let matchAlert = true;
       if (this.stockAlertFilter === "LOW_STOCK" || this.stockHorizonFilter === "LOW_STOCK") {
@@ -3309,11 +3326,12 @@ class ACSApp {
         matchAlert = diffMonths > 3 && m.quantity > (m.minAlertThreshold || 20);
       }
 
-      return matchSearch && matchSchedule && matchAlert;
+      return matchSearch && matchSchedule && matchRack && matchAlert;
     });
 
     const totalCostValue = store.stocks.reduce((acc, curr) => acc + (curr.quantity * curr.purchaseRate), 0);
     const totalRetailValue = store.stocks.reduce((acc, curr) => acc + (curr.quantity * curr.mrp), 0);
+    const totalStockUnits = store.stocks.reduce((acc, curr) => acc + curr.quantity, 0);
     const lowStockCount = store.stocks.filter((m) => m.quantity <= (m.minAlertThreshold || 20)).length;
     const expiringCount = store.stocks.filter((m) => {
       const exp = new Date(m.expiryDate);
@@ -3324,77 +3342,136 @@ class ACSApp {
     return `
       <div class="space-y-6 animate-fade-in">
         <!-- Stock Top Management Bar -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <div>
             <div class="flex items-center gap-2.5">
-              <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-teal-50 text-[#135c7e] font-black text-base shadow-xs">
+              <span class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-teal-50 text-[#135c7e] font-black text-lg shadow-xs">
                 <i class="fa fa-cubes"></i>
               </span>
               <div>
-                <h2 class="text-xl font-black text-slate-800">Medicine Stock & Inventory Register</h2>
+                <h2 class="text-xl font-black text-slate-800 flex items-center gap-2">
+                  Medicine Stock & Inventory Register
+                  <span class="text-xs px-2.5 py-0.5 rounded-full bg-teal-100 text-[#135c7e] font-bold">Fast Cashier Counter</span>
+                </h2>
                 <p class="text-xs text-slate-500 mt-0.5">
-                  Live inventory register for <strong>${store.name}</strong> • Real-time buying cost & selling price (MRP) management.
+                  Live inventory for <strong>${store.name}</strong> • Buying Cost (CP) & Selling Price (MRP) with zero profit/margin disclosure.
                 </p>
               </div>
             </div>
           </div>
 
+          <!-- Main Action Buttons -->
           <div class="flex flex-wrap items-center gap-2">
-            <button onclick="window.acsApp.openReorderPoModal()" class="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm transition">
-              <i class="fa fa-file-text-o"></i> Generate Supplier PO Draft
+            <button id="btn-smart-import" class="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm transition">
+              <i class="fa fa-file-excel-o"></i> Smart Excel / CSV Import
             </button>
-            <button onclick="window.acsApp.openBulkPriceModal()" class="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-black shadow-sm transition">
-              <i class="fa fa-calculator"></i> Bulk Price Adjuster
+            <button id="btn-sample-template" class="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold transition" title="Download Standard Wholesale Stock Excel/CSV Template">
+              <i class="fa fa-download text-teal-600"></i> Sample Template
             </button>
-            <button id="btn-export-csv" class="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold transition">
+            <button id="btn-barcode-scan-top" class="inline-flex items-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 px-3 py-2 rounded-xl text-xs font-bold transition">
+              <i class="fa fa-barcode text-purple-600"></i> Scan Box / Barcode
+            </button>
+            <button id="btn-manage-racks" class="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 px-3 py-2 rounded-xl text-xs font-bold transition">
+              <i class="fa fa-th-large text-blue-600"></i> Racks (${existingRacks.length})
+            </button>
+            <button id="btn-customize-columns" class="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold transition">
+              <i class="fa fa-columns"></i> Columns
+            </button>
+            <button onclick="window.acsApp.openReorderPoModal()" class="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-xl text-xs font-bold shadow-sm transition">
+              <i class="fa fa-file-text-o"></i> PO Draft
+            </button>
+            <button onclick="window.acsApp.openBulkPriceModal()" class="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-2 rounded-xl text-xs font-black shadow-sm transition">
+              <i class="fa fa-calculator"></i> Bulk Prices
+            </button>
+            <button id="btn-export-csv" class="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold transition">
               <i class="fa fa-download"></i> Export CSV
             </button>
-            <button id="btn-import-csv" class="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold transition">
-              <i class="fa fa-upload"></i> Bulk CSV Import
-            </button>
-            <input type="file" id="csv-file-input" accept=".csv" class="hidden" />
+            <input type="file" id="csv-file-input" accept=".xlsx,.xls,.csv,.tsv,.txt" class="hidden" />
             <button id="btn-add-medicine" class="inline-flex items-center gap-1.5 bg-[#135c7e] hover:bg-[#0f4b67] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition">
               <i class="fa fa-plus"></i> Add New Medicine
             </button>
           </div>
         </div>
 
-        <!-- Inventory Financial KPI Cards Deck -->
+        <!-- Inventory Financial KPI Cards Deck (Buying Cost CP & Selling MRP only) -->
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
-          <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
+          <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-[#135c7e] transition">
             <span class="text-slate-500 text-[11px] font-semibold block">Active Catalog SKUs</span>
             <span class="text-2xl font-black text-slate-900 mt-1 block">${store.stocks.length}</span>
             <span class="text-[10px] text-teal-700 font-bold mt-1 block">Live in Database</span>
           </div>
 
-          <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
+          <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-slate-400 transition">
             <span class="text-slate-500 text-[11px] font-semibold block">Total Cost Valuation</span>
             <span class="text-xl font-black text-slate-800 mt-1 block">₹ ${totalCostValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
-            <span class="text-[10px] text-slate-400 mt-1 block">Stock Purchase Investment</span>
+            <span class="text-[10px] text-slate-500 mt-1 block">Stock Purchase Investment</span>
           </div>
 
-          <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
+          <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-emerald-500 transition">
             <span class="text-slate-500 text-[11px] font-semibold block">Retail / MRP Valuation</span>
-            <span class="text-xl font-black text-[#135c7e] mt-1 block">₹ ${totalRetailValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+            <span class="text-xl font-black text-emerald-800 mt-1 block">₹ ${totalRetailValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
             <span class="text-[10px] text-emerald-700 font-bold mt-1 block">Gross Selling Potential</span>
           </div>
 
-          <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
+          <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-indigo-400 transition">
             <span class="text-slate-500 text-[11px] font-semibold block">Total Stock Units</span>
-            <span class="text-xl font-black text-indigo-700 mt-1 block">${store.stocks.reduce((acc, curr) => acc + curr.quantity, 0).toLocaleString('en-IN')}</span>
+            <span class="text-xl font-black text-indigo-700 mt-1 block">${totalStockUnits.toLocaleString('en-IN')}</span>
             <span class="text-[10px] text-indigo-600 font-bold mt-1 block">Physical Package Units</span>
           </div>
 
-          <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
+          <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-rose-400 transition cursor-pointer" onclick="window.acsApp.setStockHorizonFilter('LOW_STOCK')">
             <span class="text-slate-500 text-[11px] font-semibold block">Low Stock Items</span>
             <span class="text-2xl font-black ${lowStockCount > 0 ? 'text-rose-600' : 'text-slate-700'} mt-1 block">${lowStockCount}</span>
             <span class="text-[10px] ${lowStockCount > 0 ? 'text-rose-500 font-bold' : 'text-slate-400'} mt-1 block">&le; 20 Units Threshold</span>
           </div>
 
-          <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
+          <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-amber-400 transition cursor-pointer" onclick="window.acsApp.setStockHorizonFilter('EXPIRING')">
             <span class="text-slate-500 text-[11px] font-semibold block">Expiring &le; 90 Days</span>
             <span class="text-2xl font-black ${expiringCount > 0 ? 'text-amber-600' : 'text-slate-700'} mt-1 block">${expiringCount}</span>
             <span class="text-[10px] text-amber-600 font-bold mt-1 block">Priority FIFO Dispatch</span>
+          </div>
+        </div>
+
+        <!-- Sticky Inventory Summary Ribbon on Scroll (Point 5) -->
+        <div class="sticky-summary-ribbon p-2.5 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs shadow-xs">
+          <div class="flex items-center gap-3 overflow-x-auto py-0.5">
+            <span class="text-slate-400 font-semibold text-[11px] uppercase tracking-wider flex items-center gap-1">
+              <i class="fa fa-dashboard text-[#135c7e]"></i> Counter HUD:
+            </span>
+            <span class="px-2.5 py-1 bg-slate-100 rounded-lg font-mono font-bold text-slate-800 text-[11px]">
+              ${store.stocks.length} SKUs
+            </span>
+            <span class="px-2.5 py-1 bg-indigo-50 text-indigo-900 rounded-lg font-mono font-bold text-[11px]">
+              ${totalStockUnits.toLocaleString('en-IN')} Units
+            </span>
+            <span class="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg font-mono font-bold text-[11px]">
+              Buy CP: ₹${totalCostValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+            </span>
+            <span class="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-lg font-mono font-bold text-[11px]">
+              Sell MRP: ₹${totalRetailValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+            </span>
+            ${lowStockCount > 0 ? `
+              <span class="px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-lg font-mono font-black text-[11px]">
+                <i class="fa fa-warning"></i> ${lowStockCount} Low Stock
+              </span>
+            ` : ''}
+            ${expiringCount > 0 ? `
+              <span class="px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg font-mono font-bold text-[11px]">
+                <i class="fa fa-clock-o"></i> ${expiringCount} Expiring Soon
+              </span>
+            ` : ''}
+          </div>
+
+          <div class="flex items-center gap-1.5 ml-auto">
+            <button onclick="window.acsApp.openSmartImportModal()" class="px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded-lg font-bold text-[11px] transition inline-flex items-center gap-1">
+              <i class="fa fa-file-excel-o"></i> Excel Scan
+            </button>
+            <button onclick="window.acsApp.openBarcodeScannerModal()" class="px-2.5 py-1 bg-purple-100 hover:bg-purple-200 text-purple-900 rounded-lg font-bold text-[11px] transition inline-flex items-center gap-1">
+              <i class="fa fa-barcode"></i> Scan Box
+            </button>
+            <button onclick="window.acsApp.openAddMedicineModal()" class="px-2.5 py-1 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-lg font-bold text-[11px] transition inline-flex items-center gap-1">
+              <i class="fa fa-plus"></i> Add SKU
+            </button>
           </div>
         </div>
 
@@ -3415,65 +3492,122 @@ class ACSApp {
           </button>
         </div>
 
-        <!-- Filter & Search Controls Bar -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-          <div class="relative md:col-span-2">
-            <i class="fa fa-search absolute left-3.5 top-3 text-slate-400 text-xs"></i>
-            <input 
-              type="text" 
-              id="stock-search-input" 
-              placeholder="Search by brand name, salt/chemical composition, batch, or manufacturer..." 
-              value="${this.stockSearchQuery}"
-              class="w-full pl-9 pr-4 py-2.5 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#135c7e]"
-            />
-          </div>
-          <div>
-            <select id="stock-schedule-select" class="w-full py-2.5 px-3 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#135c7e] bg-white">
-              <option value="ALL" ${this.stockScheduleFilter === "ALL" ? "selected" : ""}>All Schedules (H, H1, X, OTC)</option>
-              <option value="Schedule H" ${this.stockScheduleFilter === "Schedule H" ? "selected" : ""}>Schedule H (Prescription)</option>
-              <option value="Schedule H1" ${this.stockScheduleFilter === "Schedule H1" ? "selected" : ""}>Schedule H1 (High Alert / Antibiotic)</option>
-              <option value="Schedule X" ${this.stockScheduleFilter === "Schedule X" ? "selected" : ""}>Schedule X (Narcotics)</option>
-              <option value="OTC" ${this.stockScheduleFilter === "OTC" ? "selected" : ""}>OTC / General</option>
-            </select>
-          </div>
-          <div>
-            <select id="stock-alert-select" class="w-full py-2.5 px-3 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#135c7e] bg-white">
-              <option value="ALL" ${this.stockAlertFilter === "ALL" ? "selected" : ""}>All Stock Alert Levels</option>
-              <option value="LOW_STOCK" ${this.stockAlertFilter === "LOW_STOCK" ? "selected" : ""}>Low Stock Critical (${lowStockCount})</option>
-              <option value="EXPIRING" ${this.stockAlertFilter === "EXPIRING" ? "selected" : ""}>Expiring Within 90 Days (${expiringCount})</option>
-            </select>
+        <!-- Prominent Omni-Search with Voice Search & Barcode Quick-Scan (Point 2) -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+            <!-- Full-Featured Search with Mic & Barcode -->
+            <div class="relative lg:col-span-6 flex items-center">
+              <i class="fa fa-search absolute left-3.5 text-slate-400 text-xs"></i>
+              <input 
+                type="text" 
+                id="stock-search-input" 
+                placeholder="Search brand name, generic salt, batch number, manufacturer, or rack..." 
+                value="${this.stockSearchQuery}"
+                class="w-full pl-9 pr-24 py-2.5 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#135c7e] transition font-medium"
+              />
+              <div class="absolute right-2 flex items-center gap-1">
+                <button 
+                  id="btn-voice-search" 
+                  type="button"
+                  title="बोलकर खोजें (Voice Search by Speech)" 
+                  class="stepper-btn w-7 h-7 rounded-lg text-slate-500 hover:text-[#135c7e] hover:bg-slate-100 transition ${this.isVoiceRecording ? 'mic-recording' : ''}"
+                >
+                  <i class="fa fa-microphone text-xs"></i>
+                </button>
+                <button 
+                  id="btn-barcode-scan" 
+                  type="button"
+                  title="Scan Box Barcode via Camera" 
+                  class="stepper-btn w-7 h-7 rounded-lg text-purple-600 hover:bg-purple-50 transition"
+                >
+                  <i class="fa fa-barcode text-xs"></i>
+                </button>
+                ${this.stockSearchQuery ? `
+                  <button 
+                    type="button"
+                    onclick="window.acsApp.stockSearchQuery=''; window.acsApp.renderCurrentView();" 
+                    title="Clear Search" 
+                    class="stepper-btn w-6 h-6 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 text-[10px]"
+                  >
+                    <i class="fa fa-times"></i>
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+
+            <!-- Schedule Select -->
+            <div class="lg:col-span-2">
+              <select id="stock-schedule-select" class="w-full py-2.5 px-3 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#135c7e] bg-white font-medium">
+                <option value="ALL" ${this.stockScheduleFilter === "ALL" ? "selected" : ""}>All Schedules (H, H1, X, OTC)</option>
+                <option value="Schedule H" ${this.stockScheduleFilter === "Schedule H" ? "selected" : ""}>Schedule H (Prescription)</option>
+                <option value="Schedule H1" ${this.stockScheduleFilter === "Schedule H1" ? "selected" : ""}>Schedule H1 (High Alert / Antibiotic)</option>
+                <option value="Schedule X" ${this.stockScheduleFilter === "Schedule X" ? "selected" : ""}>Schedule X (Narcotics)</option>
+                <option value="OTC" ${this.stockScheduleFilter === "OTC" ? "selected" : ""}>OTC / General</option>
+              </select>
+            </div>
+
+            <!-- Dynamic Rack / Bay Select -->
+            <div class="lg:col-span-2">
+              <select id="stock-rack-select" class="w-full py-2.5 px-3 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#135c7e] bg-white font-medium">
+                <option value="ALL" ${this.stockRackFilter === "ALL" ? "selected" : ""}>All Racks & Bays (${existingRacks.length})</option>
+                ${existingRacks.map(rack => `
+                  <option value="${rack}" ${this.stockRackFilter === rack ? "selected" : ""}>📍 ${rack}</option>
+                `).join("")}
+              </select>
+            </div>
+
+            <!-- Stock Alert Select -->
+            <div class="lg:col-span-2">
+              <select id="stock-alert-select" class="w-full py-2.5 px-3 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#135c7e] bg-white font-medium">
+                <option value="ALL" ${this.stockAlertFilter === "ALL" ? "selected" : ""}>All Stock Alert Levels</option>
+                <option value="LOW_STOCK" ${this.stockAlertFilter === "LOW_STOCK" ? "selected" : ""}>Low Stock Critical (${lowStockCount})</option>
+                <option value="EXPIRING" ${this.stockAlertFilter === "EXPIRING" ? "selected" : ""}>Expiring &le; 90 Days (${expiringCount})</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <!-- Comprehensive Detailed Medicine Table with Inline Editing -->
+        <!-- Comprehensive Medicine Table & Fast Cashier Counter (Point 1) -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div class="p-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between text-xs text-slate-600">
+          <div class="p-3.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between text-xs text-slate-600 gap-2">
             <span class="font-bold flex items-center gap-1.5">
-              <i class="fa fa-info-circle text-[#135c7e]"></i> Tip: Edit Cost Price (Buy), Selling Price (MRP), or Stock Quantity directly in the fields below. Changes save instantly!
+              <i class="fa fa-info-circle text-[#135c7e]"></i> Tip: Cashier mode active. Edit Buying Cost (CP ₹), Selling Price (MRP ₹), or Stock Quantity directly. Changes auto-save instantly.
             </span>
-            <span class="text-[11px] text-slate-500 font-mono">Showing ${filteredStocks.length} of ${store.stocks.length} SKUs</span>
+            <div class="flex items-center gap-3">
+              <span class="text-[11px] text-slate-500 font-mono">Showing ${filteredStocks.length} of ${store.stocks.length} SKUs</span>
+              <button onclick="window.acsApp.openColumnCustomizerModal()" class="text-blue-700 hover:underline font-bold text-[11px] inline-flex items-center gap-1">
+                <i class="fa fa-sliders"></i> Customize View
+              </button>
+            </div>
           </div>
 
-          <div class="overflow-x-auto">
+          <!-- DESKTOP TABLE VIEW -->
+          <div class="stock-desktop-table overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
               <thead>
                 <tr class="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
-                  <th class="py-3.5 px-4 min-w-[200px]">Medicine & Generic Salt</th>
-                  <th class="py-3.5 px-3 min-w-[120px]">Batch & Rack</th>
-                  <th class="py-3.5 px-3 min-w-[100px]">Expiry</th>
-                  <th class="py-3.5 px-3">Schedule</th>
-                  <th class="py-3.5 px-3 min-w-[130px] text-center">In-Stock Qty</th>
-                  <th class="py-3.5 px-3 min-w-[120px]">Buying Cost (CP)</th>
-                  <th class="py-3.5 px-3 min-w-[120px]">Selling Cost (MRP)</th>
+                  <th class="py-3.5 px-4 min-w-[210px]">Medicine & Brand</th>
+                  ${colPrefs.salt ? `<th class="py-3.5 px-3 min-w-[150px]">Generic Salt / Composition</th>` : ''}
+                  ${colPrefs.batch || colPrefs.rack ? `<th class="py-3.5 px-3 min-w-[130px]">Batch & Rack</th>` : ''}
+                  ${colPrefs.exp ? `<th class="py-3.5 px-3 min-w-[100px]">Expiry</th>` : ''}
+                  ${colPrefs.sched ? `<th class="py-3.5 px-3">Schedule</th>` : ''}
+                  <th class="py-3.5 px-3 min-w-[160px] text-center">In-Stock Qty</th>
+                  ${colPrefs.buyCost ? `<th class="py-3.5 px-3 min-w-[130px]">Buying Cost (CP)</th>` : ''}
+                  ${colPrefs.sellMrp ? `<th class="py-3.5 px-3 min-w-[130px]">Selling Price (MRP)</th>` : ''}
                   <th class="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100">
                 ${filteredStocks.length === 0 ? `
                   <tr>
-                    <td colspan="8" class="py-14 text-center text-slate-400">
+                    <td colspan="9" class="py-14 text-center text-slate-400">
                       <i class="fa fa-cubes text-4xl mb-2 text-slate-300 block"></i>
                       No medicine records found matching your filters.
+                      <div class="mt-3">
+                        <button onclick="window.acsApp.stockSearchQuery=''; window.acsApp.stockScheduleFilter='ALL'; window.acsApp.stockAlertFilter='ALL'; window.acsApp.stockRackFilter='ALL'; window.acsApp.setStockHorizonFilter('ALL');" class="px-3.5 py-1.5 bg-[#135c7e] text-white rounded-lg text-xs font-bold shadow-xs">
+                          Reset All Filters
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ` : filteredStocks.map((m) => {
@@ -3493,76 +3627,106 @@ class ACSApp {
                     <tr class="hover:bg-slate-50/80 transition">
                       <td class="py-3.5 px-4">
                         <div class="font-extrabold text-slate-900 text-sm">${m.name}</div>
-                        <div class="text-[11px] text-slate-500 font-mono mt-0.5">${m.saltName}</div>
-                        <div class="text-[10px] text-slate-400 mt-0.5">${m.manufacturer}</div>
+                        ${colPrefs.mfg ? `<div class="text-[10px] text-slate-400 mt-0.5">${m.manufacturer}</div>` : ''}
                       </td>
-                      <td class="py-3.5 px-3">
-                        <div class="font-mono font-semibold text-slate-700 text-xs">${m.batchNo}</div>
-                        <div class="mt-1 flex items-center gap-1">
-                          <span class="text-[10px] text-slate-400">Rack:</span>
-                          <input 
-                            type="text" 
-                            value="${m.rackLocation || 'Shelf'}" 
-                            onchange="window.acsApp.updateStockInline('${m.id}', 'rackLocation', this.value)"
-                            class="w-16 px-1.5 py-0.5 bg-slate-100 hover:bg-white focus:bg-white border border-slate-200 rounded font-mono text-[10px] text-slate-700 font-bold focus:ring-1 focus:ring-[#135c7e] transition"
-                            title="Edit rack location directly"
-                          />
-                        </div>
-                      </td>
-                      <td class="py-3.5 px-3">
-                        <span class="font-mono text-xs ${isExpiringSoon ? 'text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-bold' : 'text-slate-700 font-medium'}">
-                          ${m.expiryDate}
-                        </span>
-                        ${isExpiringSoon ? `<span class="block text-[10px] text-amber-700 font-bold mt-0.5">Near Expiry</span>` : ''}
-                      </td>
-                      <td class="py-3.5 px-3">${scheduleBadge}</td>
+
+                      ${colPrefs.salt ? `
+                        <td class="py-3.5 px-3">
+                          <span class="text-[11px] text-slate-600 font-mono leading-tight block">${m.saltName}</span>
+                        </td>
+                      ` : ''}
+
+                      ${colPrefs.batch || colPrefs.rack ? `
+                        <td class="py-3.5 px-3">
+                          ${colPrefs.batch ? `<div class="font-mono font-bold text-slate-700 text-xs">${m.batchNo}</div>` : ''}
+                          ${colPrefs.rack ? `
+                            <div class="mt-1 flex items-center gap-1">
+                              <span class="text-[10px] text-slate-400 font-semibold">Rack:</span>
+                              <input 
+                                type="text" 
+                                value="${m.rackLocation || 'Shelf'}" 
+                                onchange="window.acsApp.updateStockInline('${m.id}', 'rackLocation', this.value)"
+                                class="w-20 px-1.5 py-0.5 bg-slate-100 hover:bg-white focus:bg-white border border-slate-200 rounded font-mono text-[10px] text-slate-700 font-bold focus:ring-1 focus:ring-[#135c7e] transition"
+                                title="Click to edit rack location"
+                              />
+                            </div>
+                          ` : ''}
+                        </td>
+                      ` : ''}
+
+                      ${colPrefs.exp ? `
+                        <td class="py-3.5 px-3">
+                          <span class="font-mono text-xs ${isExpiringSoon ? 'text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-300 font-bold' : 'text-slate-700 font-medium'}">
+                            ${m.expiryDate}
+                          </span>
+                          ${isExpiringSoon ? `<span class="block text-[10px] text-amber-700 font-bold mt-0.5"><i class="fa fa-clock-o"></i> Near Expiry</span>` : ''}
+                        </td>
+                      ` : ''}
+
+                      ${colPrefs.sched ? `<td class="py-3.5 px-3">${scheduleBadge}</td>` : ''}
+
+                      <!-- Tactile Cashier Stepper (Point 1) -->
                       <td class="py-3.5 px-3 text-center">
-                        <div class="inline-flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
-                          <button onclick="window.acsApp.adjustStockQty('${m.id}', -5)" class="w-6 h-6 flex items-center justify-center rounded-lg bg-white hover:bg-slate-200 text-slate-700 font-black shadow-xs transition">-</button>
+                        <div class="inline-flex items-center gap-1 bg-slate-100 p-1 rounded-xl shadow-2xs border border-slate-200">
+                          <button onclick="window.acsApp.adjustStockQty('${m.id}', -5)" class="stepper-btn w-6 h-6 rounded-lg bg-white hover:bg-rose-50 hover:text-rose-700 text-slate-600 font-bold text-[10px] shadow-xs transition" title="Minus 5 units">-5</button>
+                          <button onclick="window.acsApp.adjustStockQty('${m.id}', -1)" class="stepper-btn w-6 h-6 rounded-lg bg-white hover:bg-rose-50 hover:text-rose-700 text-slate-700 font-black text-xs shadow-xs transition" title="Minus 1 unit">-</button>
                           <input 
                             type="number" 
                             min="0" 
                             value="${m.quantity}" 
                             onchange="window.acsApp.updateStockInline('${m.id}', 'quantity', this.value)"
-                            class="w-12 text-center bg-transparent font-black ${isLow ? 'text-rose-600' : 'text-slate-800'} text-sm outline-none"
+                            class="w-12 text-center bg-transparent font-black ${isLow ? 'text-rose-600' : 'text-slate-900'} text-xs outline-none focus:bg-white focus:rounded"
                             title="Direct edit quantity"
                           />
-                          <button onclick="window.acsApp.adjustStockQty('${m.id}', 5)" class="w-6 h-6 flex items-center justify-center rounded-lg bg-white hover:bg-slate-200 text-slate-700 font-black shadow-xs transition">+</button>
+                          <button onclick="window.acsApp.adjustStockQty('${m.id}', 1)" class="stepper-btn w-6 h-6 rounded-lg bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 font-black text-xs shadow-xs transition" title="Plus 1 unit">+</button>
+                          <button onclick="window.acsApp.adjustStockQty('${m.id}', 5)" class="stepper-btn w-6 h-6 rounded-lg bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 font-bold text-[10px] shadow-xs transition" title="Plus 5 units">+5</button>
                         </div>
-                        <span class="text-[10px] text-slate-400 block mt-0.5">${m.unit}</span>
-                      </td>
-                      <td class="py-3.5 px-3">
-                        <div class="flex items-center gap-1 bg-slate-50 hover:bg-white focus-within:bg-white border border-slate-200 focus-within:border-[#135c7e] rounded-lg px-2 py-1.5 transition">
-                          <span class="text-slate-400 font-bold text-xs">₹</span>
-                          <input 
-                            type="number" 
-                            step="0.1" 
-                            min="0" 
-                            value="${m.purchaseRate.toFixed(2)}" 
-                            onchange="window.acsApp.updateStockInline('${m.id}', 'purchaseRate', this.value)"
-                            class="w-16 bg-transparent text-slate-800 font-bold text-xs outline-none"
-                            title="Edit Cost Price (Purchase Rate)"
-                          />
+                        <div class="flex items-center justify-center gap-1 mt-1">
+                          <span class="text-[10px] text-slate-400">${m.unit || 'Strips'}</span>
+                          ${isLow ? `<span class="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-700 font-bold text-[9px]">Low Stock</span>` : ''}
                         </div>
-                        <span class="text-[10px] text-slate-400 block mt-0.5">Per unit cost</span>
                       </td>
-                      <td class="py-3.5 px-3">
-                        <div class="flex items-center gap-1 bg-emerald-50/60 hover:bg-white focus-within:bg-white border border-emerald-200 focus-within:border-emerald-500 rounded-lg px-2 py-1.5 transition">
-                          <span class="text-emerald-700 font-bold text-xs">₹</span>
-                          <input 
-                            type="number" 
-                            step="0.1" 
-                            min="0" 
-                            value="${m.mrp.toFixed(2)}" 
-                            onchange="window.acsApp.updateStockInline('${m.id}', 'mrp', this.value)"
-                            class="w-16 bg-transparent text-emerald-800 font-black text-xs outline-none"
-                            title="Edit Selling Price (MRP)"
-                          />
-                        </div>
-                        <span class="text-[10px] text-emerald-700 font-semibold block mt-0.5">Public MRP</span>
-                      </td>
+
+                      <!-- Buying Cost (CP) with Clear ₹ Badge -->
+                      ${colPrefs.buyCost ? `
+                        <td class="py-3.5 px-3">
+                          <div class="price-pill-input flex items-center gap-1 bg-slate-50 hover:bg-white focus-within:bg-white border border-slate-200 focus-within:border-[#135c7e] rounded-xl px-2 py-1.5 transition">
+                            <span class="text-slate-400 font-bold text-xs">₹</span>
+                            <input 
+                              type="number" 
+                              step="0.1" 
+                              min="0" 
+                              value="${m.purchaseRate.toFixed(2)}" 
+                              onchange="window.acsApp.updateStockInline('${m.id}', 'purchaseRate', this.value)"
+                              class="w-18 bg-transparent text-slate-800 font-bold text-xs outline-none"
+                              title="Edit Cost Price (Purchase Rate / PTR)"
+                            />
+                          </div>
+                          <span class="text-[10px] text-slate-400 block mt-0.5">Wholesale Cost (CP)</span>
+                        </td>
+                      ` : ''}
+
+                      <!-- Selling Price (MRP) with Clear ₹ Badge -->
+                      ${colPrefs.sellMrp ? `
+                        <td class="py-3.5 px-3">
+                          <div class="price-pill-input flex items-center gap-1 bg-emerald-50/60 hover:bg-white focus-within:bg-white border border-emerald-200 focus-within:border-emerald-600 rounded-xl px-2 py-1.5 transition">
+                            <span class="text-emerald-700 font-bold text-xs">₹</span>
+                            <input 
+                              type="number" 
+                              step="0.1" 
+                              min="0" 
+                              value="${m.mrp.toFixed(2)}" 
+                              onchange="window.acsApp.updateStockInline('${m.id}', 'mrp', this.value)"
+                              class="w-18 bg-transparent text-emerald-800 font-black text-xs outline-none"
+                              title="Edit Selling Price (Public MRP)"
+                            />
+                          </div>
+                          <span class="text-[10px] text-emerald-700 font-semibold block mt-0.5">Retail Price (MRP)</span>
+                        </td>
+                      ` : ''}
+
                       <td class="py-3.5 px-4 text-right">
-                        <div class="flex items-center justify-end gap-1.5">
+                        <div class="flex items-center justify-end gap-1">
                           <button onclick="window.acsApp.openEditMedicineModal('${m.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Full Edit (Batch, Salt, Price)">
                             <i class="fa fa-pencil"></i>
                           </button>
@@ -3577,6 +3741,118 @@ class ACSApp {
               </tbody>
             </table>
           </div>
+
+          <!-- MOBILE RESPONSIVE SWIPE CARDS (Point 5) -->
+          <div class="stock-mobile-cards divide-y divide-slate-100 p-2 space-y-3">
+            ${filteredStocks.length === 0 ? `
+              <div class="py-12 text-center text-slate-400">
+                <i class="fa fa-cubes text-4xl mb-2 text-slate-300 block"></i>
+                No medicine records found.
+              </div>
+            ` : filteredStocks.map((m) => {
+              const isLow = m.quantity <= (m.minAlertThreshold || 20);
+              const expDate = new Date(m.expiryDate);
+              const diffMonths = (expDate.getFullYear() - 2026) * 12 + (expDate.getMonth() - 9);
+              const isExpiringSoon = diffMonths <= 3;
+
+              return `
+                <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-3">
+                  <!-- Header: Name & Schedule -->
+                  <div class="flex items-start justify-between gap-2">
+                    <div>
+                      <div class="font-extrabold text-slate-900 text-sm leading-tight">${m.name}</div>
+                      <div class="text-[11px] text-slate-500 font-mono mt-0.5">${m.saltName}</div>
+                      <div class="text-[10px] text-slate-400">${m.manufacturer}</div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold ${m.schedule.includes('H1') ? 'bg-purple-100 text-purple-800' : m.schedule.includes('H') ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}">
+                      ${m.schedule}
+                    </span>
+                  </div>
+
+                  <!-- Details Pill Strip -->
+                  <div class="flex flex-wrap items-center gap-2 text-[11px]">
+                    <span class="px-2 py-0.5 bg-slate-100 rounded-lg font-mono font-bold text-slate-700">
+                      Bat: ${m.batchNo}
+                    </span>
+                    <span class="px-2 py-0.5 rounded-lg font-mono ${isExpiringSoon ? 'bg-amber-100 text-amber-900 font-bold' : 'bg-slate-100 text-slate-600'}">
+                      Exp: ${m.expiryDate}
+                    </span>
+                    <div class="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-lg font-mono text-slate-700">
+                      <span>Rack:</span>
+                      <input 
+                        type="text" 
+                        value="${m.rackLocation || 'Shelf'}" 
+                        onchange="window.acsApp.updateStockInline('${m.id}', 'rackLocation', this.value)"
+                        class="w-16 bg-white border border-slate-300 rounded px-1 py-0.2 text-[10px] font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <!-- Cashier Stepper & Prices -->
+                  <div class="pt-2 border-t border-slate-100 grid grid-cols-2 gap-3 items-center">
+                    <div>
+                      <span class="text-[10px] text-slate-400 block mb-1">In-Stock Units (${m.unit || 'Strips'})</span>
+                      <div class="inline-flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                        <button onclick="window.acsApp.adjustStockQty('${m.id}', -1)" class="stepper-btn w-7 h-7 rounded-lg bg-white text-slate-700 font-black text-sm shadow-xs">-</button>
+                        <input 
+                          type="number" 
+                          min="0" 
+                          value="${m.quantity}" 
+                          onchange="window.acsApp.updateStockInline('${m.id}', 'quantity', this.value)"
+                          class="w-12 text-center bg-transparent font-black ${isLow ? 'text-rose-600' : 'text-slate-900'} text-xs outline-none"
+                        />
+                        <button onclick="window.acsApp.adjustStockQty('${m.id}', 1)" class="stepper-btn w-7 h-7 rounded-lg bg-white text-slate-700 font-black text-sm shadow-xs">+</button>
+                      </div>
+                    </div>
+
+                    <div class="space-y-1">
+                      <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400">Buy CP:</span>
+                        <div class="flex items-center gap-0.5">
+                          <span class="text-slate-500 font-bold">₹</span>
+                          <input 
+                            type="number" 
+                            step="0.1" 
+                            min="0" 
+                            value="${m.purchaseRate.toFixed(2)}" 
+                            onchange="window.acsApp.updateStockInline('${m.id}', 'purchaseRate', this.value)"
+                            class="w-14 bg-slate-100 px-1 py-0.5 rounded text-right font-bold text-slate-800 text-xs"
+                          />
+                        </div>
+                      </div>
+                      <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-emerald-700 font-bold">Sell MRP:</span>
+                        <div class="flex items-center gap-0.5">
+                          <span class="text-emerald-700 font-bold">₹</span>
+                          <input 
+                            type="number" 
+                            step="0.1" 
+                            min="0" 
+                            value="${m.mrp.toFixed(2)}" 
+                            onchange="window.acsApp.updateStockInline('${m.id}', 'mrp', this.value)"
+                            class="w-14 bg-emerald-50 border border-emerald-200 px-1 py-0.5 rounded text-right font-black text-emerald-800 text-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Actions Bar -->
+                  <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <span class="text-[10px] text-slate-400 font-mono">ID: ${m.id}</span>
+                    <div class="flex items-center gap-2">
+                      <button onclick="window.acsApp.openEditMedicineModal('${m.id}')" class="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold">
+                        <i class="fa fa-pencil"></i> Edit
+                      </button>
+                      <button onclick="window.acsApp.deleteMedicine('${m.id}')" class="px-3 py-1 bg-rose-50 text-rose-700 rounded-lg text-xs font-bold">
+                        <i class="fa fa-trash"></i> Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
         </div>
       </div>
     `;
@@ -3586,9 +3862,17 @@ class ACSApp {
     const searchInput = document.getElementById("stock-search-input");
     const scheduleSelect = document.getElementById("stock-schedule-select");
     const alertSelect = document.getElementById("stock-alert-select");
+    const rackSelect = document.getElementById("stock-rack-select");
+
     const btnAddMedicine = document.getElementById("btn-add-medicine");
     const btnExportCsv = document.getElementById("btn-export-csv");
-    const btnImportCsv = document.getElementById("btn-import-csv");
+    const btnSmartImport = document.getElementById("btn-smart-import");
+    const btnSampleTemplate = document.getElementById("btn-sample-template");
+    const btnBarcodeScanTop = document.getElementById("btn-barcode-scan-top");
+    const btnBarcodeScan = document.getElementById("btn-barcode-scan");
+    const btnVoiceSearch = document.getElementById("btn-voice-search");
+    const btnManageRacks = document.getElementById("btn-manage-racks");
+    const btnCustomizeColumns = document.getElementById("btn-customize-columns");
     const csvFileInput = document.getElementById("csv-file-input");
 
     if (searchInput) {
@@ -3612,6 +3896,55 @@ class ACSApp {
       });
     }
 
+    if (rackSelect) {
+      rackSelect.addEventListener("change", (e) => {
+        this.stockRackFilter = e.target.value;
+        this.renderCurrentView();
+      });
+    }
+
+    if (btnVoiceSearch) {
+      btnVoiceSearch.addEventListener("click", () => {
+        this.toggleVoiceSearch();
+      });
+    }
+
+    if (btnBarcodeScanTop) {
+      btnBarcodeScanTop.addEventListener("click", () => {
+        this.openBarcodeScannerModal();
+      });
+    }
+
+    if (btnBarcodeScan) {
+      btnBarcodeScan.addEventListener("click", () => {
+        this.openBarcodeScannerModal();
+      });
+    }
+
+    if (btnSmartImport) {
+      btnSmartImport.addEventListener("click", () => {
+        this.openSmartImportModal();
+      });
+    }
+
+    if (btnSampleTemplate) {
+      btnSampleTemplate.addEventListener("click", () => {
+        this.downloadSampleStockCsv();
+      });
+    }
+
+    if (btnManageRacks) {
+      btnManageRacks.addEventListener("click", () => {
+        this.openRackManagerModal();
+      });
+    }
+
+    if (btnCustomizeColumns) {
+      btnCustomizeColumns.addEventListener("click", () => {
+        this.openColumnCustomizerModal();
+      });
+    }
+
     if (btnAddMedicine) {
       btnAddMedicine.addEventListener("click", () => {
         this.openAddMedicineModal();
@@ -3624,13 +3957,12 @@ class ACSApp {
       });
     }
 
-    if (btnImportCsv && csvFileInput) {
-      btnImportCsv.addEventListener("click", () => {
-        csvFileInput.click();
-      });
-
+    if (csvFileInput) {
       csvFileInput.addEventListener("change", (e) => {
-        this.handleCsvUpload(e);
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          this.openSmartImportModal(file);
+        }
       });
     }
   }
@@ -3715,53 +4047,939 @@ class ACSApp {
   }
 
   handleCsvUpload(e) {
-    const file = e.target.files[0];
+    const file = e.target.files && e.target.files[0];
     if (!file) return;
+    this.openSmartImportModal(file);
+    e.target.value = "";
+  }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target.result;
-        const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
-        if (lines.length < 2) {
-          this.showToast("CSV file is empty or missing headers", "danger");
+  // ==========================================
+  // SMART EXCEL & CSV BULK IMPORTER ENGINE
+  // ==========================================
+  downloadSampleStockCsv() {
+    const headers = [
+      "Medicine Name",
+      "Generic Salt Composition",
+      "Manufacturer",
+      "Batch Number",
+      "Expiry Date",
+      "Quantity",
+      "Packaging Unit",
+      "Buying Cost (CP)",
+      "Selling Price (MRP)",
+      "Schedule",
+      "Rack Location"
+    ];
+    const sampleRows = [
+      ["Azithral 500mg Tablet", "Azithromycin IP 500mg", "Alembic Pharmaceuticals", "BAT-AZI-9921", "2027-10-31", "50", "Strips (5 tabs)", "72.50", "119.50", "Schedule H", "Rack A-03"],
+      ["Pan-D Capsule", "Pantoprazole 40mg + Domperidone 30mg", "Alkem Laboratories", "BAT-PAN-6612", "2028-02-28", "100", "Strips (15 caps)", "115.00", "199.00", "Schedule H", "Rack B-01"],
+      ["Dolo 650 Tablet", "Paracetamol IP 650mg", "Micro Labs Ltd", "BAT-DOL-3341", "2028-05-31", "200", "Strips (15 tabs)", "21.00", "34.00", "OTC", "Rack A-01"],
+      ["Augmentin 625 Duo", "Amoxicillin + Clavulanic Acid", "GSK India", "BAT-AUG-8802", "2027-11-30", "60", "Strips (10 tabs)", "145.00", "223.50", "Schedule H1", "Rack C-02"],
+      ["Liv.52 DS Syrup", "Ayurvedic Liver Protection Herbal", "Himalaya Wellness", "BAT-LIV-9821", "2027-12-01", "80", "Bottles (200ml)", "125.00", "175.00", "OTC", "Rack B-04"]
+    ];
+
+    const csvContent = [headers.join(","), ...sampleRows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "ACS_Pharmacy_Wholesale_Stock_Template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    this.showToast("Downloaded sample template: ACS_Pharmacy_Wholesale_Stock_Template.csv", "success");
+  }
+
+  openSmartImportModal(preloadedFile = null) {
+    const modal = document.getElementById("modal-generic");
+    const title = document.getElementById("modal-generic-title");
+    const body = document.getElementById("modal-generic-body");
+    if (!modal || !title || !body) return;
+
+    title.innerHTML = `<i class="fa fa-file-excel-o text-emerald-600"></i> Smart Excel (.xlsx, .xls) & CSV Stock Importer`;
+    body.innerHTML = `
+      <div class="space-y-4 text-xs">
+        <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+          <div>
+            <span class="font-bold text-emerald-950 block">High-Speed Wholesale Stock Importer</span>
+            <span class="text-emerald-700 text-[11px]">Upload stock sheets from distributors, Tally, Marg ERP, or CSV/Excel files.</span>
+          </div>
+          <button type="button" onclick="window.acsApp.downloadSampleStockCsv()" class="px-2.5 py-1 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg font-bold text-[11px] shadow-xs transition flex items-center gap-1">
+            <i class="fa fa-download text-emerald-600"></i> Sample Template
+          </button>
+        </div>
+
+        <!-- Dropzone / File Picker -->
+        <div id="import-dropzone" class="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-6 text-center cursor-pointer transition bg-slate-50/50 hover:bg-emerald-50/30">
+          <i class="fa fa-cloud-upload text-4xl text-slate-400 mb-2 block"></i>
+          <span class="font-bold text-slate-700 block text-sm">Drag & Drop Excel (.xlsx, .xls) or CSV file here</span>
+          <span class="text-slate-400 text-[11px] mt-0.5 block">or click to browse your computer</span>
+          <input type="file" id="smart-import-file-input" accept=".xlsx,.xls,.csv,.tsv,.txt" class="hidden" />
+        </div>
+
+        <!-- Paste Direct Table Area Toggle -->
+        <div>
+          <button type="button" onclick="document.getElementById('paste-area-container').classList.toggle('hidden')" class="text-blue-700 hover:underline font-bold text-xs inline-flex items-center gap-1">
+            <i class="fa fa-clipboard"></i> Or Paste Copied Table Rows from Excel/Notepad
+          </button>
+          <div id="paste-area-container" class="hidden mt-2 space-y-2">
+            <textarea id="smart-import-paste-text" rows="4" placeholder="Paste tab-separated or comma-separated rows here..." class="w-full p-2.5 border rounded-xl font-mono text-[11px] focus:ring-2 focus:ring-emerald-500"></textarea>
+            <button type="button" id="btn-parse-pasted" class="px-3.5 py-1.5 bg-[#135c7e] text-white rounded-lg font-bold text-xs">Parse Pasted Rows</button>
+          </div>
+        </div>
+
+        <!-- Container where Mapped Preview and Options will render -->
+        <div id="import-preview-container" class="hidden space-y-4"></div>
+
+        <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+          <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50">Cancel</button>
+        </div>
+      </div>
+    `;
+
+    modal.classList.remove("hidden");
+
+    const dropzone = document.getElementById("import-dropzone");
+    const fileInput = document.getElementById("smart-import-file-input");
+    const btnParsePasted = document.getElementById("btn-parse-pasted");
+
+    if (dropzone && fileInput) {
+      dropzone.addEventListener("click", () => fileInput.click());
+      dropzone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropzone.classList.add("border-emerald-500", "bg-emerald-50/50");
+      });
+      dropzone.addEventListener("dragleave", () => {
+        dropzone.classList.remove("border-emerald-500", "bg-emerald-50/50");
+      });
+      dropzone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropzone.classList.remove("border-emerald-500", "bg-emerald-50/50");
+        const file = e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file) this.processImportFile(file);
+      });
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) this.processImportFile(file);
+      });
+    }
+
+    if (btnParsePasted) {
+      btnParsePasted.addEventListener("click", () => {
+        const text = document.getElementById("smart-import-paste-text").value.trim();
+        if (!text) {
+          this.showToast("Please paste some table data first", "warning");
           return;
         }
+        const rawRows = this.parseDelimitedText(text);
+        this.renderImportMapper(rawRows);
+      });
+    }
 
-        const store = this.getCurrentStore();
-        let addedCount = 0;
+    if (preloadedFile) {
+      this.processImportFile(preloadedFile);
+    }
+  }
 
-        for (let i = 1; i < lines.length; i++) {
-          const cols = lines[i].split(",").map(c => c.trim().replace(/^"|"$/g, ''));
-          if (cols.length >= 6) {
-            store.stocks.push({
-              id: `med-import-${Date.now()}-${i}`,
-              name: cols[0] || "Imported Drug",
-              saltName: cols[1] || "Generic Compound",
-              manufacturer: cols[2] || "Generic Pharma",
-              batchNo: cols[3] || `BAT-${Math.floor(1000 + Math.random() * 9000)}`,
-              expiryDate: cols[4] || "2027-12-31",
-              quantity: parseInt(cols[5]) || 20,
-              unit: cols[6] || "Strips",
-              mrp: parseFloat(cols[7]) || 100.0,
-              purchaseRate: parseFloat(cols[8]) || 70.0,
-              schedule: cols[9] || "Schedule H",
-              rackLocation: cols[10] || "Import Rack",
-              minAlertThreshold: 20
-            });
-            addedCount++;
+  processImportFile(file) {
+    const isExcel = file.name.endsWith(".xlsx") || file.name.endsWith(".xls");
+    if (isExcel && typeof XLSX !== "undefined") {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: "array" });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rawRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
+          this.renderImportMapper(rawRows, file.name);
+        } catch (err) {
+          this.showToast("Could not parse Excel workbook: " + err.message, "danger");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const text = e.target.result;
+          const rawRows = this.parseDelimitedText(text);
+          this.renderImportMapper(rawRows, file.name);
+        } catch (err) {
+          this.showToast("Could not parse text file: " + err.message, "danger");
+        }
+      };
+      reader.readAsText(file);
+    }
+  }
+
+  parseDelimitedText(text) {
+    const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+    if (!lines.length) return [];
+
+    // Detect delimiter: tab or comma or semicolon
+    const firstLine = lines[0];
+    let delimiter = ",";
+    if (firstLine.includes("\t")) delimiter = "\t";
+    else if (!firstLine.includes(",") && firstLine.includes(";")) delimiter = ";";
+
+    return lines.map(line => {
+      if (delimiter === "\t") {
+        return line.split("\t").map(s => s.trim().replace(/^"|"$/g, ''));
+      }
+      // Simple quote-aware CSV tokenizer
+      const tokens = [];
+      let current = "";
+      let inQuote = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') {
+          inQuote = !inQuote;
+        } else if (c === delimiter && !inQuote) {
+          tokens.push(current.trim().replace(/^"|"$/g, ''));
+          current = "";
+        } else {
+          current += c;
+        }
+      }
+      tokens.push(current.trim().replace(/^"|"$/g, ''));
+      return tokens;
+    });
+  }
+
+  detectColumnMapping(headers) {
+    const synonyms = {
+      name: ["medicine name", "medicine", "brand", "brand name", "product", "product name", "item", "item name", "description", "drug", "name", "particulars"],
+      saltName: ["salt", "salt name", "composition", "generic", "generic name", "formula", "molecule", "salt/composition"],
+      manufacturer: ["manufacturer", "mfg", "company", "make", "brand mfg", "pharma", "lab"],
+      batchNo: ["batch", "batch no", "batch number", "lot", "b.no", "batch#", "lot no", "batch code"],
+      expiryDate: ["expiry", "expiry date", "exp", "exp date", "val", "validity", "exp dt", "expiry dt"],
+      quantity: ["quantity", "qty", "stock", "units", "in stock", "bal qty", "closing qty", "pack qty", "total units", "boxes", "strips"],
+      unit: ["unit", "packaging", "pack", "uom", "pkg", "pack size"],
+      purchaseRate: ["buying cost", "purchase rate", "cost price", "rate", "ptr", "net rate", "cp", "cost", "buy rate", "purchase price", "cost / unit", "whsl rate"],
+      mrp: ["selling cost", "selling price", "mrp", "retail price", "max retail price", "sale rate", "sp", "public mrp", "retail mrp"],
+      schedule: ["schedule", "category", "drug schedule", "sched", "type", "drug type"],
+      rackLocation: ["rack", "rack location", "shelf", "bay", "box", "location", "bin", "shelf no"]
+    };
+
+    const mapping = {};
+    Object.keys(synonyms).forEach(field => {
+      mapping[field] = -1;
+    });
+
+    headers.forEach((h, colIdx) => {
+      const cleanHeader = String(h || "").toLowerCase().trim().replace(/[^a-z0-9]/g, " ");
+      if (!cleanHeader) return;
+      for (const [field, syns] of Object.entries(synonyms)) {
+        if (mapping[field] === -1) {
+          if (syns.some(s => cleanHeader === s || cleanHeader.includes(s) || s.includes(cleanHeader))) {
+            mapping[field] = colIdx;
+            break;
           }
         }
-
-        this.saveStores();
-        this.renderCurrentView();
-        this.showToast(`Imported ${addedCount} medicine items from CSV!`, "success");
-      } catch (err) {
-        this.showToast("Error parsing CSV file format", "danger");
       }
+    });
+
+    return mapping;
+  }
+
+  renderImportMapper(rawRows, fileName = "Imported Sheet") {
+    const container = document.getElementById("import-preview-container");
+    if (!container) return;
+
+    if (!rawRows || rawRows.length < 2) {
+      this.showToast("File does not contain enough data or header rows", "warning");
+      return;
+    }
+
+    const headers = rawRows[0];
+    const dataRows = rawRows.slice(1).filter(r => r.some(cell => String(cell).trim().length > 0));
+    const detected = this.detectColumnMapping(headers);
+
+    const fieldLabels = {
+      name: "Medicine Brand Name *",
+      saltName: "Generic Salt Composition",
+      manufacturer: "Manufacturer / Company",
+      batchNo: "Batch Number *",
+      expiryDate: "Expiry Date *",
+      quantity: "Stock Quantity *",
+      unit: "Packaging Unit",
+      purchaseRate: "Buying Cost (CP ₹) *",
+      mrp: "Selling Price (MRP ₹) *",
+      schedule: "Drug Schedule Category",
+      rackLocation: "Rack / Shelf Location"
     };
-    reader.readAsText(file);
-    e.target.value = "";
+
+    container.classList.remove("hidden");
+    container.innerHTML = `
+      <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="font-bold text-slate-800 text-sm block">Auto-Detected Columns (${fileName})</span>
+            <span class="text-slate-500 text-[11px]">Verify column assignments. Total ${dataRows.length} medicine records ready.</span>
+          </div>
+          <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-mono font-bold text-[10px]">${dataRows.length} Rows</span>
+        </div>
+
+        <!-- Column Selectors Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-[11px]">
+          ${Object.entries(fieldLabels).map(([field, label]) => {
+            const mappedIdx = detected[field];
+            return `
+              <div>
+                <label class="block font-semibold text-slate-700 mb-0.5">${label}</label>
+                <select id="col-map-${field}" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white font-medium text-xs">
+                  <option value="-1">-- Not in Sheet --</option>
+                  ${headers.map((h, i) => `
+                    <option value="${i}" ${mappedIdx === i ? "selected" : ""}>Col ${i + 1}: ${h || 'Column ' + (i + 1)}</option>
+                  `).join("")}
+                </select>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </div>
+
+      <!-- Import Mode Selection -->
+      <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
+        <span class="font-bold text-blue-950 block text-xs">Stock Addition Mode:</span>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <label class="flex items-start gap-2 p-2 bg-white rounded-lg border border-blue-200 cursor-pointer">
+            <input type="radio" name="import-mode" value="MERGE" checked class="mt-0.5 text-[#135c7e]" />
+            <div>
+              <strong class="text-slate-800 block">Smart Merge & Increment (Recommended)</strong>
+              <span class="text-[11px] text-slate-500">If medicine name & batch match existing inventory, add new units to current stock without duplicate rows.</span>
+            </div>
+          </label>
+          <label class="flex items-start gap-2 p-2 bg-white rounded-lg border border-blue-200 cursor-pointer">
+            <input type="radio" name="import-mode" value="APPEND" class="mt-0.5 text-[#135c7e]" />
+            <div>
+              <strong class="text-slate-800 block">Append As New Batches</strong>
+              <span class="text-[11px] text-slate-500">Always create separate new SKU line entries for all rows.</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Live 5-Row Preview -->
+      <div class="space-y-1">
+        <span class="font-bold text-slate-700 text-xs block">Preview of First ${Math.min(5, dataRows.length)} Records:</span>
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="w-full text-left text-[11px] divide-y divide-slate-200">
+            <thead class="bg-slate-100 font-bold text-slate-700">
+              <tr>
+                <th class="p-2">#</th>
+                <th class="p-2">Medicine Brand</th>
+                <th class="p-2">Batch</th>
+                <th class="p-2">Exp</th>
+                <th class="p-2 text-center">Qty</th>
+                <th class="p-2">Buying CP</th>
+                <th class="p-2">Selling MRP</th>
+                <th class="p-2">Rack</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 bg-white">
+              ${dataRows.slice(0, 5).map((row, idx) => {
+                const name = detected.name !== -1 ? row[detected.name] : row[0] || 'Drug';
+                const batch = detected.batchNo !== -1 ? row[detected.batchNo] : 'BAT-NEW';
+                const exp = detected.expiryDate !== -1 ? row[detected.expiryDate] : '2028-12-31';
+                const qty = detected.quantity !== -1 ? row[detected.quantity] : 20;
+                const cp = detected.purchaseRate !== -1 ? row[detected.purchaseRate] : 50;
+                const mrp = detected.mrp !== -1 ? row[detected.mrp] : 80;
+                const rack = detected.rackLocation !== -1 ? row[detected.rackLocation] : 'Rack A-01';
+                return `
+                  <tr>
+                    <td class="p-2 text-slate-400 font-mono">${idx + 1}</td>
+                    <td class="p-2 font-bold text-slate-900">${name}</td>
+                    <td class="p-2 font-mono">${batch}</td>
+                    <td class="p-2 font-mono">${exp}</td>
+                    <td class="p-2 font-bold text-center text-indigo-700">${qty}</td>
+                    <td class="p-2 text-slate-700">₹${cp}</td>
+                    <td class="p-2 font-bold text-emerald-800">₹${mrp}</td>
+                    <td class="p-2 text-slate-500">${rack}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="pt-2 flex justify-end gap-2">
+        <button type="button" id="btn-execute-import" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md transition flex items-center gap-1.5">
+          <i class="fa fa-check"></i> Import & Synchronize Inventory (${dataRows.length} SKUs)
+        </button>
+      </div>
+    `;
+
+    document.getElementById("btn-execute-import").onclick = () => {
+      const colMap = {
+        name: parseInt(document.getElementById("col-map-name").value),
+        saltName: parseInt(document.getElementById("col-map-saltName").value),
+        manufacturer: parseInt(document.getElementById("col-map-manufacturer").value),
+        batchNo: parseInt(document.getElementById("col-map-batchNo").value),
+        expiryDate: parseInt(document.getElementById("col-map-expiryDate").value),
+        quantity: parseInt(document.getElementById("col-map-quantity").value),
+        unit: parseInt(document.getElementById("col-map-unit").value),
+        purchaseRate: parseInt(document.getElementById("col-map-purchaseRate").value),
+        mrp: parseInt(document.getElementById("col-map-mrp").value),
+        schedule: parseInt(document.getElementById("col-map-schedule").value),
+        rackLocation: parseInt(document.getElementById("col-map-rackLocation").value)
+      };
+
+      const selectedMode = document.querySelector('input[name="import-mode"]:checked').value;
+      this.executeSmartStockImport(dataRows, colMap, selectedMode);
+    };
+  }
+
+  normalizeExpiryDate(val) {
+    if (!val) return "2028-12-31";
+    const s = String(val).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (dmy) {
+      const day = dmy[1].padStart(2, "0");
+      const mon = dmy[2].padStart(2, "0");
+      const yr = dmy[3];
+      return `${yr}-${mon}-${day}`;
+    }
+    const my = s.match(/^(\d{1,2})[\/\-](\d{2,4})$/);
+    if (my) {
+      const mon = my[1].padStart(2, "0");
+      let yr = my[2];
+      if (yr.length === 2) yr = "20" + yr;
+      return `${yr}-${mon}-28`;
+    }
+    return "2028-12-31";
+  }
+
+  executeSmartStockImport(dataRows, colMap, importMode) {
+    const store = this.getCurrentStore();
+    if (!store) return;
+
+    let updatedCount = 0;
+    let addedCount = 0;
+
+    dataRows.forEach((row, idx) => {
+      const name = colMap.name !== -1 && row[colMap.name] ? String(row[colMap.name]).trim() : "";
+      if (!name) return; // skip row if no medicine name
+
+      const batch = colMap.batchNo !== -1 && row[colMap.batchNo] ? String(row[colMap.batchNo]).trim() : `BAT-${Math.floor(1000 + Math.random() * 9000)}`;
+      const qty = colMap.quantity !== -1 ? Math.max(0, parseInt(String(row[colMap.quantity]).replace(/[^0-9]/g, "")) || 0) : 20;
+      const buyCost = colMap.purchaseRate !== -1 ? Math.max(0, parseFloat(String(row[colMap.purchaseRate]).replace(/[^0-9.]/g, "")) || 0) : 70.0;
+      const mrp = colMap.mrp !== -1 ? Math.max(0, parseFloat(String(row[colMap.mrp]).replace(/[^0-9.]/g, "")) || 0) : (buyCost * 1.35);
+      const salt = colMap.saltName !== -1 && row[colMap.saltName] ? String(row[colMap.saltName]).trim() : "Generic Compound";
+      const mfg = colMap.manufacturer !== -1 && row[colMap.manufacturer] ? String(row[colMap.manufacturer]).trim() : "Generic Pharma";
+      const exp = this.normalizeExpiryDate(colMap.expiryDate !== -1 ? row[colMap.expiryDate] : "2028-12-31");
+      const unit = colMap.unit !== -1 && row[colMap.unit] ? String(row[colMap.unit]).trim() : "Strips";
+      const sched = colMap.schedule !== -1 && row[colMap.schedule] ? String(row[colMap.schedule]).trim() : "Schedule H";
+      const rack = colMap.rackLocation !== -1 && row[colMap.rackLocation] ? String(row[colMap.rackLocation]).trim() : "General Shelf";
+
+      const existing = store.stocks.find(m => 
+        m.name.toLowerCase() === name.toLowerCase() && 
+        m.batchNo.toLowerCase() === batch.toLowerCase()
+      );
+
+      if (existing && importMode === "MERGE") {
+        existing.quantity += qty;
+        if (buyCost > 0) existing.purchaseRate = buyCost;
+        if (mrp > 0) existing.mrp = mrp;
+        if (rack && rack !== "General Shelf") existing.rackLocation = rack;
+        updatedCount++;
+      } else {
+        store.stocks.push({
+          id: `med-import-${Date.now()}-${idx}`,
+          name: name,
+          saltName: salt,
+          manufacturer: mfg,
+          batchNo: batch,
+          expiryDate: exp,
+          quantity: qty,
+          unit: unit,
+          mrp: mrp,
+          purchaseRate: buyCost,
+          schedule: sched,
+          rackLocation: rack,
+          minAlertThreshold: 20
+        });
+        addedCount++;
+      }
+    });
+
+    this.saveStores();
+    this.closeModal();
+    this.renderCurrentView();
+
+    this.showToast(`🎉 Import Complete! ${updatedCount} existing batches incremented, ${addedCount} new medicines added.`, "success");
+  }
+
+  // ==========================================
+  // BARCODE & MEDICINE BOX SCANNER MODAL (Point 2)
+  // ==========================================
+  openBarcodeScannerModal() {
+    const modal = document.getElementById("modal-generic");
+    const title = document.getElementById("modal-generic-title");
+    const body = document.getElementById("modal-generic-body");
+    if (!modal || !title || !body) return;
+
+    title.innerHTML = `<i class="fa fa-barcode text-purple-600"></i> Quick Barcode & Medicine Box Scanner`;
+    body.innerHTML = `
+      <div class="space-y-4 text-xs">
+        <div class="p-3 bg-purple-50 border border-purple-200 rounded-xl flex items-center justify-between">
+          <div>
+            <span class="font-bold text-purple-950 block">Cashier Counter Quick Scanner</span>
+            <span class="text-purple-700 text-[11px]">Instant barcode lookup, camera scan, or barcode gun input.</span>
+          </div>
+          <span class="px-2 py-0.5 bg-purple-200 text-purple-900 rounded font-mono font-bold text-[10px]">UP Drug Code Ready</span>
+        </div>
+
+        <!-- Camera Scanner Viewport -->
+        <div class="relative bg-slate-900 rounded-2xl overflow-hidden aspect-video max-h-56 flex items-center justify-center border-2 border-dashed border-slate-300">
+          <video id="barcode-video" class="w-full h-full object-cover hidden" playsinline></video>
+          <div id="scanner-placeholder" class="text-center p-6 text-slate-400">
+            <i class="fa fa-camera text-4xl mb-2 text-slate-500"></i>
+            <p class="text-xs font-semibold text-slate-300">Live Camera Barcode Scanner</p>
+            <button id="btn-start-camera" class="mt-2.5 px-4 py-1.5 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-lg text-xs font-bold transition">
+              <i class="fa fa-video-camera"></i> Start Camera Stream
+            </button>
+          </div>
+          <div id="laser-scan-line" class="laser-beam hidden"></div>
+        </div>
+
+        <!-- Barcode Gun / Manual Input -->
+        <div class="space-y-1.5">
+          <label class="block font-bold text-slate-700">Scan Barcode Gun or Type Batch Number:</label>
+          <div class="flex gap-2">
+            <input 
+              type="text" 
+              id="barcode-input" 
+              placeholder="e.g. BAT-TEL-5102, BAT-MON-4412, or scan strip barcode..." 
+              class="flex-1 px-3 py-2.5 border border-slate-300 rounded-xl font-mono font-bold text-sm focus:ring-2 focus:ring-purple-600 focus:outline-none uppercase"
+              autofocus
+            />
+            <button id="btn-lookup-barcode" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-sm transition">
+              <i class="fa fa-search"></i> Check Stock
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-400">Works automatically with standard USB / Bluetooth handheld barcode scanner guns.</p>
+        </div>
+
+        <!-- Scan Result Area -->
+        <div id="barcode-result-card" class="hidden p-4 rounded-xl border transition"></div>
+
+        <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+          <button type="button" onclick="window.acsApp.stopCameraScanner(); window.acsApp.closeModal();" class="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50">Done</button>
+        </div>
+      </div>
+    `;
+
+    modal.classList.remove("hidden");
+
+    const input = document.getElementById("barcode-input");
+    const btnLookup = document.getElementById("btn-lookup-barcode");
+    const btnStartCamera = document.getElementById("btn-start-camera");
+
+    if (btnLookup && input) {
+      btnLookup.addEventListener("click", () => {
+        this.lookupBarcodeInStock(input.value.trim());
+      });
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          this.lookupBarcodeInStock(input.value.trim());
+        }
+      });
+    }
+
+    if (btnStartCamera) {
+      btnStartCamera.addEventListener("click", () => {
+        this.startCameraScanner();
+      });
+    }
+  }
+
+  startCameraScanner() {
+    const video = document.getElementById("barcode-video");
+    const placeholder = document.getElementById("scanner-placeholder");
+    const laser = document.getElementById("laser-scan-line");
+    if (!video) return;
+
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then((stream) => {
+          this.scannerStream = stream;
+          video.srcObject = stream;
+          video.classList.remove("hidden");
+          video.play();
+          if (placeholder) placeholder.classList.add("hidden");
+          if (laser) laser.classList.remove("hidden");
+          this.showToast("Camera scanner active. Point camera at medicine box/strip barcode.", "info");
+
+          // Native BarcodeDetector support
+          if (typeof BarcodeDetector !== "undefined") {
+            const detector = new BarcodeDetector({ formats: ["code_128", "ean_13", "ean_8", "qr_code", "upc_a"] });
+            const scanInterval = setInterval(async () => {
+              if (!this.scannerStream) {
+                clearInterval(scanInterval);
+                return;
+              }
+              try {
+                const barcodes = await detector.detect(video);
+                if (barcodes && barcodes.length > 0) {
+                  const rawVal = barcodes[0].rawValue;
+                  clearInterval(scanInterval);
+                  const input = document.getElementById("barcode-input");
+                  if (input) input.value = rawVal;
+                  this.lookupBarcodeInStock(rawVal);
+                }
+              } catch (err) {}
+            }, 500);
+          }
+        })
+        .catch((err) => {
+          this.showToast("Camera access unavailable: " + err.message, "warning");
+        });
+    } else {
+      this.showToast("Camera API not supported in this browser environment.", "warning");
+    }
+  }
+
+  stopCameraScanner() {
+    if (this.scannerStream) {
+      this.scannerStream.getTracks().forEach(track => track.stop());
+      this.scannerStream = null;
+    }
+  }
+
+  lookupBarcodeInStock(code) {
+    if (!code) {
+      this.showToast("Please enter or scan a barcode/batch number", "warning");
+      return;
+    }
+
+    const store = this.getCurrentStore();
+    const cleanCode = code.toLowerCase().trim();
+    const match = store.stocks.find(m => 
+      m.batchNo.toLowerCase() === cleanCode || 
+      m.id.toLowerCase() === cleanCode ||
+      m.name.toLowerCase().includes(cleanCode)
+    );
+
+    const resultCard = document.getElementById("barcode-result-card");
+    if (!resultCard) return;
+
+    resultCard.classList.remove("hidden");
+    if (match) {
+      resultCard.className = "p-4 rounded-xl border border-emerald-300 bg-emerald-50/50 space-y-3";
+      resultCard.innerHTML = `
+        <div class="flex items-start justify-between">
+          <div>
+            <span class="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 font-bold text-[10px]">MATCH FOUND IN STOCK</span>
+            <h4 class="font-black text-slate-900 text-base mt-1">${match.name}</h4>
+            <span class="text-xs text-slate-600 font-mono">${match.saltName} • ${match.manufacturer}</span>
+          </div>
+          <div class="text-right">
+            <span class="text-xs font-bold text-slate-500 block">Current Stock</span>
+            <span class="text-xl font-black text-indigo-700">${match.quantity} ${match.unit}</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 bg-white p-2.5 rounded-lg border border-emerald-200 text-xs font-mono">
+          <div>
+            <span class="text-slate-400 block text-[10px]">Batch No</span>
+            <strong class="text-slate-800">${match.batchNo}</strong>
+          </div>
+          <div>
+            <span class="text-slate-400 block text-[10px]">Wholesale CP</span>
+            <strong class="text-slate-800">₹${match.purchaseRate.toFixed(2)}</strong>
+          </div>
+          <div>
+            <span class="text-slate-400 block text-[10px]">Selling MRP</span>
+            <strong class="text-emerald-800">₹${match.mrp.toFixed(2)}</strong>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-1">
+          <span class="text-slate-500 text-[11px]">📍 Location: <strong>${match.rackLocation || 'General Shelf'}</strong></span>
+          <div class="flex items-center gap-1.5">
+            <button onclick="window.acsApp.adjustStockQty('${match.id}', 1); window.acsApp.lookupBarcodeInStock('${code}');" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow-xs">
+              +1 Unit
+            </button>
+            <button onclick="window.acsApp.adjustStockQty('${match.id}', 10); window.acsApp.lookupBarcodeInStock('${code}');" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs shadow-xs">
+              +10 Units
+            </button>
+            <button onclick="window.acsApp.closeModal(); window.acsApp.openEditMedicineModal('${match.id}');" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg font-bold text-xs">
+              Edit Details
+            </button>
+          </div>
+        </div>
+      `;
+      this.showToast(`Found "${match.name}" (${match.quantity} units in stock)`, "success");
+    } else {
+      resultCard.className = "p-4 rounded-xl border border-amber-300 bg-amber-50/50 space-y-2";
+      resultCard.innerHTML = `
+        <div class="flex items-center gap-2 text-amber-900 font-bold">
+          <i class="fa fa-exclamation-triangle"></i> No item found with batch/code: "${code}"
+        </div>
+        <p class="text-[11px] text-amber-800">This batch does not exist in your pharmacy database yet.</p>
+        <div class="pt-2">
+          <button onclick="window.acsApp.closeModal(); window.acsApp.openAddMedicineModalWithBatch('${code}');" class="px-4 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-xl font-bold text-xs shadow-sm inline-flex items-center gap-1.5">
+            <i class="fa fa-plus"></i> Add New Medicine with this Batch
+          </button>
+        </div>
+      `;
+    }
+  }
+
+  openAddMedicineModalWithBatch(batchNo) {
+    this.openAddMedicineModal();
+    setTimeout(() => {
+      const batchInput = document.getElementById("med-batch");
+      if (batchInput) batchInput.value = batchNo.toUpperCase();
+    }, 100);
+  }
+
+  // ==========================================
+  // VOICE SPEECH SEARCH (Web Speech API)
+  // ==========================================
+  toggleVoiceSearch() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      this.showToast("Voice speech recognition is not supported in this browser. Please use Chrome or Edge.", "warning");
+      return;
+    }
+
+    if (this.isVoiceRecording && this.speechRecognition) {
+      this.speechRecognition.stop();
+      this.isVoiceRecording = false;
+      this.renderCurrentView();
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-IN";
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        this.isVoiceRecording = true;
+        this.showToast("🎙️ Listening... Speak medicine brand or generic salt (e.g., 'Paracetamol', 'Augmentin')", "info");
+        const btn = document.getElementById("btn-voice-search");
+        if (btn) btn.classList.add("mic-recording");
+      };
+
+      recognition.onresult = (event) => {
+        const speechResult = event.results[0][0].transcript.trim();
+        this.stockSearchQuery = speechResult;
+        this.isVoiceRecording = false;
+        this.showToast(`🎤 Voice Recognized: "${speechResult}"`, "success");
+        this.renderCurrentView();
+      };
+
+      recognition.onerror = (event) => {
+        this.isVoiceRecording = false;
+        this.showToast(`Voice search: ${event.error === 'not-allowed' ? 'Microphone permission denied' : 'Could not hear audio. Please try again.'}`, "warning");
+        this.renderCurrentView();
+      };
+
+      recognition.onend = () => {
+        this.isVoiceRecording = false;
+        const btn = document.getElementById("btn-voice-search");
+        if (btn) btn.classList.remove("mic-recording");
+      };
+
+      this.speechRecognition = recognition;
+      recognition.start();
+    } catch (err) {
+      this.isVoiceRecording = false;
+      this.showToast("Could not start microphone: " + err.message, "danger");
+    }
+  }
+
+  // ==========================================
+  // PHARMACY RACKS & BAYS CUSTOMIZER
+  // ==========================================
+  openRackManagerModal() {
+    const store = this.getCurrentStore();
+    if (!store) return;
+
+    const modal = document.getElementById("modal-generic");
+    const title = document.getElementById("modal-generic-title");
+    const body = document.getElementById("modal-generic-body");
+    if (!modal || !title || !body) return;
+
+    const rackCounts = {};
+    store.stocks.forEach(m => {
+      const r = (m.rackLocation || "General Shelf").trim();
+      rackCounts[r] = (rackCounts[r] || 0) + 1;
+    });
+
+    title.innerHTML = `<i class="fa fa-th-large text-blue-600"></i> Manage Pharmacy Racks & Storage Bays: ${store.name}`;
+    body.innerHTML = `
+      <div class="space-y-4 text-xs">
+        <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between">
+          <div>
+            <span class="font-bold text-blue-950 block">Pharmacy Shelves & Bay Layout</span>
+            <span class="text-blue-700 text-[11px]">Organize medicine rack locations for quick counter retrieval.</span>
+          </div>
+          <span class="px-2 py-0.5 bg-blue-200 text-blue-900 rounded font-mono font-bold text-[10px]">${Object.keys(rackCounts).length} Distinct Racks</span>
+        </div>
+
+        <!-- Existing Racks Grid -->
+        <div class="space-y-2">
+          <label class="block font-bold text-slate-700">Configured Racks & SKUs Stored:</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            ${Object.entries(rackCounts).map(([rackName, count]) => `
+              <div class="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between shadow-2xs">
+                <div>
+                  <strong class="text-slate-800 text-sm block font-mono">📍 ${rackName}</strong>
+                  <span class="text-slate-500 text-[11px]">${count} Medicine Batches Assigned</span>
+                </div>
+                <button onclick="window.acsApp.filterBySpecificRack('${rackName}')" class="px-2.5 py-1 bg-slate-100 hover:bg-[#135c7e] hover:text-white rounded-lg font-bold text-xs transition">
+                  View SKUs
+                </button>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+
+        <!-- Bulk Rename Rack Tool -->
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+          <label class="block font-bold text-slate-700">Rename Existing Rack / Reorganize Storage:</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label class="text-[10px] text-slate-400 block mb-0.5">Select Current Rack:</label>
+              <select id="rack-rename-from" class="w-full px-2 py-1.5 border rounded-lg bg-white">
+                ${Object.keys(rackCounts).map(r => `<option value="${r}">${r} (${rackCounts[r]} SKUs)</option>`).join("")}
+              </select>
+            </div>
+            <div>
+              <label class="text-[10px] text-slate-400 block mb-0.5">New Rack Name:</label>
+              <input type="text" id="rack-rename-to" placeholder="e.g. Rack A-Front, Cold Fridge" class="w-full px-2 py-1.5 border rounded-lg bg-white font-bold" />
+            </div>
+          </div>
+          <button type="button" id="btn-submit-rack-rename" class="mt-1 px-4 py-1.5 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-lg font-bold text-xs shadow-xs">
+            Apply Rename Across All Medicines
+          </button>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+          <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50">Done</button>
+        </div>
+      </div>
+    `;
+
+    modal.classList.remove("hidden");
+
+    const btnRename = document.getElementById("btn-submit-rack-rename");
+    if (btnRename) {
+      btnRename.addEventListener("click", () => {
+        const fromRack = document.getElementById("rack-rename-from").value;
+        const toRack = document.getElementById("rack-rename-to").value.trim();
+        if (!toRack) {
+          this.showToast("Please enter a new rack name", "warning");
+          return;
+        }
+        let updated = 0;
+        store.stocks.forEach(m => {
+          if ((m.rackLocation || "General Shelf").trim() === fromRack) {
+            m.rackLocation = toRack;
+            updated++;
+          }
+        });
+        this.saveStores();
+        this.closeModal();
+        this.renderCurrentView();
+        this.showToast(`Renamed rack "${fromRack}" to "${toRack}" (${updated} medicines updated)`, "success");
+      });
+    }
+  }
+
+  filterBySpecificRack(rackName) {
+    this.stockRackFilter = rackName;
+    this.closeModal();
+    this.renderCurrentView();
+    this.showToast(`Filtered inventory by rack: "${rackName}"`, "info");
+  }
+
+  // ==========================================
+  // CUSTOMIZE INVENTORY TABLE COLUMNS
+  // ==========================================
+  openColumnCustomizerModal() {
+    const modal = document.getElementById("modal-generic");
+    const title = document.getElementById("modal-generic-title");
+    const body = document.getElementById("modal-generic-body");
+    if (!modal || !title || !body) return;
+
+    const prefs = this.stockColumnPrefs || { salt: true, mfg: true, batch: true, rack: true, exp: true, sched: true, buyCost: true, sellMrp: true };
+
+    const colLabels = {
+      salt: "Generic Salt / Chemical Composition",
+      mfg: "Manufacturer / Pharma Company",
+      batch: "Batch Number",
+      rack: "Rack & Storage Shelf Location",
+      exp: "Expiry Date & Horizon Badges",
+      sched: "Statutory Schedule Category (H, H1, X, OTC)",
+      buyCost: "Buying Cost (CP ₹) Wholesale Rate",
+      sellMrp: "Selling Price (MRP ₹) Retail Rate"
+    };
+
+    title.innerHTML = `<i class="fa fa-columns text-[#135c7e]"></i> Customize Inventory Columns`;
+    body.innerHTML = `
+      <div class="space-y-4 text-xs">
+        <p class="text-slate-600">
+          Choose which columns you want visible in the inventory register table for faster counter operation.
+        </p>
+
+        <div class="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
+          ${Object.entries(colLabels).map(([colKey, label]) => `
+            <label class="flex items-center justify-between p-2 hover:bg-white rounded-lg cursor-pointer transition border border-transparent hover:border-slate-200">
+              <span class="font-bold text-slate-800">${label}</span>
+              <input 
+                type="checkbox" 
+                id="col-toggle-${colKey}" 
+                ${prefs[colKey] ? "checked" : ""} 
+                class="w-4 h-4 text-[#135c7e] rounded"
+              />
+            </label>
+          `).join("")}
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+          <button type="button" id="btn-reset-cols" class="text-slate-500 hover:text-slate-800 font-bold text-xs underline">Reset Defaults</button>
+          <div class="flex gap-2">
+            <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50">Cancel</button>
+            <button type="button" id="btn-save-cols" class="px-5 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-xl font-bold shadow-sm">Save Preferences</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    modal.classList.remove("hidden");
+
+    document.getElementById("btn-reset-cols").onclick = () => {
+      Object.keys(colLabels).forEach(k => {
+        const cb = document.getElementById(`col-toggle-${k}`);
+        if (cb) cb.checked = true;
+      });
+    };
+
+    document.getElementById("btn-save-cols").onclick = () => {
+      const updatedPrefs = {};
+      Object.keys(colLabels).forEach(k => {
+        const cb = document.getElementById(`col-toggle-${k}`);
+        updatedPrefs[k] = cb ? cb.checked : true;
+      });
+
+      this.stockColumnPrefs = updatedPrefs;
+      try {
+        localStorage.setItem("ACS_STOCK_COL_PREFS", JSON.stringify(updatedPrefs));
+      } catch (e) {}
+
+      this.closeModal();
+      this.renderCurrentView();
+      this.showToast("Inventory table columns customized successfully!", "success");
+    };
   }
 
   // ==========================================

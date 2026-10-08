@@ -156,6 +156,77 @@ try {
   if (!currentStore.purchaseExpenses || currentStore.purchaseExpenses.length === 0) throw new Error('Purchase expenses empty');
   if (!currentStore.revenueData.transactions || currentStore.revenueData.transactions.length === 0) throw new Error('Transactions empty');
 
+  // Test Smart Excel / CSV Importer & Scanner Suite
+  console.log('--- Testing Smart Excel/CSV Importer & Quick Scanner Suite ---');
+  
+  // 1. Test Delimited Text Parser
+  const sampleCsvText = `Medicine Name,Salt,Batch No,Qty,Cost Price,MRP\n"Azithral 500mg, IP",Azithromycin,BAT-991,50,72.50,119.50\n"Pan-D",Pantoprazole,BAT-661,100,115.00,199.00`;
+  const parsedTokens = app.parseDelimitedText(sampleCsvText);
+  if (parsedTokens.length !== 3) throw new Error('parseDelimitedText failed: expected 3 rows, got ' + parsedTokens.length);
+  if (parsedTokens[1][0] !== "Azithral 500mg, IP") throw new Error('parseDelimitedText quote preservation failed');
+  console.log('parseDelimitedText successfully parsed CSV text with quoted commas!');
+
+  // 2. Test Column Auto-Detection Synonyms
+  const distributorHeaders = ["Item Description", "Composition", "Mfg Co", "Batch #", "Exp Date", "Closing Qty", "Pack", "Net PTR", "Max Retail Price", "Schedule Cat", "Shelf Location"];
+  const detectedCols = app.detectColumnMapping(distributorHeaders);
+  if (detectedCols.name !== 0) throw new Error('Failed to auto-detect name column');
+  if (detectedCols.saltName !== 1) throw new Error('Failed to auto-detect salt column');
+  if (detectedCols.manufacturer !== 2) throw new Error('Failed to auto-detect mfg column');
+  if (detectedCols.batchNo !== 3) throw new Error('Failed to auto-detect batch column');
+  if (detectedCols.expiryDate !== 4) throw new Error('Failed to auto-detect expiry column');
+  if (detectedCols.quantity !== 5) throw new Error('Failed to auto-detect quantity column');
+  if (detectedCols.purchaseRate !== 7) throw new Error('Failed to auto-detect purchaseRate column');
+  if (detectedCols.mrp !== 8) throw new Error('Failed to auto-detect mrp column');
+  if (detectedCols.schedule !== 9) throw new Error('Failed to auto-detect schedule column');
+  if (detectedCols.rackLocation !== 10) throw new Error('Failed to auto-detect rack column');
+  console.log('detectColumnMapping successfully recognized 100% of distributor headers!');
+
+  // 3. Test Expiry Date Normalizer
+  if (app.normalizeExpiryDate("2028-11-20") !== "2028-11-20") throw new Error('Date normalizer failed on YYYY-MM-DD');
+  if (app.normalizeExpiryDate("20/11/2028") !== "2028-11-20") throw new Error('Date normalizer failed on DD/MM/YYYY');
+  if (app.normalizeExpiryDate("11/28") !== "2028-11-28") throw new Error('Date normalizer failed on MM/YY');
+  console.log('normalizeExpiryDate successfully normalized various date formats!');
+
+  // 4. Test Smart Merge vs Append Import
+  const existingMed = currentStore.stocks[0];
+  const preImportQty = existingMed.quantity;
+  const preStockLength = currentStore.stocks.length;
+
+  const importRows = [
+    [existingMed.name, existingMed.saltName, existingMed.manufacturer, existingMed.batchNo, "2028-12-31", "30", "Strips", "100", "150", "Schedule H", "Rack A-01"],
+    ["Novamox 500 Capsule", "Amoxicillin 500mg", "Cipla", "BAT-NOV-7711", "2028-10-31", "40", "Strips", "65.00", "98.00", "Schedule H", "Rack B-03"]
+  ];
+  const colMap = {
+    name: 0,
+    saltName: 1,
+    manufacturer: 2,
+    batchNo: 3,
+    expiryDate: 4,
+    quantity: 5,
+    unit: 6,
+    purchaseRate: 7,
+    mrp: 8,
+    schedule: 9,
+    rackLocation: 10
+  };
+
+  app.executeSmartStockImport(importRows, colMap, "MERGE");
+  if (existingMed.quantity !== preImportQty + 30) throw new Error('Smart merge failed to increment matching batch stock');
+  if (currentStore.stocks.length !== preStockLength + 1) throw new Error('Smart merge failed to append new SKU without duplicating existing');
+  console.log('executeSmartStockImport ("MERGE" mode) successfully incremented existing stock & added new SKU!');
+
+  // 5. Test Barcode Lookup
+  app.lookupBarcodeInStock(existingMed.batchNo);
+  console.log(`lookupBarcodeInStock("${existingMed.batchNo}") ran successfully!`);
+
+  // 6. Test Racks & Bays Tools
+  app.openRackManagerModal();
+  console.log('openRackManagerModal() rendered successfully!');
+
+  // 7. Test Column Customizer Modal
+  app.openColumnCustomizerModal();
+  console.log('openColumnCustomizerModal() rendered successfully!');
+
   console.log('ALL CONNECTION TESTS VERIFIED AND PASSED 100%!');
   console.log('ALL TESTS PASSED COMPLETELY WITHOUT ANY ERRORS!');
 } catch (err) {

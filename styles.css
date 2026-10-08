@@ -334,3 +334,99 @@ body {
     break-inside: avoid;
   }
 }
+
+/* ======================================================= */
+/* INVENTORY WORKFLOW: TACTILE COUNTER & QUICK SCAN STYLES */
+/* ======================================================= */
+
+/* Tactile Cashier Counter & Fast-Stock Steppers */
+.stepper-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+.stepper-btn:active {
+  transform: scale(0.90);
+}
+
+.price-pill-input {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+.price-pill-input:focus-within {
+  box-shadow: 0 0 0 2px rgba(19, 92, 126, 0.2);
+}
+
+/* Mic Voice Search Pulse Animation */
+@keyframes voicePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+.mic-recording {
+  animation: voicePulse 1.4s infinite cubic-bezier(0.66, 0, 0, 1) !important;
+  background-color: #ef4444 !important;
+  color: #ffffff !important;
+  border-color: #dc2626 !important;
+}
+
+/* Barcode Laser Scanner Animation */
+@keyframes laserScan {
+  0% {
+    top: 8%;
+    opacity: 0.8;
+  }
+  50% {
+    top: 88%;
+    opacity: 1;
+  }
+  100% {
+    top: 8%;
+    opacity: 0.8;
+  }
+}
+.laser-beam {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  height: 2.5px;
+  background: #10b981;
+  box-shadow: 0 0 10px #10b981, 0 0 20px #34d399;
+  animation: laserScan 2s infinite ease-in-out;
+}
+
+/* Sticky Inventory Summary Ribbon */
+.sticky-summary-ribbon {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  backdrop-filter: blur(12px);
+  background-color: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+}
+
+/* Responsive Table vs Touch Cards */
+@media (max-width: 768px) {
+  .stock-desktop-table {
+    display: none !important;
+  }
+  .stock-mobile-cards {
+    display: block !important;
+  }
+}
+@media (min-width: 769px) {
+  .stock-desktop-table {
+    display: block !important;
+  }
+  .stock-mobile-cards {
+    display: none !important;
+  }
+}
