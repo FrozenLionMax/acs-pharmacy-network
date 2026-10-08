@@ -226,7 +226,7 @@ class ACSApp {
       this.showToast(`Welcome, Akhileshwar Tripathi! Logged into Deoria Drug House.`, "success");
       return true;
     } else {
-      this.showToast("Invalid credentials! Authorized login: akhil@acs.com / akhil123", "danger");
+      this.showToast("Invalid login credentials. Please check your user ID and password.", "danger");
       return false;
     }
   }
@@ -265,29 +265,19 @@ class ACSApp {
     const body = document.getElementById("modal-generic-body");
     if (!modal || !title || !body) return;
 
-    title.innerHTML = `<i class="fa fa-lock text-amber-500"></i> Pharmacist &amp; Store Owner Login`;
+    title.innerHTML = `<i class="fa fa-lock text-amber-500"></i> Pharmacist &amp; Store Portal Login`;
     body.innerHTML = `
       <div class="space-y-4 text-xs">
-        <div class="p-3.5 bg-teal-50 border border-teal-200 rounded-xl text-teal-900 flex items-start gap-3">
-          <i class="fa fa-shield text-xl text-[#135c7e] flex-shrink-0 mt-0.5"></i>
+        <form onsubmit="event.preventDefault(); const em = document.getElementById('modal-login-email').value; const pw = document.getElementById('modal-login-pass').value; if(window.acsApp.authenticate(em, pw)){ window.acsApp.closeModal(); } else { const err = document.getElementById('modal-login-error'); if(err){ err.innerText = 'Invalid login credentials. Please verify your user ID and password.'; err.classList.remove('hidden'); } }" class="space-y-3.5">
           <div>
-            <strong class="font-bold text-sm text-[#135c7e] block">Deoria Drug House Management Portal</strong>
-            <span class="text-slate-600 text-[11px] block mt-0.5">
-              Subhash Chowk, Station Road, Deoria • Owner: <strong>Akhileshwar Tripathi</strong>
-            </span>
-          </div>
-        </div>
-
-        <form onsubmit="event.preventDefault(); const em = document.getElementById('modal-login-email').value; const pw = document.getElementById('modal-login-pass').value; if(window.acsApp.authenticate(em, pw)){ window.acsApp.closeModal(); } else { const err = document.getElementById('modal-login-error'); if(err){ err.innerText = 'Invalid credentials. Please enter akhil@acs.com / akhil123'; err.classList.remove('hidden'); } }" class="space-y-3">
-          <div>
-            <label class="block font-bold text-slate-700 mb-1">Pharmacist Login ID / Email:</label>
+            <label class="block font-bold text-slate-700 mb-1">Registered Email / User ID:</label>
             <div class="relative">
               <i class="fa fa-envelope text-slate-400 absolute left-3 top-2.5"></i>
               <input 
                 type="email" 
                 id="modal-login-email" 
-                value="akhil@acs.com" 
-                placeholder="akhil@acs.com" 
+                value="" 
+                placeholder="Enter registered email / user ID" 
                 class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e] font-mono text-xs font-semibold" 
               />
             </div>
@@ -300,16 +290,11 @@ class ACSApp {
               <input 
                 type="password" 
                 id="modal-login-pass" 
-                value="akhil123" 
+                value="" 
                 placeholder="Enter password" 
                 class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e] text-xs font-semibold" 
               />
             </div>
-          </div>
-
-          <div class="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-[11px] flex items-center justify-between">
-            <span class="flex items-center gap-1.5"><i class="fa fa-info-circle text-amber-600"></i> Authorized Credentials:</span>
-            <span class="font-mono font-bold text-slate-900">akhil@acs.com / akhil123</span>
           </div>
 
           <div id="modal-login-error" class="text-rose-600 font-semibold text-xs hidden"></div>
@@ -323,7 +308,7 @@ class ACSApp {
               class="px-5 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white font-black rounded-xl shadow transition flex items-center gap-2"
             >
               <i class="fa fa-sign-in"></i>
-              <span>Login to Deoria Drug House</span>
+              <span>Login to Portal</span>
             </button>
           </div>
         </form>
@@ -1318,24 +1303,16 @@ class ACSApp {
       if (this.landingLoginRole === "pharmacy_owner") {
         formContainer.innerHTML = `
           <div class="space-y-3.5 text-xs">
-            <div class="p-2.5 bg-teal-50 border border-teal-200 rounded-xl text-teal-900 flex items-center gap-2.5">
-              <i class="fa fa-hospital-o text-lg text-[#135c7e] flex-shrink-0"></i>
-              <div>
-                <strong class="font-bold text-xs text-[#135c7e] block">Deoria Drug House</strong>
-                <span class="text-slate-600 text-[11px] block">Owner: <strong>Akhileshwar Tripathi</strong> • Subhash Chowk</span>
-              </div>
-            </div>
-
             <div>
-              <label class="block font-bold text-slate-700 mb-1">Pharmacist Login ID / Email:</label>
+              <label class="block font-bold text-slate-700 mb-1">Registered Email / User ID:</label>
               <div class="relative">
                 <i class="fa fa-envelope text-slate-400 absolute left-3 top-2.5"></i>
                 <input 
                   type="email" 
                   id="landing-owner-email" 
-                  value="akhil@acs.com" 
-                  placeholder="akhil@acs.com" 
-                  class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#135c7e] font-mono text-xs font-semibold" 
+                  value="" 
+                  placeholder="Enter registered email / user ID" 
+                  class="w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#135c7e] font-mono text-xs font-semibold" 
                 />
               </div>
             </div>
@@ -1347,16 +1324,11 @@ class ACSApp {
                 <input 
                   type="password" 
                   id="landing-owner-password" 
-                  value="akhil123" 
+                  value="" 
                   placeholder="Enter password" 
-                  class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#135c7e] text-xs font-semibold" 
+                  class="w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#135c7e] text-xs font-semibold" 
                 />
               </div>
-            </div>
-
-            <div class="p-2 bg-amber-50 rounded-lg border border-amber-200 text-amber-900 text-[11px] flex items-center justify-between">
-              <span class="flex items-center gap-1.5"><i class="fa fa-info-circle text-amber-600"></i> Authorized Credentials:</span>
-              <span class="font-mono font-bold text-slate-900">akhil@acs.com / akhil123</span>
             </div>
 
             <div id="landing-owner-error" class="text-rose-600 font-semibold text-xs hidden"></div>
@@ -1364,7 +1336,7 @@ class ACSApp {
             <div class="pt-2 flex flex-col gap-2">
               <button id="btn-submit-owner-login" class="w-full py-2.5 bg-[#135c7e] hover:bg-[#0f4b67] text-white font-bold rounded-xl shadow transition flex items-center justify-center gap-2">
                 <i class="fa fa-sign-in"></i>
-                <span>Login to Deoria Drug House</span>
+                <span>Login to Pharmacy Portal</span>
               </button>
             </div>
           </div>
@@ -1383,7 +1355,7 @@ class ACSApp {
               if (errEl) errEl.classList.add("hidden");
             } else {
               if (errEl) {
-                errEl.innerText = "Invalid credentials. Authorized login: akhil@acs.com / akhil123";
+                errEl.innerText = "Invalid login credentials. Please verify your user ID and password.";
                 errEl.classList.remove("hidden");
               }
             }
