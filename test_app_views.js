@@ -227,7 +227,41 @@ try {
   app.openColumnCustomizerModal();
   console.log('openColumnCustomizerModal() rendered successfully!');
 
+  // 8. Test Multi-Photo Gallery Suite
+  const gallery = app.ensureStoreGallery(currentStore);
+  if (!Array.isArray(gallery) || gallery.length < 4) throw new Error('ensureStoreGallery failed to produce multi-photo gallery');
+  console.log(`ensureStoreGallery() successfully initialized ${gallery.length} photos!`);
+
+  const initialGalleryCount = gallery.length;
+  app.addGalleryPhoto(currentStore.id, 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae', 'Surgical Racks', 'Braces & Bandages');
+  if (currentStore.galleryPhotos.length !== initialGalleryCount + 1) throw new Error('addGalleryPhoto failed to add photo');
+  const addedPhoto = currentStore.galleryPhotos[currentStore.galleryPhotos.length - 1];
+  console.log(`addGalleryPhoto() added photo ID: ${addedPhoto.id}`);
+
+  app.setPrimaryStorePhoto(currentStore.id, addedPhoto.id);
+  if (currentStore.photoUrl !== addedPhoto.url) throw new Error('setPrimaryStorePhoto failed to set primary cover photo');
+  console.log('setPrimaryStorePhoto() updated store.photoUrl successfully!');
+
+  app.openManageStorePhotosModal(currentStore.id);
+  console.log('openManageStorePhotosModal() rendered successfully!');
+
+  // 9. Test Photo & Profile Studio Modals
+  app.openPhotoStudioModal('store-primary', currentStore.id, currentStore.photoUrl);
+  console.log('openPhotoStudioModal(store-primary) rendered successfully!');
+
+  app.openPhotoStudioModal('staff-avatar', currentStore.staff[0].id, currentStore.staff[0].avatarUrl || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d');
+  console.log('openPhotoStudioModal(staff-avatar) rendered successfully!');
+
+  app.openStaffProfilePhotoModal(currentStore.staff[0].id);
+  console.log('openStaffProfilePhotoModal() opened successfully!');
+
+  // Clean up added test photo
+  app.deleteGalleryPhoto(currentStore.id, addedPhoto.id);
+  if (currentStore.galleryPhotos.some(p => p.id === addedPhoto.id)) throw new Error('deleteGalleryPhoto failed to delete photo');
+  console.log('deleteGalleryPhoto() removed photo cleanly!');
+
   console.log('ALL CONNECTION TESTS VERIFIED AND PASSED 100%!');
+  console.log('ALL PHOTO & PROFILE STUDIO TESTS PASSED 100%!');
   console.log('ALL TESTS PASSED COMPLETELY WITHOUT ANY ERRORS!');
 } catch (err) {
   console.error('ERROR during testing:', err);

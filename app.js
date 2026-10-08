@@ -1379,6 +1379,7 @@ class ACSApp {
     const chiefPharmacist = store.staff.find((st) => st.isOnDuty && st.uppcRegNo && st.uppcRegNo.startsWith("UPPC")) ||
       store.staff.find((st) => st.role.includes("Chief") || (st.uppcRegNo && st.uppcRegNo.startsWith("UPPC"))) ||
       store.staff[0];
+    const galleryPhotos = this.ensureStoreGallery(store);
 
     // Filter stocks for public storefront search (Page 1)
     const filteredPublicStock = store.stocks.filter((m) => {
@@ -1513,7 +1514,7 @@ class ACSApp {
             <div>
               <!-- Store Hero Banner Image -->
               <div class="relative h-72 sm:h-96 bg-slate-900 overflow-hidden">
-                <img src="${store.photoUrl}" alt="${store.name}" class="w-full h-full object-cover opacity-90 transition duration-500 hover:scale-105" onerror="this.src='https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80'" />
+                <img id="storefront-hero-img" src="${store.photoUrl}" alt="${store.name}" class="w-full h-full object-cover opacity-90 transition duration-500 hover:scale-105" onerror="this.src='https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80'" />
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/40 to-transparent"></div>
                 
                 <div class="absolute bottom-6 left-6 right-6 sm:bottom-8 sm:left-12 sm:right-12 text-white flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -1541,6 +1542,37 @@ class ACSApp {
                 </div>
               </div>
 
+              <!-- Multi-Photo Gallery Showcase Strip -->
+              <div class="bg-slate-900 border-t border-white/10 px-6 sm:px-12 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div class="flex items-center gap-2 overflow-x-auto py-1">
+                  <span class="text-amber-400 font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 flex-shrink-0">
+                    <i class="fa fa-camera"></i> Store Gallery (${galleryPhotos.length}):
+                  </span>
+                  <div class="flex items-center gap-2 overflow-x-auto py-1">
+                    ${galleryPhotos.map((p, idx) => `
+                      <button 
+                        type="button"
+                        onclick="window.acsApp.switchStoreHeroPhoto('${store.id}', '${p.url}')" 
+                        class="group relative w-16 h-11 rounded-lg overflow-hidden border-2 ${p.url === store.photoUrl ? 'border-amber-400 ring-2 ring-amber-400/50' : 'border-white/20 hover:border-white'} flex-shrink-0 transition cursor-pointer"
+                        title="${p.title || 'Store Photo ' + (idx + 1)}"
+                      >
+                        <img src="${p.url}" alt="${p.title}" class="w-full h-full object-cover group-hover:scale-110 transition duration-300" />
+                        <span class="absolute bottom-0 inset-x-0 bg-black/75 text-[8px] text-white text-center truncate px-0.5">${p.tag || p.title || 'Photo'}</span>
+                      </button>
+                    `).join("")}
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <button type="button" onclick="window.acsApp.openManageStorePhotosModal('${store.id}')" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold text-xs transition flex items-center gap-1.5">
+                    <i class="fa fa-plus-circle text-amber-400"></i> Manage Photos (${galleryPhotos.length})
+                  </button>
+                  <button type="button" onclick="window.acsApp.openPhotoStudioModal('store-primary', '${store.id}', '${store.photoUrl}')" class="px-3 py-1.5 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-lg font-bold text-xs transition flex items-center gap-1.5">
+                    <i class="fa fa-crop text-amber-300"></i> Crop / Look
+                  </button>
+                </div>
+              </div>
+
               <!-- Main Body Grid: Pharmacist on Duty & Live Medicine Search -->
               <div class="max-w-7xl mx-auto p-6 sm:p-12 space-y-8">
                 <!-- Grid: 3 Highlight Cards -->
@@ -1557,8 +1589,24 @@ class ACSApp {
                         </span>
                       </div>
 
-                      <h3 class="text-lg font-black text-slate-900">${chiefPharmacist ? chiefPharmacist.name : 'Qualified Pharmacist'}</h3>
-                      <span class="text-xs text-teal-800 font-semibold block">${chiefPharmacist ? chiefPharmacist.qualification : 'B.Pharm (UP)'}</span>
+                      <div class="flex items-center gap-3.5 mb-3">
+                        <div class="relative w-14 h-14 rounded-full overflow-hidden border-2 border-teal-500 shadow-md flex-shrink-0 bg-teal-100 flex items-center justify-center">
+                          ${chiefPharmacist && chiefPharmacist.avatarUrl ? `
+                            <img src="${chiefPharmacist.avatarUrl}" alt="${chiefPharmacist.name}" class="w-full h-full object-cover" />
+                          ` : `
+                            <i class="fa fa-user-md text-2xl text-[#135c7e]"></i>
+                          `}
+                        </div>
+                        <div>
+                          <h3 class="text-lg font-black text-slate-900">${chiefPharmacist ? chiefPharmacist.name : 'Qualified Pharmacist'}</h3>
+                          <span class="text-xs text-teal-800 font-semibold block">${chiefPharmacist ? chiefPharmacist.qualification : 'B.Pharm (UP)'}</span>
+                          ${chiefPharmacist ? `
+                            <button type="button" onclick="window.acsApp.openStaffProfilePhotoModal('${chiefPharmacist.id}')" class="text-teal-700 hover:text-teal-900 font-bold text-[10px] mt-0.5 inline-flex items-center gap-1">
+                              <i class="fa fa-camera"></i> Crop / Edit Profile Photo
+                            </button>
+                          ` : ''}
+                        </div>
+                      </div>
                       
                       <div class="mt-3 pt-3 border-t border-teal-200/80 space-y-2 text-xs text-slate-700">
                         <div class="flex items-center justify-between">
@@ -2063,7 +2111,7 @@ class ACSApp {
                     return `
                       <div class="p-4 rounded-xl border ${isUppc ? 'border-teal-200 bg-teal-50/40' : 'border-slate-200 bg-slate-50/40'} flex flex-col justify-between space-y-3">
                         <div class="flex items-start gap-3">
-                          <img src="${st.avatar || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=150&q=80'}" alt="${st.name}" class="w-12 h-12 rounded-xl object-cover border border-slate-200 flex-shrink-0" onerror="this.src='https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=150&q=80'" />
+                          <img src="${st.avatarUrl || st.avatar || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=150&q=80'}" alt="${st.name}" class="w-12 h-12 rounded-xl object-cover border border-slate-200 flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-teal-400 transition" onclick="window.acsApp.openStaffProfilePhotoModal('${st.id}')" title="Click to crop / edit photo" onerror="this.src='https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=150&q=80'" />
                           <div class="flex-1 min-w-0">
                             <h4 class="font-black text-slate-900 text-sm truncate">${st.name}</h4>
                             <span class="text-xs font-bold text-[#135c7e] block">${st.role}</span>
@@ -2090,7 +2138,9 @@ class ACSApp {
                         </div>
 
                         <div class="flex items-center justify-between border-t border-slate-200/70 pt-2 text-xs">
-                          <span class="text-[10px] text-slate-400">Joined: ${st.joinedDate}</span>
+                          <button onclick="window.acsApp.openStaffProfilePhotoModal('${st.id}')" class="text-teal-700 hover:text-teal-900 hover:bg-teal-50 px-2 py-1 rounded text-xs font-bold transition inline-flex items-center gap-1" title="Crop & adjust profile photo look">
+                            <i class="fa fa-camera text-teal-600"></i> Edit Photo / Crop
+                          </button>
                           <button onclick="window.acsApp.deleteStaff('${st.id}')" class="text-rose-600 hover:bg-rose-50 px-2 py-1 rounded text-xs transition" title="Remove staff">
                             <i class="fa fa-trash"></i> Remove
                           </button>
@@ -2971,16 +3021,23 @@ class ACSApp {
 
     const regPharmacistsCount = store.staff.filter((s) => s.uppcRegNo && s.uppcRegNo.startsWith("UPPC")).length;
     const lowStockCount = store.stocks.filter((m) => m.quantity <= (m.minAlertThreshold || 20)).length;
+    const gallery = this.ensureStoreGallery(store);
 
     return `
       <div class="space-y-6 animate-fade-in">
         <!-- Store Master Banner & Hero Profile -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div class="relative h-64 bg-slate-800">
-            <img src="${store.photoUrl}" alt="${store.name}" class="w-full h-full object-cover opacity-85" />
+            <img id="store-detail-hero-img" src="${store.photoUrl}" alt="${store.name}" class="w-full h-full object-cover opacity-85" />
             <div class="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/40 to-transparent"></div>
             
             <div class="absolute top-4 right-4 flex items-center gap-2 flex-wrap justify-end">
+              <button onclick="window.acsApp.openManageStorePhotosModal('${store.id}')" class="bg-teal-700/90 hover:bg-teal-700 text-white border border-teal-500 px-3 py-1.5 rounded-lg text-xs font-bold shadow backdrop-blur transition flex items-center gap-1.5">
+                <i class="fa fa-camera"></i> Photos (${gallery.length})
+              </button>
+              <button onclick="window.acsApp.openPhotoStudioModal('store-primary', '${store.id}', '${store.photoUrl}')" class="bg-white/90 hover:bg-white text-slate-800 px-3 py-1.5 rounded-lg text-xs font-semibold shadow backdrop-blur transition flex items-center gap-1.5">
+                <i class="fa fa-crop"></i> Crop / Look
+              </button>
               <button onclick="window.acsApp.openDeviceSyncModal('${store.id}')" class="bg-indigo-600/90 hover:bg-indigo-600 text-white border border-indigo-400 px-3 py-1.5 rounded-lg text-xs font-bold shadow backdrop-blur transition flex items-center gap-1.5">
                 <i class="fa fa-refresh"></i> QR Sync Bridge
               </button>
@@ -3026,6 +3083,35 @@ class ACSApp {
                   <span class="font-mono font-bold text-amber-400">${store.id.toUpperCase()}</span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- Storefront Multi-Photo Mini-Gallery Bar -->
+          <div class="p-3 bg-slate-900 border-t border-slate-700 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2 overflow-x-auto py-0.5">
+              <span class="text-amber-400 font-bold text-[11px] uppercase tracking-wider flex items-center gap-1 flex-shrink-0">
+                <i class="fa fa-camera"></i> Photos (${gallery.length}):
+              </span>
+              <div class="flex items-center gap-1.5 overflow-x-auto">
+                ${gallery.map((p, idx) => `
+                  <button 
+                    type="button" 
+                    onclick="window.acsApp.switchStoreHeroPhoto('${store.id}', '${p.url}')" 
+                    class="group relative w-14 h-9 rounded-md overflow-hidden border-2 ${p.url === store.photoUrl ? 'border-amber-400 ring-2 ring-amber-400/50' : 'border-white/20 hover:border-white'} flex-shrink-0 transition cursor-pointer"
+                    title="${p.title || 'Photo ' + (idx + 1)}"
+                  >
+                    <img src="${p.url}" alt="${p.title}" class="w-full h-full object-cover group-hover:scale-110 transition duration-300" />
+                  </button>
+                `).join("")}
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="window.acsApp.openManageStorePhotosModal('${store.id}')" class="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold text-[11px] transition inline-flex items-center gap-1">
+                <i class="fa fa-plus-circle text-amber-400"></i> Manage Photos
+              </button>
+              <button onclick="window.acsApp.openPhotoStudioModal('store-primary', '${store.id}', '${store.photoUrl}')" class="px-2.5 py-1 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-lg font-bold text-[11px] transition inline-flex items-center gap-1">
+                <i class="fa fa-crop text-amber-300"></i> Crop / Look
+              </button>
             </div>
           </div>
 
@@ -5057,12 +5143,19 @@ class ACSApp {
                 <div>
                   <div class="flex items-start justify-between gap-2">
                     <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 rounded-full ${isPharmacist ? 'bg-teal-100 text-[#135c7e]' : 'bg-slate-100 text-slate-600'} flex items-center justify-center font-bold text-base">
-                        <i class="fa ${isPharmacist ? 'fa-user-md' : 'fa-user'}"></i>
+                      <div class="relative w-12 h-12 rounded-full overflow-hidden border-2 ${isPharmacist ? 'border-teal-400' : 'border-slate-300'} shadow-xs flex items-center justify-center bg-slate-100 flex-shrink-0">
+                        ${st.avatarUrl ? `
+                          <img src="${st.avatarUrl}" alt="${st.name}" class="w-full h-full object-cover" />
+                        ` : `
+                          <i class="fa ${isPharmacist ? 'fa-user-md text-xl text-[#135c7e]' : 'fa-user text-xl text-slate-500'}"></i>
+                        `}
                       </div>
                       <div>
                         <h4 class="font-bold text-slate-900 text-base">${st.name}</h4>
                         <span class="text-xs text-slate-500 block">${st.role}</span>
+                        <button type="button" onclick="window.acsApp.openPhotoStudioModal('staff-avatar', '${st.id}', '${st.avatarUrl || ''}')" class="text-blue-700 hover:underline font-bold text-[10px] inline-flex items-center gap-1 mt-0.5">
+                          <i class="fa fa-camera"></i> Crop / Edit Profile Photo
+                        </button>
                       </div>
                     </div>
                     <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${st.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'}">
@@ -6033,6 +6126,16 @@ class ACSApp {
             </div>
           </div>
 
+          <!-- Photo Action Shortcuts: Crop/Look Studio & Manage Multi-Photos -->
+          <div class="flex items-center justify-between gap-2 pt-1">
+            <button type="button" onclick="window.acsApp.openPhotoStudioModal('store-primary', '${store.id}', document.getElementById('edit-store-photo').value || '${store.photoUrl}')" class="flex-1 py-1.5 px-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 shadow transition">
+              <i class="fa fa-crop"></i> Crop & Adjust Look (Filters/Zoom)
+            </button>
+            <button type="button" onclick="window.acsApp.openManageStorePhotosModal('${store.id}')" class="flex-1 py-1.5 px-3 bg-teal-700 hover:bg-teal-800 text-white font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 shadow transition">
+              <i class="fa fa-picture-o"></i> Manage Multi-Photo Gallery (${(store.galleryPhotos && store.galleryPhotos.length) || 4})
+            </button>
+          </div>
+
           <!-- Photo Edit Actions (Device Upload + URL + Presets) -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
             <div>
@@ -6201,6 +6304,11 @@ class ACSApp {
       store.operatingHours = document.getElementById("edit-store-hours").value.trim();
       store.is24x7 = document.getElementById("edit-store-24x7").checked;
       store.photoUrl = document.getElementById("edit-store-photo").value.trim() || store.photoUrl;
+      const curGallery = this.ensureStoreGallery(store);
+      if (curGallery.length > 0) {
+        const prim = curGallery.find((p) => p.isPrimary) || curGallery[0];
+        prim.url = store.photoUrl;
+      }
 
       // Preserve slug aliases so existing QR codes and bookmarks never return 404
       store.slugAliases = store.slugAliases || (store.slug ? [store.slug] : []);
@@ -6244,6 +6352,1093 @@ class ACSApp {
 
   openPhotoUpdateModal(storeId) {
     this.openEditStoreModal(storeId);
+  }
+
+  /* ========================================================================= */
+  /* MULTI-PHOTO STORE GALLERY & INTERACTIVE PHOTO/AVATAR STUDIO ENGINE        */
+  /* ========================================================================= */
+
+  ensureStoreGallery(store) {
+    if (!store) return [];
+    if (!Array.isArray(store.galleryPhotos) || store.galleryPhotos.length === 0) {
+      const p1 = store.photoUrl || "https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=1200&q=80";
+      store.galleryPhotos = [
+        {
+          id: `gp-${store.id}-1`,
+          url: p1,
+          title: "Storefront & Main Entrance",
+          caption: "Official licensed medical storefront with council registration signboard.",
+          tag: "Front Entrance",
+          isPrimary: true
+        },
+        {
+          id: `gp-${store.id}-2`,
+          url: "https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=1200&q=80",
+          title: "Medicine Dispensing Counter",
+          caption: "Air-conditioned dispensing counter with digital barcode scanning billing.",
+          tag: "Rx Counter",
+          isPrimary: false
+        },
+        {
+          id: `gp-${store.id}-3`,
+          url: "https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=1200&q=80",
+          title: "Schedule H & H1 Medicine Vault",
+          caption: "Organized inventory racks categorized by drug schedule and therapeutic class.",
+          tag: "Stock Vault",
+          isPrimary: false
+        },
+        {
+          id: `gp-${store.id}-4`,
+          url: "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1200&q=80",
+          title: "Cold Chain & Refrigerator Unit",
+          caption: "Calibrated 2°C - 8°C cold storage monitoring for insulin and biological vaccines.",
+          tag: "Cold Chain",
+          isPrimary: false
+        }
+      ];
+    }
+    return store.galleryPhotos;
+  }
+
+  switchStoreHeroPhoto(storeId, photoUrl) {
+    const hero1 = document.getElementById("storefront-hero-img");
+    if (hero1) {
+      hero1.style.opacity = "0.4";
+      setTimeout(() => {
+        hero1.src = photoUrl;
+        hero1.style.opacity = "1";
+      }, 120);
+    }
+    const hero2 = document.getElementById("store-detail-hero-img");
+    if (hero2) {
+      hero2.style.opacity = "0.4";
+      setTimeout(() => {
+        hero2.src = photoUrl;
+        hero2.style.opacity = "1";
+      }, 120);
+    }
+  }
+
+  openManageStorePhotosModal(storeId) {
+    const store = this.stores.find((s) => s.id === storeId) || this.getCurrentStore();
+    if (!store) return;
+    const gallery = this.ensureStoreGallery(store);
+
+    const modal = document.getElementById("modal-generic");
+    const title = document.getElementById("modal-generic-title");
+    const body = document.getElementById("modal-generic-body");
+    if (!modal || !title || !body) return;
+
+    // Expand width for rich gallery layout
+    const box = typeof modal.querySelector === "function" ? modal.querySelector(".bg-white.rounded-2xl") : null;
+    if (box && box.classList) {
+      box.classList.remove("max-w-2xl");
+      box.classList.add("max-w-4xl");
+    }
+
+    title.innerHTML = `<i class="fa fa-picture-o text-teal-700"></i> Storefront Photo Gallery Manager — ${store.name}`;
+    body.innerHTML = `
+      <div class="space-y-6 text-xs text-slate-800">
+        <!-- Explainer & Stats Banner -->
+        <div class="p-4 bg-teal-50 border border-teal-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-extrabold text-teal-900 text-sm">Live Multi-Photo Showcase</span>
+              <span class="px-2 py-0.5 bg-teal-700 text-white rounded-full font-mono text-[10px] font-bold">${gallery.length} Photos Listed</span>
+            </div>
+            <p class="text-teal-700 text-[11px] mt-1 leading-relaxed">
+              Showcase your storefront entrance, medicine storage racks, cold chain equipment, and clean dispensing counters. Photos are publicly visible on your hosted live website at <span class="font-mono font-bold text-teal-900">acsakhil.com/${store.slug}</span>.
+            </p>
+          </div>
+          <button onclick="window.acsApp.openPhotoStudioModal('store-primary', '${store.id}', '${store.photoUrl}')" class="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs shadow transition flex items-center gap-1.5 self-start sm:self-auto flex-shrink-0">
+            <i class="fa fa-crop"></i> Crop / Look Primary Cover
+          </button>
+        </div>
+
+        <!-- Add New Photo Section (File Upload + URL + Studio shortcut) -->
+        <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="font-bold text-slate-900 flex items-center gap-1.5 text-xs">
+              <i class="fa fa-plus-circle text-teal-700"></i> Add New Store Photo to Gallery
+            </h4>
+            <span class="text-[10px] text-slate-400">JPG, PNG, WebP supported</span>
+          </div>
+
+          <form id="form-add-gallery-photo" class="space-y-3">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Upload Photo from Phone / PC</label>
+                <input type="file" id="new-gallery-file" accept="image/*" class="w-full text-[11px] file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-teal-700 file:text-white hover:file:bg-teal-800 cursor-pointer" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Or Paste Direct Image URL</label>
+                <input type="text" id="new-gallery-url" placeholder="https://..." class="w-full px-3 py-1.5 border rounded-lg bg-white font-mono text-[11px]" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Photo Title / Area *</label>
+                <input type="text" id="new-gallery-title" required placeholder="e.g. Surgical Equipment & Ortho Desk" class="w-full px-3 py-1.5 border rounded-lg bg-white" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Short Description / Caption</label>
+                <input type="text" id="new-gallery-caption" placeholder="e.g. High-grade orthopedic braces & surgical sundries" class="w-full px-3 py-1.5 border rounded-lg bg-white" />
+              </div>
+            </div>
+
+            <!-- Preview & Action Row -->
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-200/60">
+              <div id="new-gallery-preview-container" class="hidden items-center gap-2">
+                <img id="new-gallery-preview-thumb" src="" class="w-12 h-9 rounded object-cover border border-slate-300" />
+                <span class="text-[11px] text-slate-500 font-medium">Ready to add</span>
+              </div>
+              <div class="flex items-center gap-2 ml-auto">
+                <button type="submit" class="px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white font-bold rounded-xl text-xs shadow transition flex items-center gap-1.5">
+                  <i class="fa fa-plus"></i> Add Photo to Gallery
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- 1-Click Official Pharmacy Preset Gallery Additions -->
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
+          <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Or Quick-Add Official Certified Facility Photos:</span>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+            <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=1200&q=80', 'Clean Dispensing Desk', 'Front billing and consultation area')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex flex-col gap-1 group">
+              <img src="https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=200&q=80" class="w-full h-14 rounded object-cover" />
+              <span class="text-[10px] font-bold text-slate-700 group-hover:text-teal-800 leading-tight truncate">+ Dispensing</span>
+            </button>
+            <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=1200&q=80', 'Medicine Racks', 'Systematic alphabetical medicine shelving')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex flex-col gap-1 group">
+              <img src="https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=200&q=80" class="w-full h-14 rounded object-cover" />
+              <span class="text-[10px] font-bold text-slate-700 group-hover:text-teal-800 leading-tight truncate">+ Racks</span>
+            </button>
+            <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1200&q=80', 'Cold Storage Unit', '2°C to 8°C calibrated biological storage')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex flex-col gap-1 group">
+              <img src="https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=200&q=80" class="w-full h-14 rounded object-cover" />
+              <span class="text-[10px] font-bold text-slate-700 group-hover:text-teal-800 leading-tight truncate">+ Cold Chain</span>
+            </button>
+            <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=1200&q=80', '24x7 Night View', 'Well-lit emergency night dispensary service')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex flex-col gap-1 group">
+              <img src="https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=200&q=80" class="w-full h-14 rounded object-cover" />
+              <span class="text-[10px] font-bold text-slate-700 group-hover:text-teal-800 leading-tight truncate">+ 24x7 Night</span>
+            </button>
+            <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=1200&q=80', 'Surgical & Bandages', 'Surgical sutures, antiseptics and wellness')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex flex-col gap-1 group">
+              <img src="https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=200&q=80" class="w-full h-14 rounded object-cover" />
+              <span class="text-[10px] font-bold text-slate-700 group-hover:text-teal-800 leading-tight truncate">+ Surgical</span>
+            </button>
+            <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1583912267670-6575ad362e49?auto=format&fit=crop&w=1200&q=80', 'Ayush Herbal Section', 'Approved classical ayurvedic formulations')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex flex-col gap-1 group">
+              <img src="https://images.unsplash.com/photo-1583912267670-6575ad362e49?auto=format&fit=crop&w=200&q=80" class="w-full h-14 rounded object-cover" />
+              <span class="text-[10px] font-bold text-slate-700 group-hover:text-teal-800 leading-tight truncate">+ Ayush Corner</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Current Gallery Photos List -->
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+              <i class="fa fa-th text-teal-700"></i> Current Active Storefront Gallery (${gallery.length})
+            </h4>
+            <span class="text-[11px] text-slate-500">Click "Crop / Look" to adjust framing, zoom & filters</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            ${gallery.map((p, idx) => {
+              const isPrimary = p.isPrimary || (p.url === store.photoUrl);
+              return `
+                <div class="p-3 rounded-2xl border ${isPrimary ? 'border-amber-400 bg-amber-50/30 ring-1 ring-amber-400/50' : 'border-slate-200 bg-white'} shadow-xs flex flex-col justify-between space-y-2.5 group">
+                  <div class="relative h-44 rounded-xl overflow-hidden bg-slate-900">
+                    <img src="${p.url}" alt="${p.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end justify-between p-2.5">
+                      <div>
+                        ${isPrimary ? `
+                          <span class="px-2 py-0.5 bg-amber-400 text-slate-950 font-black text-[10px] rounded-md uppercase tracking-wider inline-flex items-center gap-1 shadow">
+                            <i class="fa fa-star"></i> Primary Cover Banner
+                          </span>
+                        ` : `
+                          <span class="px-2 py-0.5 bg-black/60 text-white font-bold text-[10px] rounded-md backdrop-blur">
+                            Gallery Photo #${idx + 1}
+                          </span>
+                        `}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h5 class="font-bold text-slate-900 text-xs truncate">${p.title || 'Store Area'}</h5>
+                    <p class="text-[11px] text-slate-500 mt-0.5 line-clamp-2">${p.caption || 'Storefront facility image.'}</p>
+                  </div>
+
+                  <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                    ${!isPrimary ? `
+                      <button type="button" onclick="window.acsApp.setPrimaryStorePhoto('${store.id}', '${p.id}')" class="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded-lg text-[11px] transition inline-flex items-center gap-1">
+                        <i class="fa fa-star text-amber-500"></i> Make Primary
+                      </button>
+                    ` : `
+                      <span class="text-[11px] font-bold text-amber-700 inline-flex items-center gap-1">
+                        <i class="fa fa-check-circle text-amber-500"></i> Active Cover
+                      </span>
+                    `}
+
+                    <div class="flex items-center gap-1.5">
+                      <button type="button" onclick="window.acsApp.openPhotoStudioModal('store-gallery', '${store.id}', '${p.url}', '${p.id}')" class="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-[11px] transition inline-flex items-center gap-1 shadow-xs">
+                        <i class="fa fa-crop"></i> Crop / Look
+                      </button>
+                      <button type="button" onclick="window.acsApp.deleteGalleryPhoto('${store.id}', '${p.id}')" class="px-2.5 py-1.5 text-rose-600 hover:bg-rose-50 rounded-lg text-[11px] font-semibold transition" title="Delete photo">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-slate-200 flex justify-between items-center">
+          <button type="button" onclick="window.acsApp.viewHostedWebsite('${store.id}')" class="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black rounded-xl text-xs transition flex items-center gap-1.5">
+            <i class="fa fa-globe"></i> View Live Hosted Webpage
+          </button>
+          <button type="button" onclick="window.acsApp.closeModal(); window.acsApp.renderCurrentView();" class="px-5 py-2 bg-[#135c7e] text-white rounded-xl font-bold text-xs">
+            Done
+          </button>
+        </div>
+      </div>
+    `;
+
+    modal.classList.remove("hidden");
+
+    // Form submission & local file loading
+    const form = document.getElementById("form-add-gallery-photo");
+    const fileInput = document.getElementById("new-gallery-file");
+    const urlInput = document.getElementById("new-gallery-url");
+    const previewContainer = document.getElementById("new-gallery-preview-container");
+    const previewThumb = document.getElementById("new-gallery-preview-thumb");
+
+    let currentInputDataUrl = "";
+
+    if (fileInput) {
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (loadEvt) => {
+            currentInputDataUrl = loadEvt.target.result;
+            if (previewThumb) previewThumb.src = currentInputDataUrl;
+            if (previewContainer) {
+              previewContainer.classList.remove("hidden");
+              previewContainer.classList.add("flex");
+            }
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+
+    if (urlInput) {
+      urlInput.addEventListener("input", (e) => {
+        if (e.target.value.trim()) {
+          currentInputDataUrl = e.target.value.trim();
+          if (previewThumb) previewThumb.src = currentInputDataUrl;
+          if (previewContainer) {
+            previewContainer.classList.remove("hidden");
+            previewContainer.classList.add("flex");
+          }
+        }
+      });
+    }
+
+    if (form) {
+      form.onsubmit = (e) => {
+        e.preventDefault();
+        const url = currentInputDataUrl || (urlInput ? urlInput.value.trim() : "");
+        if (!url) {
+          this.showToast("Please choose a photo file or enter an image URL.", "warning");
+          return;
+        }
+        const title = (document.getElementById("new-gallery-title") ? document.getElementById("new-gallery-title").value : "") || "Store View";
+        const caption = document.getElementById("new-gallery-caption") ? document.getElementById("new-gallery-caption").value : "";
+        this.addGalleryPhoto(store.id, url, title, caption);
+      };
+    }
+  }
+
+  addGalleryPhoto(storeId, url, title, caption) {
+    const store = this.stores.find((s) => s.id === storeId);
+    if (!store || !url) return;
+    const gallery = this.ensureStoreGallery(store);
+    const newPhoto = {
+      id: `gp-${store.id}-${Date.now()}`,
+      url: url.trim(),
+      title: title ? title.trim() : `Store View ${gallery.length + 1}`,
+      caption: caption ? caption.trim() : "Pharmacy physical facility view.",
+      tag: title ? title.slice(0, 14) : "Facility",
+      isPrimary: gallery.length === 0
+    };
+    gallery.push(newPhoto);
+    if (newPhoto.isPrimary) {
+      store.photoUrl = newPhoto.url;
+    }
+    this.saveStores();
+    this.showToast(`Added "${newPhoto.title}" to store photo gallery!`, "success");
+    this.openManageStorePhotosModal(storeId);
+  }
+
+  setPrimaryStorePhoto(storeId, photoId) {
+    const store = this.stores.find((s) => s.id === storeId);
+    if (!store) return;
+    const gallery = this.ensureStoreGallery(store);
+    const target = gallery.find((p) => p.id === photoId);
+    if (!target) return;
+
+    gallery.forEach((p) => (p.isPrimary = p.id === photoId));
+    store.photoUrl = target.url;
+    this.saveStores();
+    this.showToast(`Updated primary storefront cover to "${target.title}"!`, "success");
+    this.openManageStorePhotosModal(storeId);
+  }
+
+  deleteGalleryPhoto(storeId, photoId) {
+    const store = this.stores.find((s) => s.id === storeId);
+    if (!store) return;
+    const gallery = this.ensureStoreGallery(store);
+    if (gallery.length <= 1) {
+      this.showToast("Cannot delete the only photo. At least 1 store photo is required.", "warning");
+      return;
+    }
+    const idx = gallery.findIndex((p) => p.id === photoId);
+    if (idx === -1) return;
+
+    const wasPrimary = gallery[idx].isPrimary;
+    gallery.splice(idx, 1);
+    if (wasPrimary && gallery.length > 0) {
+      gallery[0].isPrimary = true;
+      store.photoUrl = gallery[0].url;
+    }
+    this.saveStores();
+    this.showToast("Photo removed from store gallery.", "info");
+    this.openManageStorePhotosModal(storeId);
+  }
+
+  openStaffProfilePhotoModal(staffId) {
+    let targetStaff = null;
+    let targetStore = null;
+    for (const store of this.stores) {
+      if (Array.isArray(store.staff)) {
+        const found = store.staff.find((s) => s.id === staffId);
+        if (found) {
+          targetStaff = found;
+          targetStore = store;
+          break;
+        }
+      }
+    }
+    if (!targetStaff) {
+      this.showToast("Staff member not found.", "warning");
+      return;
+    }
+    const currentAvatar = targetStaff.avatarUrl || targetStaff.avatar || "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=600&q=80";
+    this.openPhotoStudioModal("staff-avatar", staffId, currentAvatar);
+  }
+
+  /* ========================================================================= */
+  /* INTERACTIVE PHOTO & AVATAR STUDIO (CANVAS CROP, ZOOM, PAN & LOOK ENGINE)   */
+  /* ========================================================================= */
+
+  openPhotoStudioModal(targetType, targetId, initialImageUrl, subId = null) {
+    const modal = document.getElementById("modal-generic");
+    const title = document.getElementById("modal-generic-title");
+    const body = document.getElementById("modal-generic-body");
+    if (!modal || !title || !body) return;
+
+    const box = typeof modal.querySelector === "function" ? modal.querySelector(".bg-white.rounded-2xl") : null;
+    if (box && box.classList) {
+      box.classList.remove("max-w-2xl");
+      box.classList.add("max-w-4xl");
+    }
+
+    const isAvatar = (targetType === "staff-avatar" || targetType === "owner-avatar");
+    let targetEntityName = "Storefront Cover";
+    if (targetType === "staff-avatar") {
+      for (const s of this.stores) {
+        const st = (s.staff || []).find((x) => x.id === targetId);
+        if (st) { targetEntityName = `${st.name} (${st.role})`; break; }
+      }
+    } else if (targetType === "owner-avatar") {
+      const s = this.stores.find((x) => x.id === targetId);
+      if (s) targetEntityName = `${s.ownerName} (Proprietor)`;
+    } else if (targetType === "store-gallery") {
+      const s = this.stores.find((x) => x.id === targetId);
+      if (s && subId) {
+        const p = (s.galleryPhotos || []).find((x) => x.id === subId);
+        if (p) targetEntityName = `${s.name} • ${p.title}`;
+      }
+    } else {
+      const s = this.stores.find((x) => x.id === targetId);
+      if (s) targetEntityName = `${s.name} • Primary Cover`;
+    }
+
+    title.innerHTML = isAvatar
+      ? `<i class="fa fa-user-circle text-teal-700"></i> Pharmacist & Staff Profile Photo Studio: ${targetEntityName}`
+      : `<i class="fa fa-sliders text-teal-700"></i> Storefront Photo Studio & Look Adjuster: ${targetEntityName}`;
+
+    const defaultImgUrl = initialImageUrl || (isAvatar
+      ? "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=600&q=80"
+      : "https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=1200&q=80");
+
+    const canvasW = isAvatar ? 420 : 540;
+    const canvasH = isAvatar ? 420 : 340;
+
+    body.innerHTML = `
+      <div class="space-y-4 text-xs text-slate-800">
+        <!-- Top Instruction -->
+        <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-slate-100 rounded-xl">
+          <span class="text-slate-600 font-medium flex items-center gap-1.5">
+            <i class="fa fa-info-circle text-teal-700"></i>
+            ${isAvatar 
+              ? 'Drag to pan or zoom into face. The circular dashed guide shows the exact profile badge crop.' 
+              : 'Drag to frame entrance signboard or shelves. Adjust lighting to clinical dispensary standards.'}
+          </span>
+          <span class="text-[10px] text-slate-400 font-mono">Real-time HTML5 Studio</span>
+        </div>
+
+        <!-- Studio Workspace Grid: Canvas on Left, Controls on Right -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          <!-- Canvas Viewer Column -->
+          <div class="lg:col-span-7 flex flex-col items-center">
+            <div class="relative w-full flex items-center justify-center p-3 bg-slate-950 rounded-2xl border-2 border-slate-700 shadow-inner overflow-hidden select-none">
+              <canvas id="studio-canvas" width="${canvasW}" height="${canvasH}" class="max-w-full h-auto rounded-xl cursor-grab active:cursor-grabbing shadow-lg" style="touch-action: none;"></canvas>
+            </div>
+
+            <!-- Canvas Quick Bar: Zoom Slider & Center -->
+            <div class="w-full mt-3 p-2 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2 flex-1">
+                <span class="text-[10px] font-bold text-slate-500 uppercase">Zoom:</span>
+                <button type="button" onclick="window.acsApp.adjustStudioZoom(-0.1)" class="w-6 h-6 rounded bg-white hover:bg-slate-200 border text-slate-700 font-bold flex items-center justify-center">-</button>
+                <input type="range" id="studio-zoom" min="0.5" max="3.0" step="0.05" value="1.0" class="flex-1 accent-teal-700 cursor-pointer" />
+                <button type="button" onclick="window.acsApp.adjustStudioZoom(0.1)" class="w-6 h-6 rounded bg-white hover:bg-slate-200 border text-slate-700 font-bold flex items-center justify-center">+</button>
+                <span id="studio-zoom-val" class="font-mono text-[10px] font-bold text-teal-900 w-9 text-right">1.0x</span>
+              </div>
+              <button type="button" onclick="window.acsApp.resetStudioPosition()" class="px-2.5 py-1 bg-white hover:bg-slate-100 border text-slate-700 font-semibold rounded-lg text-[10px] transition">
+                <i class="fa fa-crosshairs"></i> Center
+              </button>
+            </div>
+          </div>
+
+          <!-- Controls Column -->
+          <div class="lg:col-span-5 space-y-3.5 max-h-[520px] overflow-y-auto pr-1">
+            <!-- 1. Source Photo Change -->
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+              <span class="font-bold text-slate-800 text-[11px] flex items-center gap-1">
+                <i class="fa fa-camera text-teal-700"></i> Change Image Source
+              </span>
+              <div>
+                <input type="file" id="studio-file-input" accept="image/*" class="w-full text-[11px] file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-teal-700 file:text-white hover:file:bg-teal-800 cursor-pointer" />
+              </div>
+              ${isAvatar ? `
+                <div class="pt-1.5 border-t border-slate-200">
+                  <span class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Or Choose Official Pharmacist Avatar:</span>
+                  <div class="grid grid-cols-4 gap-1.5">
+                    <button type="button" onclick="window.acsApp.setStudioImageSource('https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=600&q=80')" class="p-1 bg-white hover:bg-teal-50 border rounded-lg text-center transition">
+                      <img src="https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=80&q=80" class="w-9 h-9 rounded-full mx-auto object-cover" />
+                      <span class="text-[8px] font-bold text-slate-700 block mt-0.5 truncate">Male Ph.</span>
+                    </button>
+                    <button type="button" onclick="window.acsApp.setStudioImageSource('https://images.unsplash.com/photo-1594824813571-638f02614d3f?auto=format&fit=crop&w=600&q=80')" class="p-1 bg-white hover:bg-teal-50 border rounded-lg text-center transition">
+                      <img src="https://images.unsplash.com/photo-1594824813571-638f02614d3f?auto=format&fit=crop&w=80&q=80" class="w-9 h-9 rounded-full mx-auto object-cover" />
+                      <span class="text-[8px] font-bold text-slate-700 block mt-0.5 truncate">Female Ph.</span>
+                    </button>
+                    <button type="button" onclick="window.acsApp.setStudioImageSource('https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=600&q=80')" class="p-1 bg-white hover:bg-teal-50 border rounded-lg text-center transition">
+                      <img src="https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=80&q=80" class="w-9 h-9 rounded-full mx-auto object-cover" />
+                      <span class="text-[8px] font-bold text-slate-700 block mt-0.5 truncate">Senior Ph.</span>
+                    </button>
+                    <button type="button" onclick="window.acsApp.setStudioImageSource('https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=600&q=80')" class="p-1 bg-white hover:bg-teal-50 border rounded-lg text-center transition">
+                      <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=80&q=80" class="w-9 h-9 rounded-full mx-auto object-cover" />
+                      <span class="text-[8px] font-bold text-slate-700 block mt-0.5 truncate">Clinical Ph.</span>
+                    </button>
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- 2. Aspect Ratio Selector -->
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+              <span class="font-bold text-slate-800 text-[11px] flex items-center gap-1">
+                <i class="fa fa-crop text-teal-700"></i> Aspect Ratio & Framing
+              </span>
+              <div class="grid ${isAvatar ? 'grid-cols-2' : 'grid-cols-4'} gap-1.5">
+                ${isAvatar ? `
+                  <button type="button" onclick="window.acsApp.setStudioAspectRatio('1:1')" id="studio-ar-1-1" class="px-2 py-1.5 bg-teal-700 text-white rounded-lg font-bold text-[10px] text-center shadow-xs">1:1 Circle / Square</button>
+                  <button type="button" onclick="window.acsApp.setStudioAspectRatio('4:5')" id="studio-ar-4-5" class="px-2 py-1.5 bg-white border border-slate-200 hover:bg-teal-50 text-slate-700 rounded-lg font-bold text-[10px] text-center">4:5 ID Portrait</button>
+                ` : `
+                  <button type="button" onclick="window.acsApp.setStudioAspectRatio('16:9')" id="studio-ar-16-9" class="px-2 py-1.5 bg-teal-700 text-white rounded-lg font-bold text-[10px] text-center shadow-xs">16:9 Banner</button>
+                  <button type="button" onclick="window.acsApp.setStudioAspectRatio('4:3')" id="studio-ar-4-3" class="px-2 py-1.5 bg-white border border-slate-200 hover:bg-teal-50 text-slate-700 rounded-lg font-bold text-[10px] text-center">4:3 Card</button>
+                  <button type="button" onclick="window.acsApp.setStudioAspectRatio('1:1')" id="studio-ar-1-1" class="px-2 py-1.5 bg-white border border-slate-200 hover:bg-teal-50 text-slate-700 rounded-lg font-bold text-[10px] text-center">1:1 Square</button>
+                  <button type="button" onclick="window.acsApp.setStudioAspectRatio('3:2')" id="studio-ar-3-2" class="px-2 py-1.5 bg-white border border-slate-200 hover:bg-teal-50 text-slate-700 rounded-lg font-bold text-[10px] text-center">3:2 Classic</button>
+                `}
+              </div>
+            </div>
+
+            <!-- 3. Clinical & Professional Look Presets -->
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+              <span class="font-bold text-slate-800 text-[11px] flex items-center gap-1">
+                <i class="fa fa-magic text-teal-700"></i> 1-Click Clinical Look Presets
+              </span>
+              <div class="grid grid-cols-3 gap-1.5">
+                <button type="button" onclick="window.acsApp.applyStudioPreset(0, 0, 0, 0)" class="px-2 py-1.5 bg-white hover:bg-teal-50 border rounded-lg text-slate-800 font-semibold text-[10px] text-left truncate">
+                  🌿 Natural / Original
+                </button>
+                <button type="button" onclick="window.acsApp.applyStudioPreset(12, 16, 5, 0)" class="px-2 py-1.5 bg-white hover:bg-teal-50 border rounded-lg text-teal-900 font-bold text-[10px] text-left truncate">
+                  💡 Clinical Bright
+                </button>
+                <button type="button" onclick="window.acsApp.applyStudioPreset(6, 10, 12, 14)" class="px-2 py-1.5 bg-white hover:bg-teal-50 border rounded-lg text-amber-900 font-bold text-[10px] text-left truncate">
+                  🏥 Warm Healthcare
+                </button>
+                <button type="button" onclick="window.acsApp.applyStudioPreset(0, 24, 10, 0)" class="px-2 py-1.5 bg-white hover:bg-teal-50 border rounded-lg text-indigo-900 font-bold text-[10px] text-left truncate">
+                  🔍 High Clarity
+                </button>
+                <button type="button" onclick="window.acsApp.applyStudioPreset(5, -6, -5, 8)" class="px-2 py-1.5 bg-white hover:bg-teal-50 border rounded-lg text-slate-700 font-semibold text-[10px] text-left truncate">
+                  🌙 Soft Ambient
+                </button>
+                <button type="button" onclick="window.acsApp.applyStudioPreset(8, 20, -100, 0)" class="px-2 py-1.5 bg-white hover:bg-teal-50 border rounded-lg text-slate-900 font-bold text-[10px] text-left truncate">
+                  🏛️ Executive B&W
+                </button>
+              </div>
+            </div>
+
+            <!-- 4. Manual Sliders (Brightness, Contrast, Saturation, Warmth) -->
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+              <span class="font-bold text-slate-800 text-[11px] flex items-center justify-between">
+                <span class="flex items-center gap-1"><i class="fa fa-sliders text-teal-700"></i> Manual Look Fine-Tuning</span>
+                <button type="button" onclick="window.acsApp.applyStudioPreset(0, 0, 0, 0)" class="text-[10px] text-teal-700 hover:underline">Reset Sliders</button>
+              </span>
+
+              <!-- Brightness -->
+              <div>
+                <div class="flex justify-between text-[10px] text-slate-600 mb-0.5">
+                  <span>Brightness:</span>
+                  <span id="studio-b-val" class="font-mono font-bold">0%</span>
+                </div>
+                <input type="range" id="studio-brightness" min="-50" max="50" step="1" value="0" class="w-full accent-teal-700 cursor-pointer" />
+              </div>
+
+              <!-- Contrast -->
+              <div>
+                <div class="flex justify-between text-[10px] text-slate-600 mb-0.5">
+                  <span>Contrast:</span>
+                  <span id="studio-c-val" class="font-mono font-bold">0%</span>
+                </div>
+                <input type="range" id="studio-contrast" min="-50" max="50" step="1" value="0" class="w-full accent-teal-700 cursor-pointer" />
+              </div>
+
+              <!-- Saturation -->
+              <div>
+                <div class="flex justify-between text-[10px] text-slate-600 mb-0.5">
+                  <span>Color Saturation:</span>
+                  <span id="studio-s-val" class="font-mono font-bold">0%</span>
+                </div>
+                <input type="range" id="studio-saturation" min="-100" max="100" step="1" value="0" class="w-full accent-teal-700 cursor-pointer" />
+              </div>
+
+              <!-- Warmth -->
+              <div>
+                <div class="flex justify-between text-[10px] text-slate-600 mb-0.5">
+                  <span>Lighting Warmth:</span>
+                  <span id="studio-w-val" class="font-mono font-bold">0</span>
+                </div>
+                <input type="range" id="studio-warmth" min="-30" max="30" step="1" value="0" class="w-full accent-teal-700 cursor-pointer" />
+              </div>
+            </div>
+
+            <!-- 5. Rotation & Orientation -->
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-2">
+              <span class="font-bold text-slate-800 text-[11px] flex items-center gap-1">
+                <i class="fa fa-repeat text-teal-700"></i> Orientation:
+              </span>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="window.acsApp.rotateStudioImage()" class="px-2.5 py-1.5 bg-white hover:bg-slate-100 border rounded-lg font-bold text-[11px] text-slate-700 transition">
+                  <i class="fa fa-rotate-right"></i> Rotate 90°
+                </button>
+                <button type="button" onclick="window.acsApp.flipStudioImage()" class="px-2.5 py-1.5 bg-white hover:bg-slate-100 border rounded-lg font-bold text-[11px] text-slate-700 transition">
+                  <i class="fa fa-arrows-h"></i> Flip
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Footer -->
+        <div class="pt-3 border-t border-slate-200 flex items-center justify-between gap-3">
+          <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50 font-semibold">
+            Cancel
+          </button>
+          <button type="button" onclick="window.acsApp.saveStudioPhoto('${targetType}', '${targetId}', '${subId || ''}')" class="px-6 py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-extrabold rounded-xl shadow-md transition flex items-center gap-2 text-xs">
+            <i class="fa fa-check"></i> Apply & Save New Look
+          </button>
+        </div>
+      </div>
+    `;
+
+    modal.classList.remove("hidden");
+
+    // Initialize State Object
+    const stateImg = typeof Image !== "undefined" ? new Image() : { naturalWidth: 800, naturalHeight: 600, complete: true };
+    if (stateImg.setAttribute) stateImg.crossOrigin = "anonymous";
+    window._acsStudioState = {
+      targetType: targetType,
+      targetId: targetId,
+      subId: subId,
+      img: stateImg,
+      isAvatar: isAvatar,
+      aspectRatio: isAvatar ? "1:1" : "16:9",
+      zoom: 1.0,
+      panX: 0,
+      panY: 0,
+      rotation: 0,
+      flipH: 1,
+      brightness: 0,
+      contrast: 0,
+      saturation: 0,
+      warmth: 0,
+      isDragging: false,
+      dragStartX: 0,
+      dragStartY: 0
+    };
+
+    stateImg.onload = () => {
+      this.renderStudioCanvas();
+    };
+    stateImg.src = defaultImgUrl;
+
+    // Canvas Mouse & Touch Drag Listeners
+    const canvas = document.getElementById("studio-canvas");
+    if (canvas) {
+      const getPos = (e) => {
+        if (e.touches && e.touches[0]) {
+          return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+        return { x: e.clientX, y: e.clientY };
+      };
+
+      const startDrag = (e) => {
+        const pos = getPos(e);
+        window._acsStudioState.isDragging = true;
+        window._acsStudioState.dragStartX = pos.x - window._acsStudioState.panX;
+        window._acsStudioState.dragStartY = pos.y - window._acsStudioState.panY;
+      };
+
+      const moveDrag = (e) => {
+        if (!window._acsStudioState || !window._acsStudioState.isDragging) return;
+        const pos = getPos(e);
+        window._acsStudioState.panX = pos.x - window._acsStudioState.dragStartX;
+        window._acsStudioState.panY = pos.y - window._acsStudioState.dragStartY;
+        this.renderStudioCanvas();
+      };
+
+      const endDrag = () => {
+        if (window._acsStudioState) window._acsStudioState.isDragging = false;
+      };
+
+      canvas.addEventListener("mousedown", startDrag);
+      window.addEventListener("mousemove", moveDrag);
+      window.addEventListener("mouseup", endDrag);
+
+      canvas.addEventListener("touchstart", startDrag, { passive: true });
+      window.addEventListener("touchmove", moveDrag, { passive: true });
+      window.addEventListener("touchend", endDrag);
+
+      // Wheel Zoom
+      canvas.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 0.08 : -0.08;
+        this.adjustStudioZoom(delta);
+      }, { passive: false });
+    }
+
+    // Slider Event Listeners
+    const setupSlider = (id, prop, valId, suffix = "") => {
+      const slider = document.getElementById(id);
+      const valLabel = document.getElementById(valId);
+      if (slider) {
+        slider.addEventListener("input", (e) => {
+          const v = Number(e.target.value);
+          if (window._acsStudioState) window._acsStudioState[prop] = v;
+          if (valLabel) valLabel.textContent = `${v > 0 ? '+' : ''}${v}${suffix}`;
+          this.renderStudioCanvas();
+        });
+      }
+    };
+
+    setupSlider("studio-zoom", "zoom", "studio-zoom-val", "x");
+    setupSlider("studio-brightness", "brightness", "studio-b-val", "%");
+    setupSlider("studio-contrast", "contrast", "studio-c-val", "%");
+    setupSlider("studio-saturation", "saturation", "studio-s-val", "%");
+    setupSlider("studio-warmth", "warmth", "studio-w-val", "");
+
+    // File Input Listener
+    const fileInput = document.getElementById("studio-file-input");
+    if (fileInput) {
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (loadEvt) => {
+            this.setStudioImageSource(loadEvt.target.result);
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+  }
+
+  setStudioImageSource(src) {
+    if (!window._acsStudioState) return;
+    const img = typeof Image !== "undefined" ? new Image() : { naturalWidth: 800, naturalHeight: 600, complete: true };
+    if (img.setAttribute) img.crossOrigin = "anonymous";
+    img.onload = () => {
+      window._acsStudioState.img = img;
+      window._acsStudioState.panX = 0;
+      window._acsStudioState.panY = 0;
+      window._acsStudioState.zoom = 1.0;
+      const zoomSlider = document.getElementById("studio-zoom");
+      if (zoomSlider) zoomSlider.value = "1.0";
+      const zoomVal = document.getElementById("studio-zoom-val");
+      if (zoomVal) zoomVal.textContent = "1.0x";
+      this.renderStudioCanvas();
+      this.showToast("Loaded photo into studio editor!", "info");
+    };
+    img.src = src;
+  }
+
+  adjustStudioZoom(delta) {
+    if (!window._acsStudioState) return;
+    let newZoom = Math.max(0.5, Math.min(3.0, window._acsStudioState.zoom + delta));
+    newZoom = Math.round(newZoom * 100) / 100;
+    window._acsStudioState.zoom = newZoom;
+    const zoomSlider = document.getElementById("studio-zoom");
+    if (zoomSlider) zoomSlider.value = newZoom.toString();
+    const zoomVal = document.getElementById("studio-zoom-val");
+    if (zoomVal) zoomVal.textContent = `${newZoom.toFixed(2)}x`;
+    this.renderStudioCanvas();
+  }
+
+  resetStudioPosition() {
+    if (!window._acsStudioState) return;
+    window._acsStudioState.panX = 0;
+    window._acsStudioState.panY = 0;
+    window._acsStudioState.zoom = 1.0;
+    const zoomSlider = document.getElementById("studio-zoom");
+    if (zoomSlider) zoomSlider.value = "1.0";
+    const zoomVal = document.getElementById("studio-zoom-val");
+    if (zoomVal) zoomVal.textContent = "1.0x";
+    this.renderStudioCanvas();
+  }
+
+  setStudioAspectRatio(ratio) {
+    if (!window._acsStudioState) return;
+    window._acsStudioState.aspectRatio = ratio;
+    const canvas = document.getElementById("studio-canvas");
+    if (canvas) {
+      if (ratio === "1:1") {
+        canvas.width = 420;
+        canvas.height = 420;
+      } else if (ratio === "4:3") {
+        canvas.width = 480;
+        canvas.height = 360;
+      } else if (ratio === "4:5") {
+        canvas.width = 360;
+        canvas.height = 450;
+      } else if (ratio === "3:2") {
+        canvas.width = 510;
+        canvas.height = 340;
+      } else {
+        // 16:9
+        canvas.width = 540;
+        canvas.height = 304;
+      }
+    }
+    // Update active button styling
+    const arButtons = document.querySelectorAll("[id^='studio-ar-']");
+    arButtons.forEach((b) => {
+      b.classList.remove("bg-teal-700", "text-white", "shadow-xs");
+      b.classList.add("bg-white", "text-slate-700");
+    });
+    const targetBtn = document.getElementById(`studio-ar-${ratio.replace(':', '-')}`);
+    if (targetBtn) {
+      targetBtn.classList.remove("bg-white", "text-slate-700");
+      targetBtn.classList.add("bg-teal-700", "text-white", "shadow-xs");
+    }
+    this.renderStudioCanvas();
+  }
+
+  rotateStudioImage() {
+    if (!window._acsStudioState) return;
+    window._acsStudioState.rotation = (window._acsStudioState.rotation + 90) % 360;
+    this.renderStudioCanvas();
+  }
+
+  flipStudioImage() {
+    if (!window._acsStudioState) return;
+    window._acsStudioState.flipH = window._acsStudioState.flipH * -1;
+    this.renderStudioCanvas();
+  }
+
+  applyStudioPreset(brightness, contrast, saturation, warmth) {
+    if (!window._acsStudioState) return;
+    window._acsStudioState.brightness = brightness;
+    window._acsStudioState.contrast = contrast;
+    window._acsStudioState.saturation = saturation;
+    window._acsStudioState.warmth = warmth;
+
+    const setSlider = (id, val, valId, suffix) => {
+      const el = document.getElementById(id);
+      if (el) el.value = val;
+      const vEl = document.getElementById(valId);
+      if (vEl) vEl.textContent = `${val > 0 ? '+' : ''}${val}${suffix}`;
+    };
+
+    setSlider("studio-brightness", brightness, "studio-b-val", "%");
+    setSlider("studio-contrast", contrast, "studio-c-val", "%");
+    setSlider("studio-saturation", saturation, "studio-s-val", "%");
+    setSlider("studio-warmth", warmth, "studio-w-val", "");
+
+    this.renderStudioCanvas();
+    this.showToast("Applied look preset!", "info");
+  }
+
+  renderStudioCanvas() {
+    const canvas = document.getElementById("studio-canvas");
+    if (!canvas || !window._acsStudioState) return;
+    const state = window._acsStudioState;
+    const ctx = canvas.getContext("2d");
+    if (!ctx || !state.img || !state.img.complete) return;
+
+    const cw = canvas.width;
+    const ch = canvas.height;
+    ctx.clearRect(0, 0, cw, ch);
+
+    // Deep slate background
+    ctx.fillStyle = "#0f172a";
+    ctx.fillRect(0, 0, cw, ch);
+
+    ctx.save();
+
+    // Filters
+    const b = 100 + Number(state.brightness || 0);
+    const c = 100 + Number(state.contrast || 0);
+    const s = 100 + Number(state.saturation || 0);
+    let filterStr = `brightness(${b}%) contrast(${c}%) saturate(${s}%)`;
+    if (state.warmth) {
+      if (state.warmth > 0) {
+        filterStr += ` sepia(${Math.min(50, state.warmth * 1.5)}%)`;
+      } else {
+        filterStr += ` hue-rotate(${state.warmth * 2}deg)`;
+      }
+    }
+    ctx.filter = filterStr;
+
+    // Pan, Rotation & Zoom
+    ctx.translate(cw / 2 + state.panX, ch / 2 + state.panY);
+    ctx.rotate((state.rotation * Math.PI) / 180);
+    ctx.scale(state.flipH * state.zoom, state.zoom);
+
+    // Draw Image maintaining proportion to canvas
+    const imgRatio = state.img.naturalWidth / state.img.naturalHeight;
+    const canvasRatio = cw / ch;
+    let drawW, drawH;
+    if (imgRatio > canvasRatio) {
+      drawH = ch;
+      drawW = ch * imgRatio;
+    } else {
+      drawW = cw;
+      drawH = cw / imgRatio;
+    }
+
+    ctx.drawImage(state.img, -drawW / 2, -drawH / 2, drawW, drawH);
+    ctx.restore();
+
+    // Overlays
+    if (state.isAvatar) {
+      // Circular crop guide
+      ctx.save();
+      const radius = Math.min(cw, ch) * 0.44;
+      const centerX = cw / 2;
+      const centerY = ch / 2;
+
+      // Darkened outer vignette
+      ctx.fillStyle = "rgba(15, 23, 42, 0.60)";
+      ctx.beginPath();
+      ctx.rect(0, 0, cw, ch);
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2, true);
+      ctx.fill();
+
+      // Circular ring guide
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Delicate center reticle
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.45)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(centerX - 16, centerY);
+      ctx.lineTo(centerX + 16, centerY);
+      ctx.moveTo(centerX, centerY - 16);
+      ctx.lineTo(centerX, centerY + 16);
+      ctx.stroke();
+
+      ctx.restore();
+    } else {
+      // Grid rule-of-thirds overlay
+      ctx.save();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(cw / 3, 0); ctx.lineTo(cw / 3, ch);
+      ctx.moveTo((cw / 3) * 2, 0); ctx.lineTo((cw / 3) * 2, ch);
+      ctx.moveTo(0, ch / 3); ctx.lineTo(cw, ch / 3);
+      ctx.moveTo(0, (ch / 3) * 2); ctx.lineTo(cw, (ch / 3) * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  getStudioExportDataUrl() {
+    if (!window._acsStudioState) return "";
+    const state = window._acsStudioState;
+    const canvas = document.getElementById("studio-canvas");
+    if (!canvas || !state.img) return "";
+
+    const cw = canvas.width;
+    const ch = canvas.height;
+
+    // Create offscreen export canvas without guides
+    const outCanvas = document.createElement("canvas");
+    const outW = state.isAvatar ? 400 : 800;
+    const outH = Math.round((outW * ch) / cw);
+    outCanvas.width = outW;
+    outCanvas.height = outH;
+
+    const ctx = outCanvas.getContext("2d");
+    ctx.fillStyle = "#0f172a";
+    ctx.fillRect(0, 0, outW, outH);
+
+    ctx.save();
+    const b = 100 + Number(state.brightness || 0);
+    const c = 100 + Number(state.contrast || 0);
+    const s = 100 + Number(state.saturation || 0);
+    let filterStr = `brightness(${b}%) contrast(${c}%) saturate(${s}%)`;
+    if (state.warmth) {
+      if (state.warmth > 0) {
+        filterStr += ` sepia(${Math.min(50, state.warmth * 1.5)}%)`;
+      } else {
+        filterStr += ` hue-rotate(${state.warmth * 2}deg)`;
+      }
+    }
+    ctx.filter = filterStr;
+
+    const scaleFactor = outW / cw;
+    ctx.translate(outW / 2 + (state.panX * scaleFactor), outH / 2 + (state.panY * scaleFactor));
+    ctx.rotate((state.rotation * Math.PI) / 180);
+    ctx.scale(state.flipH * state.zoom, state.zoom);
+
+    const imgRatio = state.img.naturalWidth / state.img.naturalHeight;
+    const canvasRatio = outW / outH;
+    let drawW, drawH;
+    if (imgRatio > canvasRatio) {
+      drawH = outH;
+      drawW = outH * imgRatio;
+    } else {
+      drawW = outW;
+      drawH = outW / imgRatio;
+    }
+
+    ctx.drawImage(state.img, -drawW / 2, -drawH / 2, drawW, drawH);
+    ctx.restore();
+
+    try {
+      return outCanvas.toDataURL("image/jpeg", 0.92);
+    } catch (err) {
+      console.warn("Canvas export fallback:", err);
+      return state.img.src;
+    }
+  }
+
+  saveStudioPhoto(targetType, targetId, subId) {
+    const finalDataUrl = this.getStudioExportDataUrl();
+    if (!finalDataUrl) {
+      this.showToast("Unable to process photo export.", "danger");
+      return;
+    }
+
+    if (targetType === "store-primary") {
+      const store = this.stores.find((s) => s.id === targetId);
+      if (store) {
+        store.photoUrl = finalDataUrl;
+        const gallery = this.ensureStoreGallery(store);
+        if (gallery.length > 0) {
+          const prim = gallery.find((p) => p.isPrimary) || gallery[0];
+          prim.url = finalDataUrl;
+        }
+        this.saveStores();
+        this.closeModal();
+        this.renderCurrentView();
+        this.showToast("🎉 Storefront cover photo updated and framed!", "success");
+      }
+    } else if (targetType === "store-gallery") {
+      const store = this.stores.find((s) => s.id === targetId);
+      if (store) {
+        const gallery = this.ensureStoreGallery(store);
+        const targetPhoto = gallery.find((p) => p.id === subId);
+        if (targetPhoto) {
+          targetPhoto.url = finalDataUrl;
+          if (targetPhoto.isPrimary) {
+            store.photoUrl = finalDataUrl;
+          }
+        }
+        this.saveStores();
+        this.showToast("🎉 Gallery photo look adjusted & saved!", "success");
+        this.openManageStorePhotosModal(targetId);
+      }
+    } else if (targetType === "staff-avatar") {
+      let targetStaff = null;
+      let targetStore = null;
+      for (const store of this.stores) {
+        if (Array.isArray(store.staff)) {
+          const found = store.staff.find((st) => st.id === targetId);
+          if (found) {
+            targetStaff = found;
+            targetStore = store;
+            break;
+          }
+        }
+      }
+      if (targetStaff) {
+        targetStaff.avatarUrl = finalDataUrl;
+        targetStaff.avatar = finalDataUrl;
+        this.saveStores();
+        this.closeModal();
+        this.renderCurrentView();
+        this.showToast(`🎉 Pharmacist profile photo updated for ${targetStaff.name}!`, "success");
+      }
+    } else if (targetType === "owner-avatar") {
+      const store = this.stores.find((s) => s.id === targetId);
+      if (store) {
+        store.ownerPhotoUrl = finalDataUrl;
+        if (this.currentUser && this.currentUser.storeId === store.id) {
+          this.currentUser.avatarUrl = finalDataUrl;
+          this.saveUserSession();
+        }
+        this.saveStores();
+        this.closeModal();
+        this.renderCurrentView();
+        this.showToast(`🎉 Proprietor profile photo updated!`, "success");
+      }
+    }
   }
 
   openAddMedicineModal() {
@@ -7472,7 +8667,14 @@ class ACSApp {
 
   closeModal() {
     const modal = document.getElementById("modal-generic");
-    if (modal) modal.classList.add("hidden");
+    if (modal) {
+      modal.classList.add("hidden");
+      const box = typeof modal.querySelector === "function" ? modal.querySelector(".bg-white.rounded-2xl") : null;
+      if (box && box.classList) {
+        box.classList.remove("max-w-4xl", "max-w-5xl", "max-w-3xl");
+        box.classList.add("max-w-2xl");
+      }
+    }
   }
 
   resetToDefaultData() {
