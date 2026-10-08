@@ -1560,7 +1560,7 @@ class ACSApp {
           <!-- Direct Patient Action Buttons (100% Consumer-Focused) -->
           <div class="flex flex-wrap items-center gap-2 text-xs">
             <button onclick="window.acsApp.openPrescriptionUploadModal('${store.name}')" class="bg-amber-400 hover:bg-amber-500 text-slate-950 px-4 py-2 rounded-xl font-black transition flex items-center gap-1.5 shadow-sm">
-              <i class="fa fa-file-text-o"></i> Upload Prescription &amp; Match
+              <i class="fa fa-file-text-o"></i> Verify Bill &amp; Compare Prices
             </button>
             <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm">
               <i class="fa fa-whatsapp text-sm"></i> WhatsApp
@@ -1749,24 +1749,24 @@ class ACSApp {
                   </div>
                 </div>
 
-                <!-- Prescription Upload & Auto-Search Callout Banner -->
+                <!-- Customer Bill & Price Verification Banner -->
                 <div class="p-6 rounded-3xl bg-gradient-to-r from-teal-900 via-[#135c7e] to-slate-900 text-white shadow-lg flex flex-col lg:flex-row items-center justify-between gap-6">
                   <div class="space-y-2 max-w-2xl">
                     <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-amber-300 font-bold text-xs">
-                      <i class="fa fa-bolt"></i> Instant Digital Pharmacist Service
+                      <i class="fa fa-file-text-o"></i> Customer Bill &amp; Price Verification Desk
                     </div>
-                    <h3 class="text-xl sm:text-2xl font-black text-white">Have a Doctor's Prescription?</h3>
+                    <h3 class="text-xl sm:text-2xl font-black text-white">Bought Medicines from ${store.name}? Check &amp; Compare Your Bill Prices</h3>
                     <p class="text-xs sm:text-sm text-teal-100 leading-relaxed">
-                      Upload your prescription slip or search doctor's prescribed medicines. Our automated system matches live stock at <strong>${store.name}</strong>, displays prices, and alerts the registered pharmacist instantly.
+                      Have a bill or cash memo from this pharmacy? Verify and compare official selling prices (MRP), active generic salt compositions, manufacturer batches, and complete stock data for medicines you bought. Upload your bill scan, PDF, or receipt photo, or search any medicine directly in the search bar below!
                     </p>
                   </div>
                   <div class="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
                     <button onclick="window.acsApp.openPrescriptionUploadModal('${store.name}')" class="w-full sm:w-auto px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-2xl text-xs sm:text-sm transition shadow-lg flex items-center justify-center gap-2">
-                      <i class="fa fa-upload text-base"></i> Upload Prescription &amp; Match
+                      <i class="fa fa-upload text-base"></i> Upload Bill / PDF to Compare Prices
                     </button>
-                    <a href="${waUrl}&text=Hello%20${encodeURIComponent(store.name)},%20I%20have%20a%20doctor%20prescription." target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto px-5 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl text-xs sm:text-sm transition shadow-lg flex items-center justify-center gap-2">
-                      <i class="fa fa-whatsapp text-lg"></i> WhatsApp Pharmacist
-                    </a>
+                    <button onclick="const sEl = document.getElementById('hosted-stock-search-input'); if(sEl){ sEl.scrollIntoView({behavior:'smooth'}); sEl.focus(); }" class="w-full sm:w-auto px-5 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-2xl text-xs sm:text-sm transition border border-white/20 flex items-center justify-center gap-2">
+                      <i class="fa fa-search text-amber-300"></i> Search Medicine Below
+                    </button>
                   </div>
                 </div>
 
@@ -2437,8 +2437,8 @@ class ACSApp {
             <span class="text-[10px]">WhatsApp</span>
           </a>
           <button onclick="window.acsApp.openPrescriptionUploadModal('${store.name}')" class="flex-1 py-2 px-1 bg-amber-400 text-slate-950 rounded-xl text-center text-xs font-black flex flex-col items-center justify-center gap-0.5 shadow">
-            <i class="fa fa-upload text-slate-950 text-sm"></i>
-            <span class="text-[10px]">Upload Rx</span>
+            <i class="fa fa-file-text-o text-slate-950 text-sm"></i>
+            <span class="text-[10px]">Verify Bill</span>
           </button>
         </div>
       </div>
@@ -2907,28 +2907,28 @@ class ACSApp {
     const targetStore = store || this.stores[0];
     const initialQuery = initialMedName ? decodeURIComponent(initialMedName) : "";
 
-    title.innerHTML = `<i class="fa fa-file-text-o text-amber-500"></i> Upload Prescription &amp; Instant Stock Matcher — ${targetStore.name}`;
+    title.innerHTML = `<i class="fa fa-file-text-o text-amber-500"></i> Verify Pharmacy Bill &amp; Compare Medicine Prices — ${targetStore.name}`;
     body.innerHTML = `
       <form id="form-upload-rx" class="space-y-4 text-xs text-slate-800">
         <!-- Explanation Banner -->
         <div class="p-3.5 bg-teal-50 border border-teal-200 rounded-2xl flex items-start gap-3 text-teal-900">
           <i class="fa fa-shield text-teal-700 text-xl mt-0.5"></i>
           <div>
-            <strong class="font-bold text-sm block">Doctor's Prescription &amp; Live Stock Matcher</strong>
+            <strong class="font-bold text-sm block">Customer Bill &amp; Price Verification Desk</strong>
             <p class="text-xs text-slate-600 mt-0.5">
-              Upload your doctor's slip photo OR search the prescribed medicines below. Our system automatically checks live in-stock inventory at <strong>${targetStore.name}</strong> and prepares your order for the registered pharmacist.
+              Have a cash memo or bill from <strong>${targetStore.name}</strong>? Upload a photo or PDF scan of your bill OR search the medicines below to verify and compare official selling MRP, batch numbers, manufacturer, and active generic salt compositions.
             </p>
           </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Left: Prescription File Upload -->
+          <!-- Left: Bill File Upload -->
           <div class="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
             <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-              <i class="fa fa-camera text-teal-700"></i> 1. Prescription Photo or PDF *
+              <i class="fa fa-camera text-teal-700"></i> 1. Bill / Cash Memo Photo or PDF *
             </span>
             <input type="file" id="rx-file-input" accept="image/*,application/pdf" class="w-full text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-teal-700 file:text-white hover:file:bg-teal-800 cursor-pointer" />
-            <span class="text-[10px] text-slate-400 block">Take a photo from phone camera or upload JPG, PNG, PDF</span>
+            <span class="text-[10px] text-slate-400 block">Take a photo of your receipt from phone camera or upload JPG, PNG, PDF</span>
 
             <!-- Image Preview Area -->
             <div id="rx-preview-container" class="hidden relative h-36 rounded-xl overflow-hidden bg-slate-900 border border-slate-300">
@@ -2937,13 +2937,13 @@ class ACSApp {
             </div>
           </div>
 
-          <!-- Right: Patient Contact Information -->
+          <!-- Right: Customer Contact Information -->
           <div class="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
             <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-              <i class="fa fa-user text-teal-700"></i> 2. Patient Details
+              <i class="fa fa-user text-teal-700"></i> 2. Customer Details
             </span>
             <div>
-              <label class="block font-semibold text-slate-700 mb-1">Patient Full Name *</label>
+              <label class="block font-semibold text-slate-700 mb-1">Customer Full Name *</label>
               <input type="text" id="rx-patient-name" required placeholder="e.g. Ramesh Kumar" class="w-full px-3 py-2 border rounded-xl bg-white font-medium text-xs" />
             </div>
             <div>
@@ -2957,9 +2957,9 @@ class ACSApp {
         <div class="p-4 bg-amber-50/50 border border-amber-200 rounded-2xl space-y-3">
           <div class="flex items-center justify-between">
             <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-              <i class="fa fa-search text-amber-600"></i> 3. Auto-Search &amp; Match Medicines in Stock
+              <i class="fa fa-search text-amber-600"></i> 3. Search &amp; Compare Medicine Prices
             </span>
-            <span class="text-[10px] text-slate-500 font-medium">Instant live catalog matching</span>
+            <span class="text-[10px] text-slate-500 font-medium">Verify official MRP, batch &amp; salt composition</span>
           </div>
 
           <!-- Interactive Search Input -->
@@ -2968,7 +2968,7 @@ class ACSApp {
             <input 
               type="text" 
               id="rx-med-search-input" 
-              placeholder="Type medicine written on prescription (e.g. Augmentin, Dolo, Pan-D, Telma)..." 
+              placeholder="Search medicine printed on your bill (e.g. Augmentin, Dolo, Pan-D, Telma)..." 
               value="${initialQuery}"
               class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl bg-white text-xs focus:ring-2 focus:ring-[#135c7e]"
             />
@@ -2994,18 +2994,18 @@ class ACSApp {
           <!-- Selected & Matched Medicines Box -->
           <div class="pt-2 border-t border-amber-200/80">
             <div class="flex items-center justify-between mb-1.5">
-              <span class="text-[11px] font-bold text-slate-800">Matched Prescription Items:</span>
-              <span id="rx-total-estimate" class="text-xs font-black text-emerald-800 font-mono">Estimated Total: ₹ 0.00</span>
+              <span class="text-[11px] font-bold text-slate-800">Medicines for Verification &amp; Price Comparison:</span>
+              <span id="rx-total-estimate" class="text-xs font-black text-emerald-800 font-mono">Verified Total: ₹ 0.00</span>
             </div>
             <div id="rx-matched-items-list" class="space-y-1.5 min-h-[48px] p-2 bg-white rounded-xl border border-slate-200">
-              <p class="text-[11px] text-slate-400 text-center py-2" id="rx-empty-list-placeholder">No medicines selected yet. Search above or tap common medicines.</p>
+              <p class="text-[11px] text-slate-400 text-center py-2" id="rx-empty-list-placeholder">No medicines selected yet. Search above or tap common medicines to compare prices.</p>
             </div>
           </div>
         </div>
 
         <div>
-          <label class="block font-semibold text-slate-700 mb-1">Special Notes / Dosage Instructions (Optional)</label>
-          <textarea id="rx-patient-notes" rows="2" placeholder="e.g. Need 1-month supply. Please deliver to home if available." class="w-full px-3 py-2 border rounded-xl bg-white text-xs"></textarea>
+          <label class="block font-semibold text-slate-700 mb-1">Bill Reference / Notes (Optional)</label>
+          <textarea id="rx-patient-notes" rows="2" placeholder="e.g. Cash memo #1042 dated yesterday. Want to verify MRP and batch validity." class="w-full px-3 py-2 border rounded-xl bg-white text-xs"></textarea>
         </div>
 
         <div class="pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
@@ -3013,7 +3013,7 @@ class ACSApp {
             Cancel
           </button>
           <button type="submit" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow flex items-center gap-2">
-            <i class="fa fa-check"></i> Submit Prescription to Pharmacist
+            <i class="fa fa-check"></i> Submit Bill for Verification
           </button>
         </div>
       </form>
@@ -3190,16 +3190,16 @@ class ACSApp {
         } catch (err) {}
 
         const cleanPhone = (targetStore.whatsapp || targetStore.phone || "").replace(/[^0-9]/g, "");
-        const waMsgText = `Hello ${targetStore.name}, I submitted Prescription ${rxId} for ${patientName} on acsakhil.com.` +
-          (itemsSummary ? ` Prescribed medicines matched: ${itemsSummary}. Estimated Total: ₹${totalEstimate.toFixed(2)}.` : "") +
+        const waMsgText = `Hello ${targetStore.name}, I submitted Bill Verification ${rxId} for ${patientName} on acsakhil.com.` +
+          (itemsSummary ? ` Medicines to compare: ${itemsSummary}. Total MRP: ₹${totalEstimate.toFixed(2)}.` : "") +
           (notes ? ` Notes: ${notes}.` : "") +
-          ` Kindly review and confirm dispensing.`;
+          ` Kindly verify prices and batch details.`;
         const waDirectUrl = `https://wa.me/${cleanPhone.startsWith('91') ? cleanPhone : '91' + cleanPhone}?text=${encodeURIComponent(waMsgText)}`;
 
         const title = document.getElementById("modal-generic-title");
         const body = document.getElementById("modal-generic-body");
         if (title && body) {
-          title.innerHTML = `<i class="fa fa-check-circle text-emerald-600"></i> Prescription Submitted &amp; Matched`;
+          title.innerHTML = `<i class="fa fa-check-circle text-emerald-600"></i> Bill Submitted for Verification`;
           body.innerHTML = `
             <div class="space-y-4 text-xs text-center py-2">
               <div class="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto text-2xl shadow-inner">
@@ -3207,15 +3207,15 @@ class ACSApp {
               </div>
               <div>
                 <h3 class="text-base font-black text-slate-900">Submitted to ${targetStore.name}</h3>
-                <p class="text-slate-600 mt-1">Prescription ID: <strong class="text-teal-800 font-mono text-sm">${rxId}</strong></p>
-                <p class="text-slate-500 text-[11px] mt-0.5">The registered pharmacist on duty has received your prescription in the queue.</p>
+                <p class="text-slate-600 mt-1">Verification Reference: <strong class="text-teal-800 font-mono text-sm">${rxId}</strong></p>
+                <p class="text-slate-500 text-[11px] mt-0.5">Our verification desk and registered pharmacist will verify your bill prices against official MRP and live batch records.</p>
               </div>
 
               <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-left space-y-2 font-mono text-[11px]">
-                <div><span class="text-slate-400">Patient:</span> <strong class="text-slate-800">${patientName}</strong> (${phone})</div>
+                <div><span class="text-slate-400">Customer:</span> <strong class="text-slate-800">${patientName}</strong> (${phone})</div>
                 ${matchedItems.length > 0 ? `
                   <div class="pt-2 border-t border-slate-200">
-                    <span class="text-slate-400 block mb-1">Matched Medicines (${matchedItems.length}):</span>
+                    <span class="text-slate-400 block mb-1">Compared Medicines (${matchedItems.length}):</span>
                     <ul class="space-y-1">
                       ${matchedItems.map(m => `
                         <li class="flex items-center justify-between text-slate-800 font-bold">
@@ -3225,7 +3225,7 @@ class ACSApp {
                       `).join("")}
                     </ul>
                     <div class="mt-2 pt-1 border-t border-slate-200 flex items-center justify-between text-xs font-black text-slate-900 font-sans">
-                      <span>Total Estimated Bill:</span>
+                      <span>Total Verified MRP:</span>
                       <span class="text-emerald-800 font-mono">₹ ${totalEstimate.toFixed(2)}</span>
                     </div>
                   </div>
