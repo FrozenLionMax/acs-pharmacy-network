@@ -1,6 +1,6 @@
 /**
- * ACS (All Chemists & Stores Registry) - Core Application Logic
- * UP Pharmacy Data Hosting & Management Platform
+ * ACS (Akhil Consultancy Services) - Core Application Logic
+ * Uttar Pradesh Pharmacy Data Hosting & Compliance Management Platform
  */
 
 class ACSApp {
@@ -578,9 +578,9 @@ class ACSApp {
         }, null, 2);
       }
     } else {
-      document.title = "ACS - All Chemists & Stores Registry | Uttar Pradesh Pharmacy Network";
-      const desc = "Official Uttar Pradesh retail pharmacy network and chemists registry. Search live licensed pharmacies, Form 20/21 licenses, UPPC registered pharmacists on duty, and real-time medicine stocks across UP.";
-      const keywords = "pharmacy Uttar Pradesh, chemists registry UP, UPPC registered pharmacist, drug license Form 20 Form 21, Anand Chemist, Sanjeevani Medicos, retail pharmacy compliance FSDA, medicine stock availability";
+      document.title = "ACS (Akhil Consultancy Services) | Uttar Pradesh Pharmacy Compliance Network";
+      const desc = "Official Uttar Pradesh retail pharmacy network and compliance portal by Akhil Consultancy Services (ACS). Search live licensed pharmacies, Form 20/21 licenses, UPPC registered pharmacists on duty, and real-time medicine stocks across UP.";
+      const keywords = "Akhil Consultancy Services, ACS pharmacy, pharmacy Uttar Pradesh, chemists registry UP, UPPC registered pharmacist, drug license Form 20 Form 21, Anand Chemist, Sanjeevani Medicos, retail pharmacy compliance FSDA, medicine stock availability";
       const siteUrl = `${baseOrigin}/`;
 
       setAttr(metaDesc, "content", desc);
@@ -2345,11 +2345,11 @@ class ACSApp {
 
           <div class="max-w-7xl mx-auto mt-8 pt-6 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-500 text-[11px]">
             <div>
-              © 2026 ${store.name}. Hosted on the Uttar Pradesh Pharmacy Syndicate Network (ACS).
+              © 2026 ${store.name}. Hosted on the Uttar Pradesh Pharmacy Network • Akhil Consultancy Services (ACS).
             </div>
             <div class="flex items-center gap-3">
               <a href="/" onclick="event.preventDefault(); window.acsApp.switchTab('landing');" class="text-amber-400 hover:text-amber-300 underline font-semibold">
-                ACS Central Registry Portal
+                Akhil Consultancy Services (ACS) Portal
               </a>
             </div>
           </div>
