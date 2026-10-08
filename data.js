@@ -200,6 +200,136 @@ const INITIAL_STORES_DATA = [
         minAlertThreshold: 20
       }
     ],
+    slugAliases: ["sanjeevani-medicos", "sanjeevani-chemist", "sanjeevani-lucknow"],
+    prescriptions: [
+      {
+        id: "RX-419022",
+        patientName: "Virendra Pratap Singh",
+        phone: "+91 94151 88201",
+        notes: "Prescribed 1-month supply of Augmentin 625 Duo and Glycomet GP-2 for diabetic chest infection.",
+        fileName: "Dr_Verma_Rx_Virendra.pdf",
+        fileData: "",
+        createdAt: "08 Oct 2026, 05:45 PM",
+        timestamp: 1791480300000,
+        status: "Pending",
+        storeId: "store-up-001"
+      },
+      {
+        id: "RX-381902",
+        patientName: "Meenakshi Srivastava",
+        phone: "+91 98391 44520",
+        notes: "Pediatric Pan-D drops and Calpol suspension as prescribed by Balrampur Hospital OPD.",
+        fileName: "Prescription_Meenakshi.jpg",
+        fileData: "",
+        createdAt: "07 Oct 2026, 02:15 PM",
+        timestamp: 1791381300000,
+        status: "Dispensed",
+        storeId: "store-up-001"
+      }
+    ],
+    scheduleH1Register: [
+      {
+        id: "INV-UP-2026-89102",
+        date: "08 Oct 2026, 04:30 PM",
+        patientName: "Sunita Agarwal",
+        patientAge: "42",
+        docName: "Dr. R.K. Tandon, MD (Medicine)",
+        docReg: "UPMC-M-34190",
+        rxId: "RX-LKO-8821",
+        medId: "med-003",
+        medName: "Azithral 500 Tablet",
+        saltName: "Azithromycin 500mg",
+        batchNo: "BAT-AZI-8821",
+        expiryDate: "2027-05-10",
+        schedule: "Schedule H1",
+        quantity: 2,
+        unit: "Strips (5 tabs)",
+        mrp: 132.00,
+        subtotal: 264.00,
+        tax: 31.68,
+        totalBill: 295.68,
+        pharmacistName: "Deepak Verma",
+        pharmacistReg: "UPPC-PH-41290"
+      },
+      {
+        id: "INV-UP-2026-78142",
+        date: "07 Oct 2026, 11:20 AM",
+        patientName: "Manoj Kumar Tiwari",
+        patientAge: "38",
+        docName: "Dr. Alok Nath, MBBS (KGMU)",
+        docReg: "UPMC-M-51204",
+        rxId: "RX-CIVIL-4412",
+        medId: "med-006",
+        medName: "Alprax 0.5mg Tablet",
+        saltName: "Alprazolam 0.5mg",
+        batchNo: "BAT-ALP-1092",
+        expiryDate: "2026-12-15",
+        schedule: "Schedule H1",
+        quantity: 1,
+        unit: "Strips (15 tabs)",
+        mrp: 75.00,
+        subtotal: 75.00,
+        tax: 9.00,
+        totalBill: 84.00,
+        pharmacistName: "Deepak Verma",
+        pharmacistReg: "UPPC-PH-41290"
+      }
+    ],
+    staffDutyLog: [
+      {
+        id: "LOG-991201",
+        timestamp: "08 Oct 2026, 08:00 AM",
+        staffId: "st-101",
+        staffName: "Deepak Verma",
+        uppcRegNo: "UPPC-PH-41290",
+        qualification: "B.Pharm (KGMU Lucknow)",
+        action: "CLOCK_IN",
+        method: "Aadhaar Biometric Match Verified",
+        status: "Present On Duty (Statutory Incharge)"
+      },
+      {
+        id: "LOG-991180",
+        timestamp: "07 Oct 2026, 04:00 PM",
+        staffId: "st-102",
+        staffName: "Pooja Mishra",
+        uppcRegNo: "UPPC-PH-58932",
+        qualification: "D.Pharm (UP Board of Tech)",
+        action: "CLOCK_IN",
+        method: "Aadhaar Biometric Match Verified",
+        status: "Shift Relieved & Relinquished"
+      },
+      {
+        id: "LOG-991150",
+        timestamp: "07 Oct 2026, 08:00 AM",
+        staffId: "st-101",
+        staffName: "Deepak Verma",
+        uppcRegNo: "UPPC-PH-41290",
+        qualification: "B.Pharm (KGMU Lucknow)",
+        action: "CLOCK_IN",
+        method: "Aadhaar Biometric Match Verified",
+        status: "Present On Duty (Statutory Incharge)"
+      }
+    ],
+    purchaseExpenses: [
+      {
+        id: "PO-UP-LKO-2026-4401",
+        date: "06 Oct 2026, 11:30 AM",
+        vendor: "UP Pharma C&F Syndicate Depot, Transport Nagar, Lucknow",
+        itemsCount: 4,
+        unitsAdded: 200,
+        totalAmount: 18450.00,
+        status: "Stock Received in Rack"
+      },
+      {
+        id: "PO-UP-LKO-2026-3812",
+        date: "28 Sep 2026, 03:15 PM",
+        vendor: "Central Drug Logistics Warehouse, Transport Nagar, Lucknow",
+        itemsCount: 6,
+        unitsAdded: 300,
+        totalAmount: 32600.00,
+        status: "Stock Received in Rack"
+      }
+    ],
     revenueData: {
       todaySales: 48520,
       monthlyGross: 1485600,
@@ -209,6 +339,54 @@ const INITIAL_STORES_DATA = [
       digitalSplitPercent: 68,
       cashSplitPercent: 32,
       gstCollectedMonthly: 178272,
+      transactions: [
+        {
+          id: "INV-UP-2026-89102",
+          date: "08 Oct 2026, 04:30 PM",
+          patientName: "Sunita Agarwal",
+          patientAge: "42",
+          docName: "Dr. R.K. Tandon, MD (Medicine)",
+          docReg: "UPMC-M-34190",
+          rxId: "RX-LKO-8821",
+          medId: "med-003",
+          medName: "Azithral 500 Tablet",
+          saltName: "Azithromycin 500mg",
+          batchNo: "BAT-AZI-8821",
+          expiryDate: "2027-05-10",
+          schedule: "Schedule H1",
+          quantity: 2,
+          unit: "Strips (5 tabs)",
+          mrp: 132.00,
+          subtotal: 264.00,
+          tax: 31.68,
+          totalBill: 295.68,
+          pharmacistName: "Deepak Verma",
+          pharmacistReg: "UPPC-PH-41290"
+        },
+        {
+          id: "INV-UP-2026-89045",
+          date: "08 Oct 2026, 01:15 PM",
+          patientName: "Rahul Sharma",
+          patientAge: "29",
+          docName: "Dr. Authorized MBBS",
+          docReg: "UPMC-M-59210",
+          rxId: "RX-WALK-IN",
+          medId: "med-002",
+          medName: "Dolo 650 Tablet",
+          saltName: "Paracetamol 650mg",
+          batchNo: "BAT-DOL-4102",
+          expiryDate: "2028-01-15",
+          schedule: "OTC",
+          quantity: 3,
+          unit: "Strips (15 tabs)",
+          mrp: 34.00,
+          subtotal: 102.00,
+          tax: 12.24,
+          totalBill: 114.24,
+          pharmacistName: "Deepak Verma",
+          pharmacistReg: "UPPC-PH-41290"
+        }
+      ],
       monthlyHistory: [
         { month: "May", revenue: 1240000, digital: 790000, cash: 450000 },
         { month: "Jun", revenue: 1310000, digital: 860000, cash: 450000 },

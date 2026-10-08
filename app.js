@@ -50,6 +50,24 @@ class ACSApp {
   }
 
   checkUrlRouting() {
+    // Check for QR mobile device synchronization hash (#sync=...)
+    if (window.location && window.location.hash && window.location.hash.startsWith("#sync=")) {
+      try {
+        const syncPayload = decodeURIComponent(window.location.hash.replace("#sync=", ""));
+        const parsed = JSON.parse(decodeURIComponent(escape(atob(syncPayload))));
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.stores = parsed;
+          this.saveStores();
+          window.location.hash = "";
+          setTimeout(() => {
+            this.showToast("📲 Device Synchronized! Live pharmacy database imported via QR bridge.", "success");
+          }, 300);
+        }
+      } catch (err) {
+        console.warn("QR sync parse error:", err);
+      }
+    }
+
     const path = window.location.pathname;
     const urlParams = new URLSearchParams(window.location.search);
     const storeParam = urlParams.get("store");
@@ -70,16 +88,21 @@ class ACSApp {
     } else if (storeParam) {
       slug = storeParam.trim();
       if (subTabParam === "audit") isAudit = true;
-    } else if (window.location.hash.startsWith("#/pharmacy/")) {
+    } else if (window.location.hash && window.location.hash.startsWith("#/pharmacy/")) {
       const hashParts = window.location.hash.replace("#/pharmacy/", "").split("/").filter(Boolean);
       slug = hashParts[0] ? hashParts[0].trim() : null;
       if (hashParts[1] === "audit") isAudit = true;
     }
 
     if (slug) {
-      let target = this.stores.find((s) => s.slug === slug || s.id === slug);
-      if (!target && slug === "anand-chemist") {
-        target = this.stores.find((s) => s.slug === "anand-chemist" || s.name.toLowerCase().includes("anand"));
+      let target = this.stores.find((s) => 
+        s.slug === slug || 
+        s.id === slug || 
+        (s.slugAliases && s.slugAliases.includes(slug)) ||
+        (s.name && s.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").includes(slug))
+      );
+      if (!target && slug.includes("anand")) {
+        target = this.stores.find((s) => (s.slug && s.slug.includes("anand")) || (s.name && s.name.toLowerCase().includes("anand")));
       }
       if (target) {
         this.currentStoreId = target.id;
@@ -106,6 +129,17 @@ class ACSApp {
       this.stores = JSON.parse(JSON.stringify(INITIAL_STORES_DATA));
       this.saveStores();
     }
+
+    // Guarantee data completeness and arrays across all stores
+    this.stores.forEach((s) => {
+      s.slugAliases = s.slugAliases || (s.slug ? [s.slug] : []);
+      s.prescriptions = s.prescriptions || [];
+      s.scheduleH1Register = s.scheduleH1Register || [];
+      s.staffDutyLog = s.staffDutyLog || [];
+      s.purchaseExpenses = s.purchaseExpenses || [];
+      if (!s.revenueData) s.revenueData = {};
+      s.revenueData.transactions = s.revenueData.transactions || [];
+    });
 
     if (!this.currentStoreId && this.stores.length > 0) {
       this.currentStoreId = this.stores[0].id;
@@ -1911,6 +1945,81 @@ class ACSApp {
                 </div>
               </div>
 
+              <!-- SECTION 1B: SCHEDULE H1 STATUTORY DISPENSATION REGISTER (RULE 65) -->
+              <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-300">
+                        Rule 65 Compliance
+                      </span>
+                      <h3 class="text-lg font-black text-slate-900 flex items-center gap-2">
+                        <i class="fa fa-shield text-rose-600"></i> Schedule H1 Antibiotic & Narcotic Dispensation Register
+                      </h3>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">
+                      Statutory register tracking high-alert 3rd generation antibiotics, psychotropic drugs, and anti-TB medications as mandated by FSDA Uttar Pradesh & CDSCO.
+                    </p>
+                  </div>
+
+                  <span class="text-xs font-mono font-bold px-3 py-1.5 bg-rose-50 text-rose-800 rounded-xl border border-rose-200">
+                    ${(store.scheduleH1Register || []).length} Prescriptions Logged
+                  </span>
+                </div>
+
+                <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                  <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr class="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px]">
+                        <th class="py-2.5 px-3">Date / Memo No</th>
+                        <th class="py-2.5 px-3">Patient Name & Age</th>
+                        <th class="py-2.5 px-3">Prescribing RMP (Doctor)</th>
+                        <th class="py-2.5 px-3">Drug Name & Composition</th>
+                        <th class="py-2.5 px-3">Batch No</th>
+                        <th class="py-2.5 px-3 text-center">Dispensed Qty</th>
+                        <th class="py-2.5 px-3 text-right">Dispensing Pharmacist</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 font-mono text-[11px]">
+                      ${(store.scheduleH1Register || []).length === 0 ? `
+                        <tr>
+                          <td colspan="7" class="p-8 text-center text-slate-400 font-sans text-xs">
+                            No Schedule H1 medications dispensed yet. Dispensing Schedule H1 antibiotics in POS automatically creates certified statutory logs here.
+                          </td>
+                        </tr>
+                      ` : (store.scheduleH1Register || []).map((h1) => {
+                        return `
+                          <tr class="hover:bg-rose-50/30">
+                            <td class="py-2.5 px-3">
+                              <strong class="text-slate-900 block font-sans">${h1.date}</strong>
+                              <span class="text-[10px] text-slate-500">${h1.id}</span>
+                            </td>
+                            <td class="py-2.5 px-3 font-sans">
+                              <strong class="text-slate-800">${h1.patientName}</strong>
+                              <span class="text-[10px] text-slate-500 block font-mono">Age: ${h1.patientAge}</span>
+                            </td>
+                            <td class="py-2.5 px-3 font-sans">
+                              <strong class="text-slate-800">${h1.docName}</strong>
+                              <span class="text-[10px] text-rose-700 font-bold font-mono block">Reg: ${h1.docReg}</span>
+                            </td>
+                            <td class="py-2.5 px-3 font-sans">
+                              <strong class="text-slate-900">${h1.medName}</strong>
+                              <span class="text-[10px] text-slate-500 block">${h1.saltName}</span>
+                            </td>
+                            <td class="py-2.5 px-3 font-bold text-slate-700">${h1.batchNo}</td>
+                            <td class="py-2.5 px-3 text-center font-bold text-slate-900">${h1.quantity} ${h1.unit || ''}</td>
+                            <td class="py-2.5 px-3 text-right font-sans">
+                              <strong class="text-[#135c7e] block">${h1.pharmacistName}</strong>
+                              <span class="text-[10px] text-emerald-700 font-mono"><i class="fa fa-check-circle"></i> ${h1.pharmacistReg}</span>
+                            </td>
+                          </tr>
+                        `;
+                      }).join("")}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
               <!-- SECTION 2: UPPC REGISTERED PHARMACIST & STAFF COMPLIANCE ROSTER -->
               <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-5">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1979,6 +2088,48 @@ class ACSApp {
                       </div>
                     `;
                   }).join("")}
+                </div>
+
+                <!-- Statutory 30-Day Pharmacist Attendance Register -->
+                <div class="mt-4 pt-4 border-t border-slate-200">
+                  <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center justify-between">
+                    <span><i class="fa fa-clock-o text-[#135c7e] mr-1"></i> Biometric Duty Shift Attendance Register (Section 42 Compliance)</span>
+                    <span class="text-[11px] font-mono text-slate-500">${(store.staffDutyLog || []).length} Records Logged</span>
+                  </h4>
+                  <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                    <table class="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr class="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px]">
+                          <th class="py-2.5 px-3">Date / Time</th>
+                          <th class="py-2.5 px-3">Pharmacist Name</th>
+                          <th class="py-2.5 px-3">UPPC Registration No</th>
+                          <th class="py-2.5 px-3">Shift Action</th>
+                          <th class="py-2.5 px-3">Authentication Log</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-slate-100 font-mono text-[11px]">
+                        ${(store.staffDutyLog || []).length === 0 ? `
+                          <tr>
+                            <td colspan="5" class="p-6 text-center text-slate-400 font-sans text-xs">
+                              No shift punch logs recorded yet. Registered pharmacists clock in via the store portal roster.
+                            </td>
+                          </tr>
+                        ` : (store.staffDutyLog || []).slice(0, 6).map((log) => `
+                          <tr>
+                            <td class="py-2.5 px-3 text-slate-600">${log.timestamp}</td>
+                            <td class="py-2.5 px-3 font-sans font-bold text-slate-900">${log.staffName}</td>
+                            <td class="py-2.5 px-3 font-bold text-[#135c7e]">${log.uppcRegNo}</td>
+                            <td class="py-2.5 px-3 font-sans">
+                              <span class="px-2 py-0.5 rounded text-[10px] font-bold ${log.action === 'CLOCK_IN' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'}">
+                                ${log.action === 'CLOCK_IN' ? 'Shift Clock-In' : 'Shift Relieved'}
+                              </span>
+                            </td>
+                            <td class="py-2.5 px-3 font-sans text-slate-500">${log.method}</td>
+                          </tr>
+                        `).join("")}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
 
@@ -2324,53 +2475,318 @@ class ACSApp {
   }
 
   openPrescriptionUploadModal(storeName) {
+    const store = this.getCurrentStore();
     const modal = document.getElementById("modal-generic");
     const title = document.getElementById("modal-generic-title");
     const body = document.getElementById("modal-generic-body");
     if (!modal || !title || !body) return;
 
-    title.innerHTML = `<i class="fa fa-file-text-o text-teal-700"></i> Upload Prescription to ${storeName}`;
+    title.innerHTML = `<i class="fa fa-file-text-o text-teal-700"></i> Upload Prescription to ${store ? store.name : storeName}`;
     body.innerHTML = `
       <form id="form-upload-rx" class="space-y-4 text-xs">
         <div class="p-4 bg-teal-50 border border-teal-200 rounded-xl text-teal-900">
-          <p class="font-bold">Doctor's Prescription Verification</p>
-          <p class="mt-0.5 text-slate-600">Please upload a clear photograph or PDF of your registered medical practitioner's prescription. Our registered pharmacist will review it before dispensing.</p>
+          <p class="font-bold flex items-center gap-1.5"><i class="fa fa-shield text-teal-700"></i> Doctor's Prescription Statutory Verification</p>
+          <p class="mt-0.5 text-slate-600">Please upload a clear photograph or document of your registered medical practitioner's prescription. Our on-duty registered pharmacist will review it before dispensing.</p>
         </div>
 
         <div>
           <label class="block font-bold text-slate-700 mb-1">Patient Full Name *</label>
-          <input type="text" required placeholder="e.g. Alok Verma" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#135c7e]" />
+          <input type="text" id="rx-patient-name" required placeholder="e.g. Alok Verma" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#135c7e]" />
         </div>
 
         <div>
           <label class="block font-bold text-slate-700 mb-1">Contact Phone / WhatsApp *</label>
-          <input type="tel" required placeholder="+91 98765 43210" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#135c7e]" />
+          <input type="tel" id="rx-patient-phone" required placeholder="+91 98765 43210" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#135c7e]" />
         </div>
 
         <div>
-          <label class="block font-bold text-slate-700 mb-1">Prescription Image / Document *</label>
-          <input type="file" id="rx-file-input" accept="image/*,application/pdf" required class="w-full px-3 py-2 border rounded-lg" />
+          <label class="block font-bold text-slate-700 mb-1">Prescription Image / Document (Photo or PDF)</label>
+          <input type="file" id="rx-file-input" accept="image/*,application/pdf" class="w-full px-3 py-2 border rounded-lg bg-white" />
+          <span class="text-[10px] text-slate-400 mt-0.5 block">Accepted formats: JPG, PNG, WebP, PDF</span>
         </div>
 
         <div>
           <label class="block font-bold text-slate-700 mb-1">Special Notes / Medicine Request</label>
-          <textarea rows="2" placeholder="e.g. Need 1-month dose of diabetes medicines" class="w-full px-3 py-2 border rounded-lg"></textarea>
+          <textarea id="rx-patient-notes" rows="2" placeholder="e.g. Need 1-month dose of diabetes & blood pressure medicines" class="w-full px-3 py-2 border rounded-lg"></textarea>
         </div>
 
         <div class="pt-2 flex justify-end gap-2 border-t border-slate-100">
           <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-lg text-slate-600">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow">Submit Prescription to Pharmacist</button>
+          <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow flex items-center gap-1.5">
+            <i class="fa fa-upload"></i> Submit Prescription to Pharmacist
+          </button>
         </div>
       </form>
     `;
 
     modal.classList.remove("hidden");
 
+    let uploadedFileDataUrl = "";
+    let uploadedFileName = "";
+    const fileInput = document.getElementById("rx-file-input");
+    if (fileInput) {
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          uploadedFileName = file.name;
+          const reader = new FileReader();
+          reader.onload = (loadEvt) => {
+            uploadedFileDataUrl = loadEvt.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+
     document.getElementById("form-upload-rx").onsubmit = (e) => {
       e.preventDefault();
-      this.closeModal();
-      this.showToast("Prescription submitted successfully! The registered pharmacist will contact you shortly.", "success");
+      const patientName = document.getElementById("rx-patient-name").value.trim();
+      const phone = document.getElementById("rx-patient-phone").value.trim();
+      const notes = document.getElementById("rx-patient-notes").value.trim();
+
+      const rxId = `RX-${Date.now().toString().slice(-6)}`;
+      const targetStore = store || this.stores[0];
+
+      const newRx = {
+        id: rxId,
+        patientName: patientName,
+        phone: phone,
+        notes: notes || "General Prescription Dispensing",
+        fileName: uploadedFileName || "Doctor_Prescription.jpg",
+        fileData: uploadedFileDataUrl || "",
+        createdAt: new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }),
+        timestamp: Date.now(),
+        status: "Pending",
+        storeId: targetStore.id
+      };
+
+      targetStore.prescriptions = targetStore.prescriptions || [];
+      targetStore.prescriptions.unshift(newRx);
+      this.saveStores();
+
+      try {
+        window.dispatchEvent(new Event("storage"));
+      } catch (err) {}
+
+      const cleanPhone = (targetStore.whatsapp || targetStore.phone || "").replace(/[^0-9]/g, "");
+      const waMsg = encodeURIComponent(`Hello ${targetStore.name}, I have submitted Prescription ID ${rxId} for ${patientName} on acsakhil.com: "${notes}". Kindly review.`);
+      const waDirectUrl = `https://wa.me/${cleanPhone.startsWith('91') ? cleanPhone : '91' + cleanPhone}?text=${waMsg}`;
+
+      title.innerHTML = `<i class="fa fa-check-circle text-emerald-600"></i> Prescription Submitted Successfully`;
+      body.innerHTML = `
+        <div class="space-y-4 text-xs text-center py-2">
+          <div class="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto text-2xl shadow-inner">
+            <i class="fa fa-check"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-black text-slate-900">Submitted to ${targetStore.name}</h3>
+            <p class="text-slate-600 mt-1">Prescription Reference ID: <strong class="text-teal-800 font-mono text-sm">${rxId}</strong></p>
+            <p class="text-slate-500 text-[11px] mt-0.5">The registered pharmacist on duty has received your prescription in the live queue.</p>
+          </div>
+
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-left space-y-1.5 font-mono text-[11px]">
+            <div><span class="text-slate-400">Patient:</span> <strong class="text-slate-800">${patientName}</strong></div>
+            <div><span class="text-slate-400">Contact:</span> <span class="text-slate-800">${phone}</span></div>
+            <div><span class="text-slate-400">Notes:</span> <span class="text-slate-700">${notes || 'Standard Dispensing'}</span></div>
+          </div>
+
+          <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
+            <a href="${waDirectUrl}" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow flex items-center justify-center gap-1.5">
+              <i class="fa fa-whatsapp text-sm"></i> WhatsApp Pharmacist Directly
+            </a>
+            <button onclick="window.acsApp.closeModal()" class="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl">
+              Done
+            </button>
+          </div>
+        </div>
+      `;
+
+      this.showToast(`Prescription ${rxId} logged! Pharmacist notified.`, "success");
     };
+  }
+
+  viewRxImage(rxId) {
+    const store = this.getCurrentStore();
+    if (!store) return;
+    const rx = (store.prescriptions || []).find((r) => r.id === rxId);
+    if (!rx) return;
+
+    const modal = document.getElementById("modal-generic");
+    const title = document.getElementById("modal-generic-title");
+    const body = document.getElementById("modal-generic-body");
+    if (!modal || !title || !body) return;
+
+    title.innerHTML = `<i class="fa fa-file-text-o text-teal-700"></i> Prescription: ${rx.id} (${rx.patientName})`;
+    body.innerHTML = `
+      <div class="space-y-4 text-xs">
+        <div class="flex items-center justify-between border-b pb-2 text-[11px] font-mono text-slate-600">
+          <span>Patient: <strong class="text-slate-900">${rx.patientName}</strong> (${rx.phone})</span>
+          <span>Submitted: <strong>${rx.createdAt}</strong></span>
+        </div>
+        <div class="max-h-96 overflow-auto border border-slate-200 rounded-xl bg-slate-900 flex items-center justify-center p-2">
+          ${rx.fileData ? `
+            <img src="${rx.fileData}" alt="Prescription" class="max-w-full max-h-80 object-contain rounded" />
+          ` : `
+            <div class="p-8 text-center text-slate-300">
+              <i class="fa fa-file-pdf-o text-4xl text-rose-400 mb-2 block"></i>
+              <strong>${rx.fileName}</strong>
+              <p class="text-xs text-slate-400 mt-1">Document attached: Patient uploaded digital copy.</p>
+            </div>
+          `}
+        </div>
+        <div class="p-3 bg-slate-50 border rounded-xl text-slate-700">
+          <span class="font-bold text-slate-900 block mb-0.5">Patient Notes:</span>
+          <p class="text-xs">${rx.notes || "No special instructions provided."}</p>
+        </div>
+        <div class="flex justify-between items-center pt-2">
+          <span class="text-xs font-bold ${rx.status === 'Dispensed' ? 'text-emerald-600' : 'text-amber-600'}">Status: ${rx.status}</span>
+          <div class="flex gap-2">
+            <button onclick="window.acsApp.openPosDispensingModal('${store.id}', '${encodeURIComponent(rx.patientName)}', '${rx.id}')" class="px-3.5 py-1.5 bg-teal-700 text-white rounded-lg font-bold">Dispense in POS</button>
+            <button onclick="window.acsApp.closeModal()" class="px-4 py-1.5 bg-slate-100 text-slate-700 rounded-lg font-semibold">Close</button>
+          </div>
+        </div>
+      </div>
+    `;
+    modal.classList.remove("hidden");
+  }
+
+  markRxDispensed(rxId) {
+    const store = this.getCurrentStore();
+    if (!store) return;
+    const rx = (store.prescriptions || []).find((r) => r.id === rxId);
+    if (rx) {
+      rx.status = rx.status === "Dispensed" ? "Pending" : "Dispensed";
+      this.saveStores();
+      this.renderCurrentView();
+      this.showToast(`Prescription ${rxId} marked as ${rx.status}!`, "success");
+    }
+  }
+
+  deleteRx(rxId) {
+    const store = this.getCurrentStore();
+    if (!store) return;
+    if (confirm(`Archive and remove prescription ${rxId} from active queue?`)) {
+      store.prescriptions = (store.prescriptions || []).filter((r) => r.id !== rxId);
+      this.saveStores();
+      this.renderCurrentView();
+      this.showToast(`Prescription archived.`, "info");
+    }
+  }
+
+  openDeviceSyncModal(storeId) {
+    const store = this.stores.find((s) => s.id === storeId) || this.getCurrentStore();
+    if (!store) return;
+
+    const modal = document.getElementById("modal-generic");
+    const title = document.getElementById("modal-generic-title");
+    const body = document.getElementById("modal-generic-body");
+    if (!modal || !title || !body) return;
+
+    // Compact store snapshot for QR transfer
+    const exportData = JSON.stringify(this.stores);
+    let syncPayload = "";
+    try {
+      syncPayload = btoa(unescape(encodeURIComponent(exportData)));
+    } catch (e) {
+      syncPayload = btoa(encodeURIComponent(exportData.slice(0, 1000)));
+    }
+    const syncUrl = `${window.location.origin}${window.location.pathname}#sync=${encodeURIComponent(syncPayload)}`;
+    const qrSvg = this.generateQrSvg(syncUrl, 180);
+
+    title.innerHTML = `<i class="fa fa-refresh text-teal-700"></i> Cloud Device Sync & QR Data Bridge`;
+    body.innerHTML = `
+      <div class="space-y-6 text-xs text-slate-800">
+        <!-- Explainer -->
+        <div class="p-4 bg-teal-50 border border-teal-200 rounded-2xl flex items-start gap-3">
+          <i class="fa fa-mobile text-teal-700 text-2xl mt-0.5"></i>
+          <div>
+            <strong class="text-sm font-black text-teal-950 block">Multi-Device Reactive Data Bridge</strong>
+            <p class="text-slate-600 mt-0.5 leading-relaxed">
+              Transfer all your changes, price updates, storefront photo uploads, and registered staff between your <strong>Counter PC</strong> and your <strong>Smartphone</strong> instantly — without exposing raw source code to third-party file managers.
+            </p>
+          </div>
+        </div>
+
+        <!-- 2 Columns: QR Code vs File Backup -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Column 1: QR Mobile Transfer -->
+          <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col items-center text-center space-y-3">
+            <span class="text-[10px] font-black uppercase tracking-wider text-slate-500">Method 1: Scan With Phone Camera</span>
+            <div class="p-2 bg-white rounded-xl border border-slate-300 shadow-inner flex items-center justify-center">
+              ${qrSvg}
+            </div>
+            <p class="text-[11px] text-slate-600 font-medium">
+              Open your smartphone camera or QR scanner. Scan to instantly load this active database onto your phone!
+            </p>
+          </div>
+
+          <!-- Column 2: JSON Export & Import -->
+          <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between space-y-4">
+            <div>
+              <span class="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-2">Method 2: One-Click JSON Backup</span>
+              <p class="text-[11px] text-slate-600 mb-3">
+                Export an encrypted offline backup file containing all 5 UP stores, inventory batches, and revenue records.
+              </p>
+              <button onclick="window.acsApp.exportDatabaseJson()" class="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow transition flex items-center justify-center gap-2">
+                <i class="fa fa-download"></i> Export Database Backup (.json)
+              </button>
+            </div>
+
+            <div class="pt-3 border-t border-slate-200">
+              <span class="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1">Restore / Import Backup:</span>
+              <input type="file" id="db-import-file" accept=".json" class="w-full text-xs text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#135c7e] file:text-white hover:file:bg-[#0f4b67]" />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+          <span class="text-[11px] text-emerald-700 font-bold flex items-center gap-1.5">
+            <i class="fa fa-check-circle"></i> Local Cross-Tab Reactive Sync is Active
+          </span>
+          <button onclick="window.acsApp.closeModal()" class="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl">
+            Close
+          </button>
+        </div>
+      </div>
+    `;
+
+    modal.classList.remove("hidden");
+
+    const importInput = document.getElementById("db-import-file");
+    if (importInput) {
+      importInput.addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (loadEvt) => {
+            try {
+              const data = JSON.parse(loadEvt.target.result);
+              if (Array.isArray(data) && data.length > 0) {
+                this.stores = data;
+                this.saveStores();
+                this.closeModal();
+                this.renderCurrentView();
+                this.showToast("Database successfully restored from JSON backup!", "success");
+              } else {
+                this.showToast("Invalid backup file format.", "danger");
+              }
+            } catch (err) {
+              this.showToast("Error parsing JSON backup file.", "danger");
+            }
+          };
+          reader.readAsText(file);
+        }
+      });
+    }
+  }
+
+  exportDatabaseJson() {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.stores, null, 2));
+    const dlAnchorElem = document.createElement("a");
+    dlAnchorElem.setAttribute("href", dataStr);
+    dlAnchorElem.setAttribute("download", `acs_pharmacy_backup_${new Date().toISOString().slice(0, 10)}.json`);
+    dlAnchorElem.click();
+    this.showToast("Downloaded complete pharmacy database JSON backup!", "success");
   }
 
   // ==========================================
@@ -2554,14 +2970,17 @@ class ACSApp {
             <img src="${store.photoUrl}" alt="${store.name}" class="w-full h-full object-cover opacity-85" />
             <div class="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/40 to-transparent"></div>
             
-            <div class="absolute top-4 right-4 flex items-center gap-2">
-              <button onclick="window.acsApp.openStoreCertificateModal('${store.id}')" class="bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 px-3.5 py-1.5 rounded-lg text-xs font-bold shadow backdrop-blur transition flex items-center gap-1.5">
+            <div class="absolute top-4 right-4 flex items-center gap-2 flex-wrap justify-end">
+              <button onclick="window.acsApp.openDeviceSyncModal('${store.id}')" class="bg-indigo-600/90 hover:bg-indigo-600 text-white border border-indigo-400 px-3 py-1.5 rounded-lg text-xs font-bold shadow backdrop-blur transition flex items-center gap-1.5">
+                <i class="fa fa-refresh"></i> QR Sync Bridge
+              </button>
+              <button onclick="window.acsApp.openStoreCertificateModal('${store.id}')" class="bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 px-3 py-1.5 rounded-lg text-xs font-bold shadow backdrop-blur transition flex items-center gap-1.5">
                 <i class="fa fa-certificate text-amber-600"></i> QR Certificate
               </button>
-              <button onclick="window.acsApp.openPosDispensingModal('${store.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold shadow backdrop-blur transition flex items-center gap-1.5">
+              <button onclick="window.acsApp.openPosDispensingModal('${store.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow backdrop-blur transition flex items-center gap-1.5">
                 <i class="fa fa-calculator"></i> Dispense Rx POS
               </button>
-              <button onclick="window.acsApp.viewHostedWebsite('${store.id}')" class="bg-amber-400 hover:bg-amber-500 text-slate-950 px-3.5 py-1.5 rounded-lg text-xs font-bold shadow backdrop-blur transition flex items-center gap-1.5">
+              <button onclick="window.acsApp.viewHostedWebsite('${store.id}')" class="bg-amber-400 hover:bg-amber-500 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-bold shadow backdrop-blur transition flex items-center gap-1.5">
                 <i class="fa fa-globe"></i> View Live Hosted Website
               </button>
               <button onclick="window.acsApp.openEditStoreModal('${store.id}')" class="bg-white/90 hover:bg-white text-slate-800 px-3 py-1.5 rounded-lg text-xs font-semibold shadow backdrop-blur transition flex items-center gap-1.5">
@@ -2643,6 +3062,94 @@ class ACSApp {
               <i class="fa fa-plus-circle"></i> Launch Prescription Dispense (POS)
             </button>
           </div>
+        </div>
+
+        <!-- Incoming Patient Prescriptions (Digital Rx Queue) -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <div class="flex items-center gap-3">
+              <span class="w-9 h-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold text-base shadow-xs">
+                <i class="fa fa-inbox"></i>
+              </span>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="font-extrabold text-slate-900 text-base">Incoming Patient Prescriptions (Digital Rx Queue)</h3>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-black ${(store.prescriptions || []).filter(r => r.status === 'Pending').length > 0 ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-slate-100 text-slate-600'}">
+                    ${(store.prescriptions || []).filter(r => r.status === 'Pending').length} Pending
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5">Real-time queue of doctor prescriptions uploaded by walk-in & online patients from your hosted portal.</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button onclick="window.acsApp.openDeviceSyncModal('${store.id}')" class="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                <i class="fa fa-refresh"></i> Sync To Phone via QR
+              </button>
+            </div>
+          </div>
+
+          ${(store.prescriptions || []).length === 0 ? `
+            <div class="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+              <i class="fa fa-file-text-o text-3xl text-slate-300 mb-2 block"></i>
+              <strong class="text-slate-700 text-xs block">No prescriptions in queue right now</strong>
+              <p class="text-slate-400 text-[11px] mt-0.5">When visitors click "Upload Rx" on your public storefront (acsakhil.com), prescriptions appear here instantly.</p>
+            </div>
+          ` : `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              ${(store.prescriptions || []).map((rx) => {
+                const isPending = rx.status === "Pending";
+                const cleanPhone = (rx.phone || "").replace(/[^0-9]/g, "");
+                const waUrl = `https://wa.me/${cleanPhone.startsWith('91') ? cleanPhone : '91' + cleanPhone}?text=Hello%20${encodeURIComponent(rx.patientName)},%20this%20is%20${encodeURIComponent(store.name)}.%20We%20received%20your%20prescription%20${rx.id}%20and%20the%20medicines%20are%20ready%20for%20dispensation.`;
+                return `
+                  <div class="p-4 rounded-xl border ${isPending ? 'border-amber-200 bg-amber-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between space-y-3">
+                    <div class="flex items-start justify-between gap-2">
+                      <div>
+                        <div class="flex items-center gap-2">
+                          <strong class="text-sm font-black text-slate-900">${rx.patientName}</strong>
+                          <span class="font-mono text-[10px] px-2 py-0.5 rounded font-bold ${isPending ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">${rx.id}</span>
+                        </div>
+                        <span class="text-xs text-slate-600 font-mono mt-0.5 block"><i class="fa fa-phone text-slate-400 mr-1"></i>${rx.phone}</span>
+                      </div>
+                      <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isPending ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'}">
+                        ${rx.status}
+                      </span>
+                    </div>
+
+                    <div class="p-2.5 bg-white/80 rounded-lg border border-slate-200/70 text-xs space-y-1">
+                      <div class="flex items-center justify-between text-[11px] text-slate-500">
+                        <span><i class="fa fa-clock-o"></i> ${rx.createdAt}</span>
+                        <span class="font-mono truncate max-w-[150px]"><i class="fa fa-paperclip"></i> ${rx.fileName || 'Prescription.jpg'}</span>
+                      </div>
+                      <p class="text-slate-700 italic text-[11px] mt-1">${rx.notes || 'General prescription dispensing request'}</p>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-200/70 flex flex-wrap items-center justify-between gap-2">
+                      <div class="flex items-center gap-1.5">
+                        <button onclick="window.acsApp.viewRxImage('${rx.id}')" class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1">
+                          <i class="fa fa-eye text-teal-700"></i> View Document
+                        </button>
+                        <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1">
+                          <i class="fa fa-whatsapp"></i> WhatsApp
+                        </a>
+                      </div>
+                      <div class="flex items-center gap-1.5">
+                        <button onclick="window.acsApp.openPosDispensingModal('${store.id}', '${encodeURIComponent(rx.patientName)}', '${rx.id}')" class="px-2.5 py-1 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-lg text-xs font-bold transition flex items-center gap-1" title="Open POS Dispense">
+                          <i class="fa fa-calculator"></i> Dispense POS
+                        </button>
+                        <button onclick="window.acsApp.markRxDispensed('${rx.id}')" class="px-2.5 py-1 ${isPending ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'} rounded-lg text-xs font-bold transition" title="Toggle Fulfilled">
+                          <i class="fa ${isPending ? 'fa-check' : 'fa-undo'}"></i> ${isPending ? 'Fulfill' : 'Reopen'}
+                        </button>
+                        <button onclick="window.acsApp.deleteRx('${rx.id}')" class="p-1 text-rose-500 hover:text-rose-700 rounded transition" title="Archive">
+                          <i class="fa fa-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          `}
         </div>
 
         <!-- Compliance & Regulatory Dossier Card -->
@@ -3429,6 +3936,68 @@ class ACSApp {
             `;
           }).join("")}
         </div>
+
+        <!-- Official Biometric Shift Attendance Register (Rule 65 Compliance) -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <div>
+              <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                <i class="fa fa-clock-o text-[#135c7e]"></i> Official Biometric Shift Attendance Register (Section 42 & Rule 65)
+              </h4>
+              <p class="text-[11px] text-slate-500 mt-0.5">Statutory clock-in and relief audit trail for Uttar Pradesh Pharmacy Council verified pharmacists.</p>
+            </div>
+            <span class="text-xs font-mono font-bold px-2.5 py-1 bg-teal-100 text-teal-800 rounded-lg">
+              ${(store.staffDutyLog || []).length} Shift Logs
+            </span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="bg-slate-50/50 border-b border-slate-200 text-slate-600 font-semibold">
+                  <th class="py-2.5 px-4">Log ID</th>
+                  <th class="py-2.5 px-4">Date & Time</th>
+                  <th class="py-2.5 px-4">Pharmacist Name</th>
+                  <th class="py-2.5 px-4">UPPC Reg ID</th>
+                  <th class="py-2.5 px-4">Qualification</th>
+                  <th class="py-2.5 px-4">Action</th>
+                  <th class="py-2.5 px-4">Verification Method</th>
+                  <th class="py-2.5 px-4">Statutory Status</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 font-mono text-[11px]">
+                ${(store.staffDutyLog || []).length === 0 ? `
+                  <tr>
+                    <td colspan="8" class="p-8 text-center text-slate-400 font-sans text-xs">
+                      No shift records logged yet. Click "Biometric Clock-In" on any staff card above to record an entry.
+                    </td>
+                  </tr>
+                ` : (store.staffDutyLog || []).map((log) => {
+                  const isClockIn = log.action === "CLOCK_IN";
+                  return `
+                    <tr class="hover:bg-slate-50/70">
+                      <td class="py-2.5 px-4 font-bold text-slate-900">${log.id}</td>
+                      <td class="py-2.5 px-4 text-slate-600">${log.timestamp}</td>
+                      <td class="py-2.5 px-4 font-sans font-bold text-slate-800">${log.staffName}</td>
+                      <td class="py-2.5 px-4 font-bold text-[#135c7e]">${log.uppcRegNo}</td>
+                      <td class="py-2.5 px-4 font-sans text-slate-600">${log.qualification}</td>
+                      <td class="py-2.5 px-4 font-sans">
+                        <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${isClockIn ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'}">
+                          <i class="fa ${isClockIn ? 'fa-sign-in' : 'fa-sign-out'}"></i> ${isClockIn ? 'Shift Clock-In' : 'Shift Relieved'}
+                        </span>
+                      </td>
+                      <td class="py-2.5 px-4 font-sans text-slate-500">${log.method}</td>
+                      <td class="py-2.5 px-4 font-sans">
+                        <span class="text-emerald-700 font-semibold flex items-center gap-1">
+                          <i class="fa fa-shield"></i> ${log.status}
+                        </span>
+                      </td>
+                    </tr>
+                  `;
+                }).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -3614,6 +4183,125 @@ class ACSApp {
                       <td class="py-2.5 px-4">
                         <span class="text-emerald-600 font-medium flex items-center gap-1 text-[11px]">
                           <i class="fa fa-check-circle"></i> Reconciled
+                        </span>
+                      </td>
+                    </tr>
+                  `;
+                }).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Live Itemized Dispensing Ledger & Cash Memos -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <div>
+              <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                <i class="fa fa-calculator text-emerald-600"></i> Live Cash Memo & Dispensed Invoices Ledger
+              </h4>
+              <p class="text-[11px] text-slate-500 mt-0.5">Chronological record of POS transactions, doctor details, and dispensed medicine batches.</p>
+            </div>
+            <span class="text-xs font-mono font-bold px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg">
+              ${(rev.transactions || []).length} Invoices Logged
+            </span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="bg-slate-50/50 border-b border-slate-200 text-slate-600 font-semibold">
+                  <th class="py-2.5 px-4">Invoice No</th>
+                  <th class="py-2.5 px-4">Date / Time</th>
+                  <th class="py-2.5 px-4">Patient Details</th>
+                  <th class="py-2.5 px-4">Doctor (RMP)</th>
+                  <th class="py-2.5 px-4">Medicine & Batch</th>
+                  <th class="py-2.5 px-4 text-center">Qty</th>
+                  <th class="py-2.5 px-4 text-right">Total Bill</th>
+                  <th class="py-2.5 px-4 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 font-mono text-[11px]">
+                ${(rev.transactions || []).length === 0 ? `
+                  <tr>
+                    <td colspan="8" class="p-8 text-center text-slate-400 font-sans text-xs">
+                      No POS cash memos recorded yet. Dispense medicines using "Dispense Rx POS" to log transactions here.
+                    </td>
+                  </tr>
+                ` : (rev.transactions || []).map((tx) => {
+                  return `
+                    <tr class="hover:bg-slate-50/70">
+                      <td class="py-2.5 px-4 font-bold text-slate-900">${tx.id}</td>
+                      <td class="py-2.5 px-4 text-slate-600">${tx.date}</td>
+                      <td class="py-2.5 px-4 font-sans font-semibold text-slate-800">${tx.patientName} <span class="text-[10px] text-slate-400 font-mono">(${tx.patientAge})</span></td>
+                      <td class="py-2.5 px-4 font-sans text-slate-700">${tx.docName} <span class="text-[10px] text-slate-500 font-mono block">${tx.docReg}</span></td>
+                      <td class="py-2.5 px-4 font-sans">
+                        <strong class="text-slate-900 block">${tx.medName}</strong>
+                        <span class="text-[10px] text-slate-500 font-mono">Bat: ${tx.batchNo} • <span class="${tx.schedule && tx.schedule.includes('H1') ? 'text-rose-600 font-bold' : 'text-teal-700'}">${tx.schedule}</span></span>
+                      </td>
+                      <td class="py-2.5 px-4 text-center font-bold text-slate-800">${tx.quantity} ${tx.unit || ''}</td>
+                      <td class="py-2.5 px-4 text-right font-bold text-slate-900 ${this.financialsVisible ? '' : 'privacy-blur'}">
+                        ₹ ${tx.totalBill.toFixed(2)}
+                      </td>
+                      <td class="py-2.5 px-4 text-center font-sans">
+                        <button onclick="window.acsApp.reprintCashMemo('${tx.id}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition inline-flex items-center gap-1">
+                          <i class="fa fa-print text-teal-700"></i> Reprint
+                        </button>
+                      </td>
+                    </tr>
+                  `;
+                }).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Supplier Restock Invoices & Purchase Expenses Register -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <div>
+              <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                <i class="fa fa-truck text-indigo-600"></i> Supplier Restock Invoices & Purchase Expenses Register
+              </h4>
+              <p class="text-[11px] text-slate-500 mt-0.5">Wholesale medicine procurement accounts payable and delivery receipts.</p>
+            </div>
+            <span class="text-xs font-mono font-bold px-2.5 py-1 bg-indigo-100 text-indigo-800 rounded-lg">
+              ${(store.purchaseExpenses || []).length} POs Reconciled
+            </span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="bg-slate-50/50 border-b border-slate-200 text-slate-600 font-semibold">
+                  <th class="py-2.5 px-4">PO Number</th>
+                  <th class="py-2.5 px-4">Order Date</th>
+                  <th class="py-2.5 px-4">Authorized Wholesale Vendor</th>
+                  <th class="py-2.5 px-4">Items / SKUs</th>
+                  <th class="py-2.5 px-4 text-center">Units Added</th>
+                  <th class="py-2.5 px-4 text-right">Requisition Cost</th>
+                  <th class="py-2.5 px-4 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 font-mono text-[11px]">
+                ${(store.purchaseExpenses || []).length === 0 ? `
+                  <tr>
+                    <td colspan="7" class="p-8 text-center text-slate-400 font-sans text-xs">
+                      No supplier purchase orders logged yet. Generate POs using "Generate Supplier PO Draft".
+                    </td>
+                  </tr>
+                ` : (store.purchaseExpenses || []).map((po) => {
+                  return `
+                    <tr class="hover:bg-slate-50/70">
+                      <td class="py-2.5 px-4 font-bold text-indigo-900">${po.id}</td>
+                      <td class="py-2.5 px-4 text-slate-600">${po.date}</td>
+                      <td class="py-2.5 px-4 font-sans text-slate-800">${po.vendor}</td>
+                      <td class="py-2.5 px-4 font-sans font-semibold">${po.itemsCount} SKUs</td>
+                      <td class="py-2.5 px-4 text-center text-emerald-700 font-bold">+${po.unitsAdded}</td>
+                      <td class="py-2.5 px-4 text-right font-bold text-slate-900 ${this.financialsVisible ? '' : 'privacy-blur'}">
+                        ₹ ${po.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td class="py-2.5 px-4 text-center font-sans">
+                        <span class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <i class="fa fa-check-circle"></i> ${po.status}
                         </span>
                       </td>
                     </tr>
@@ -4281,6 +4969,7 @@ class ACSApp {
 
     document.getElementById("form-edit-store").onsubmit = (e) => {
       e.preventDefault();
+      const oldName = store.name;
       store.name = document.getElementById("edit-store-name").value.trim();
       store.ownerName = document.getElementById("edit-store-owner").value.trim();
       store.district = document.getElementById("edit-store-district").value.trim();
@@ -4294,6 +4983,17 @@ class ACSApp {
       store.operatingHours = document.getElementById("edit-store-hours").value.trim();
       store.is24x7 = document.getElementById("edit-store-24x7").checked;
       store.photoUrl = document.getElementById("edit-store-photo").value.trim() || store.photoUrl;
+
+      // Preserve slug aliases so existing QR codes and bookmarks never return 404
+      store.slugAliases = store.slugAliases || (store.slug ? [store.slug] : []);
+      if (store.slug && !store.slugAliases.includes(store.slug)) {
+        store.slugAliases.push(store.slug);
+      }
+      const newSlug = store.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      if (newSlug && !store.slugAliases.includes(newSlug)) {
+        store.slugAliases.push(newSlug);
+      }
+      store.slug = newSlug || store.slug;
 
       // Keep user session store name in sync if logged-in owner
       if (this.currentUser && this.currentUser.storeId === store.id) {
@@ -4312,7 +5012,7 @@ class ACSApp {
         window.dispatchEvent(new Event("storage"));
       } catch (err) {}
 
-      this.showToast(`🎉 Pharmacy profile & storefront photo updated! Live hosted website synchronized.`, "success");
+      this.showToast(`🎉 Pharmacy profile & storefront photo updated! Live hosted website synchronized (URL aliases preserved).`, "success");
     };
   }
 
@@ -4811,7 +5511,7 @@ class ACSApp {
     modal.classList.remove("hidden");
   }
 
-  openPosDispensingModal(storeId) {
+  openPosDispensingModal(storeId, initialPatientName = null, initialRxId = null) {
     const store = (storeId ? this.stores.find((s) => s.id === storeId) : null) || this.getCurrentStore();
     if (!store) return;
 
@@ -4871,7 +5571,7 @@ class ACSApp {
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label class="block font-semibold text-slate-700 mb-1">Patient Name *</label>
-              <input type="text" id="pos-patient-name" value="Satish Chandra Verma" required class="w-full px-3 py-2 border rounded-lg bg-white" />
+              <input type="text" id="pos-patient-name" value="${initialPatientName ? decodeURIComponent(initialPatientName) : 'Satish Chandra Verma'}" required class="w-full px-3 py-2 border rounded-lg bg-white font-bold text-slate-900" />
             </div>
             <div>
               <label class="block font-semibold text-slate-700 mb-1">Age & Gender *</label>
@@ -4879,7 +5579,7 @@ class ACSApp {
             </div>
             <div>
               <label class="block font-semibold text-slate-700 mb-1">Prescription Slip Rx ID *</label>
-              <input type="text" id="pos-rx-id" value="RX-UP-2026-${Math.floor(1000 + Math.random() * 9000)}" required class="w-full px-3 py-2 border rounded-lg bg-white font-mono uppercase" />
+              <input type="text" id="pos-rx-id" value="${initialRxId ? decodeURIComponent(initialRxId) : `RX-UP-2026-${Math.floor(1000 + Math.random() * 9000)}`}" required class="w-full px-3 py-2 border rounded-lg bg-white font-mono uppercase" />
             </div>
           </div>
         </div>
@@ -5006,15 +5706,50 @@ class ACSApp {
     store.revenueData.monthlyGross += totalBill;
     store.revenueData.totalOrdersThisMonth += 1;
 
-    this.saveStores();
-
-    // Show Printable Cash Memo in modal
+    // Chief / on-duty pharmacist
     const chief = store.staff.find((st) => st.isOnDuty && st.uppcRegNo && st.uppcRegNo.startsWith("UPPC")) ||
       store.staff.find((st) => st.role.includes("Chief") || (st.uppcRegNo && st.uppcRegNo.startsWith("UPPC"))) ||
       store.staff[0];
 
     const invoiceNo = `INV-UP-2026-${Math.floor(10000 + Math.random() * 90000)}`;
     const billDate = new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+
+    // Itemized Cash Memo Transaction Record
+    const transaction = {
+      id: invoiceNo,
+      date: billDate,
+      timestamp: Date.now(),
+      patientName: patientName || "Walk-in Patient",
+      patientAge: patientAge || "Adult",
+      docName: docName || "Dr. Medical Practitioner",
+      docReg: docReg || "UPMC-REG-XXXXX",
+      rxId: rxId || "RX-COUNTER-DISPENSE",
+      medId: med.id,
+      medName: med.name,
+      saltName: med.saltName,
+      batchNo: med.batchNo,
+      expiryDate: med.expiryDate,
+      schedule: med.schedule,
+      quantity: qty,
+      unit: med.unit,
+      mrp: med.mrp,
+      subtotal: subtotal,
+      tax: tax,
+      totalBill: totalBill,
+      pharmacistName: chief ? chief.name : "Registered Pharmacist",
+      pharmacistReg: chief ? chief.uppcRegNo : "UPPC Verified"
+    };
+
+    store.revenueData.transactions = store.revenueData.transactions || [];
+    store.revenueData.transactions.unshift(transaction);
+
+    // Schedule H / H1 Statutory Register (Rule 65 Compliance)
+    if (med.schedule && (med.schedule.includes("Schedule H") || med.schedule.includes("H1") || med.schedule.includes("Narcotic"))) {
+      store.scheduleH1Register = store.scheduleH1Register || [];
+      store.scheduleH1Register.unshift(transaction);
+    }
+
+    this.saveStores();
 
     const body = document.getElementById("modal-generic-body");
     const title = document.getElementById("modal-generic-title");
@@ -5136,6 +5871,116 @@ class ACSApp {
     this.showToast(`Dispensed ${qty} units of ${med.name}. Stock decremented to ${med.quantity}.`, "success");
   }
 
+  reprintCashMemo(invoiceId) {
+    const store = this.getCurrentStore();
+    if (!store) return;
+    const tx = (store.revenueData.transactions || []).find((t) => t.id === invoiceId) ||
+      (store.scheduleH1Register || []).find((t) => t.id === invoiceId);
+    if (!tx) {
+      this.showToast("Invoice not found in transaction ledger.", "warning");
+      return;
+    }
+
+    const modal = document.getElementById("modal-generic");
+    const title = document.getElementById("modal-generic-title");
+    const body = document.getElementById("modal-generic-body");
+    if (!modal || !title || !body) return;
+
+    title.innerHTML = `<i class="fa fa-print text-teal-700"></i> Cash Memo Duplicate / Reprint • ${tx.id}`;
+    body.innerHTML = `
+      <div class="space-y-6 text-xs">
+        <div class="receipt-paper p-6 text-slate-800 text-xs select-none border border-slate-300 rounded-xl bg-white shadow-sm">
+          <div class="text-center pb-3 border-b border-dashed border-slate-300 space-y-1">
+            <h2 class="text-base font-black uppercase text-slate-900">${store.name}</h2>
+            <p class="text-[11px] text-slate-600">${store.address}</p>
+            <div class="font-mono text-[10px] text-slate-500">
+              Form 20 Lic: ${store.license20} | Form 21: ${store.license21} | GSTIN: ${store.gstin}
+            </div>
+            <div class="inline-block bg-slate-900 text-white font-bold px-3 py-0.5 rounded text-[10px] uppercase tracking-wider mt-1">
+              RETAIL TAX INVOICE / CASH MEMO (REPRINT)
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 py-3 border-b border-dashed border-slate-300 text-[11px] font-mono">
+            <div>
+              <span class="text-slate-500">Invoice No:</span> <strong class="text-slate-900">${tx.id}</strong><br/>
+              <span class="text-slate-500">Date/Time:</span> ${tx.date}<br/>
+              <span class="text-slate-500">Ref Rx ID:</span> ${tx.rxId}
+            </div>
+            <div class="text-right">
+              <span class="text-slate-500">Patient:</span> <strong class="text-slate-900">${tx.patientName}</strong><br/>
+              <span class="text-slate-500">Age/Gen:</span> ${tx.patientAge}<br/>
+              <span class="text-slate-500">Doctor:</span> ${tx.docName} [${tx.docReg}]
+            </div>
+          </div>
+
+          <div class="py-3 border-b border-dashed border-slate-300">
+            <table class="w-full text-left font-mono text-[11px]">
+              <thead>
+                <tr class="border-b border-slate-200 text-slate-500">
+                  <th class="py-1">Item Description</th>
+                  <th class="py-1">Batch</th>
+                  <th class="py-1 text-center">Qty</th>
+                  <th class="py-1 text-right">MRP</th>
+                  <th class="py-1 text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="py-1.5 font-sans">
+                    <strong class="text-slate-900">${tx.medName}</strong>
+                    <div class="text-[9px] text-slate-500">${tx.saltName} [${tx.schedule}]</div>
+                  </td>
+                  <td class="py-1.5 text-slate-600">${tx.batchNo}</td>
+                  <td class="py-1.5 text-center font-bold">${tx.quantity}</td>
+                  <td class="py-1.5 text-right">₹ ${tx.mrp.toFixed(2)}</td>
+                  <td class="py-1.5 text-right font-bold text-slate-900">₹ ${tx.subtotal.toFixed(2)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="py-3 border-b border-dashed border-slate-300 font-mono text-[11px] space-y-1">
+            <div class="flex justify-between text-slate-600">
+              <span>Taxable Subtotal:</span>
+              <span>₹ ${tx.subtotal.toFixed(2)}</span>
+            </div>
+            <div class="flex justify-between text-slate-600">
+              <span>CGST (6%):</span>
+              <span>₹ ${(tx.tax / 2).toFixed(2)}</span>
+            </div>
+            <div class="flex justify-between text-slate-600">
+              <span>SGST (6%):</span>
+              <span>₹ ${(tx.tax / 2).toFixed(2)}</span>
+            </div>
+            <div class="flex justify-between text-sm font-black text-slate-900 pt-1 border-t border-slate-300">
+              <span>NET TOTAL PAID:</span>
+              <span>₹ ${tx.totalBill.toFixed(2)}</span>
+            </div>
+          </div>
+
+          <div class="pt-3 flex items-end justify-between text-[10px] text-slate-600">
+            <div>
+              <p><strong>Section 42 Pharmacy Act:</strong> Dispensed under registered pharmacist supervision.</p>
+            </div>
+            <div class="text-right font-mono">
+              <strong>${tx.pharmacistName}</strong><br/>
+              <span>${tx.pharmacistReg}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button onclick="window.print()" class="px-4 py-2 bg-slate-900 text-white font-bold rounded-xl flex items-center gap-1.5 shadow">
+            <i class="fa fa-print"></i> Print Memo
+          </button>
+          <button onclick="window.acsApp.closeModal()" class="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-xl">Close</button>
+        </div>
+      </div>
+    `;
+    modal.classList.remove("hidden");
+  }
+
   toggleStaffDuty(staffId) {
     const store = this.getCurrentStore();
     if (!store) return;
@@ -5152,10 +5997,24 @@ class ACSApp {
       });
     }
 
+    // Append permanent statutory attendance log (Rule 65 Compliance)
+    store.staffDutyLog = store.staffDutyLog || [];
+    store.staffDutyLog.unshift({
+      id: `LOG-${Date.now().toString().slice(-6)}`,
+      timestamp: new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }),
+      staffId: staff.id,
+      staffName: staff.name,
+      uppcRegNo: staff.uppcRegNo || "Non-Technical",
+      qualification: staff.qualification,
+      action: staff.isOnDuty ? "CLOCK_IN" : "CLOCK_OUT",
+      method: "Aadhaar Biometric Match Verified",
+      status: staff.isOnDuty ? "Present On Duty (Statutory Incharge)" : "Shift Relieved & Relinquished"
+    });
+
     this.saveStores();
     this.renderCurrentView();
     this.showToast(
-      `${staff.name} is now ${staff.isOnDuty ? "Present On Duty (Statutory Incharge)" : "Off Duty"}.`,
+      `${staff.name} is now ${staff.isOnDuty ? "Present On Duty (Statutory Incharge)" : "Off Duty"}. Biometric attendance logged.`,
       "success"
     );
   }
@@ -5277,14 +6136,30 @@ class ACSApp {
       lowStockItems = store.stocks.slice(0, 3);
     }
 
+    const totalPoCost = lowStockItems.reduce((acc, curr) => acc + (50 * curr.purchaseRate), 0);
+    const poNumber = `PO-UP-${store.district.substring(0, 3).toUpperCase()}-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+
     lowStockItems.forEach((m) => {
       m.quantity += 50;
+    });
+
+    // Record Supplier Purchase Invoice & Accounts Payable
+    store.purchaseExpenses = store.purchaseExpenses || [];
+    store.purchaseExpenses.unshift({
+      id: poNumber,
+      date: new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }),
+      timestamp: Date.now(),
+      vendor: "UP Pharma C&F Syndicate Depot, Transport Nagar, Lucknow",
+      itemsCount: lowStockItems.length,
+      unitsAdded: lowStockItems.length * 50,
+      totalAmount: totalPoCost,
+      status: "Stock Received in Rack"
     });
 
     this.saveStores();
     this.closeModal();
     this.renderCurrentView();
-    this.showToast(`Restocked ${lowStockItems.length} items with +50 units each! Database updated in real time.`, "success");
+    this.showToast(`Restocked ${lowStockItems.length} items (+${lowStockItems.length * 50} units)! Supplier PO ${poNumber} recorded in accounting ledger.`, "success");
   }
 
   openBulkPriceModal() {

@@ -142,6 +142,21 @@ try {
   app.handlePoRestock(currentStore.id);
   console.log(`PO Restock simulated! First item Qty updated from ${initialQty} to ${currentStore.stocks[0].quantity}`);
 
+  // Test Connection Logic Fixes
+  console.log('--- Testing Connection Logic & Data Integrity ---');
+  console.log(`Prescriptions queue: ${currentStore.prescriptions.length} items`);
+  console.log(`Schedule H1 register: ${currentStore.scheduleH1Register.length} records`);
+  console.log(`Staff duty logs: ${currentStore.staffDutyLog.length} biometric entries`);
+  console.log(`Purchase expenses: ${currentStore.purchaseExpenses.length} PO records`);
+  console.log(`Cash memo transactions: ${currentStore.revenueData.transactions.length} receipts`);
+
+  if (!currentStore.prescriptions || currentStore.prescriptions.length === 0) throw new Error('Prescriptions queue empty');
+  if (!currentStore.scheduleH1Register || currentStore.scheduleH1Register.length === 0) throw new Error('Schedule H1 register empty');
+  if (!currentStore.staffDutyLog || currentStore.staffDutyLog.length === 0) throw new Error('Duty log empty');
+  if (!currentStore.purchaseExpenses || currentStore.purchaseExpenses.length === 0) throw new Error('Purchase expenses empty');
+  if (!currentStore.revenueData.transactions || currentStore.revenueData.transactions.length === 0) throw new Error('Transactions empty');
+
+  console.log('ALL CONNECTION TESTS VERIFIED AND PASSED 100%!');
   console.log('ALL TESTS PASSED COMPLETELY WITHOUT ANY ERRORS!');
 } catch (err) {
   console.error('ERROR during testing:', err);
