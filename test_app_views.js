@@ -301,11 +301,57 @@ try {
     const catHtml = app.getHostedMedicineCatalogHtml(s);
     if (!catHtml || catHtml.length === 0) throw new Error(`getHostedMedicineCatalogHtml failed for store: ${s.name}`);
   });
-  console.log('Verified common deployed storefront for ALL 5 pharmacies (Sanjeevani, Kashi Care, Awadh, Krishna, Anand) — 0 edit buttons, 100% consumer-facing!');
+  console.log('Verified common deployed storefront for ALL pharmacies — 0 edit buttons, 100% consumer-facing!');
+
+  // 12. Test Deoria Drug House Single Auth & 5 Deployed View-Only Stores
+  console.log('--- Testing Deoria Drug House Auth & 5 Deployed View-Only Stores ---');
+  
+  // (a) Verify Deoria Drug House details
+  const ddh = app.stores.find(s => s.id === 'store-up-001');
+  if (!ddh) throw new Error('Deoria Drug House not found');
+  if (ddh.name !== 'Deoria Drug House') throw new Error('Primary store name mismatch: ' + ddh.name);
+  if (ddh.ownerName !== 'Akhileshwar Tripathi') throw new Error('Primary owner mismatch: ' + ddh.ownerName);
+  if (ddh.mapsUrl !== 'https://maps.app.goo.gl/CKJeaQEBoWBaTEPX7') throw new Error('Google Maps URL mismatch: ' + ddh.mapsUrl);
+  if (sandbox.INITIAL_STORES_DATA[0].stocks.length !== 7) throw new Error('Expected exactly 7 initial medicines for Deoria Drug House, got: ' + sandbox.INITIAL_STORES_DATA[0].stocks.length);
+  console.log(`Deoria Drug House verified: Owner ${ddh.ownerName}, Maps ${ddh.mapsUrl}, initial ${sandbox.INITIAL_STORES_DATA[0].stocks.length} medicines in stock!`);
+
+  // (b) Verify Authentication (akhil@acs.com / akhil123)
+  const failAuth1 = app.authenticate('random@gmail.com', 'wrongpass');
+  if (failAuth1) throw new Error('authenticate should fail on invalid user');
+  const failAuth2 = app.authenticate('akhil@acs.com', 'wrongpass');
+  if (failAuth2) throw new Error('authenticate should fail on wrong password');
+  
+  const successAuth = app.authenticate('akhil@acs.com', 'akhil123');
+  if (!successAuth) throw new Error('authenticate failed on valid credentials akhil@acs.com / akhil123');
+  if (!app.currentUser || app.currentUser.name !== 'Akhileshwar Tripathi' || app.currentUser.storeId !== 'store-up-001') {
+    throw new Error('User session not properly established for Akhileshwar Tripathi');
+  }
+  console.log('Authentication passed! Successfully authenticated Akhileshwar Tripathi into Deoria Drug House.');
+
+  // (c) Verify 5 Deployed View-Only Stores (3 Deoria, 1 Kanpur Nagar, 1 Lucknow)
+  const viewOnlyStores = app.stores.filter(s => s.isViewOnly);
+  if (viewOnlyStores.length !== 5) throw new Error('Expected 5 view-only deployed stores, got: ' + viewOnlyStores.length);
+
+  const deoriaViewOnly = viewOnlyStores.filter(s => s.district === 'Deoria');
+  if (deoriaViewOnly.length !== 3) throw new Error('Expected 3 view-only stores in Deoria, got: ' + deoriaViewOnly.length);
+
+  const kanpurViewOnly = viewOnlyStores.filter(s => s.district === 'Kanpur Nagar');
+  if (kanpurViewOnly.length !== 1) throw new Error('Expected 1 view-only store in Kanpur Nagar, got: ' + kanpurViewOnly.length);
+
+  const lucknowViewOnly = viewOnlyStores.filter(s => s.district === 'Lucknow');
+  if (lucknowViewOnly.length !== 1) throw new Error('Expected 1 view-only store in Lucknow, got: ' + lucknowViewOnly.length);
+
+  console.log(`Verified 5 Deployed View-Only Stores: 3 in Deoria (${deoriaViewOnly.map(s => s.name).join(', ')}), 1 in Kanpur (${kanpurViewOnly[0].name}), 1 in Lucknow (${lucknowViewOnly[0].name})!`);
+
+  // (d) Test logout
+  app.logout();
+  if (app.currentUser !== null) throw new Error('Logout failed to clear currentUser');
+  console.log('Logout verified! currentUser is null and app returned to guest mode.');
 
   console.log('ALL CONNECTION TESTS VERIFIED AND PASSED 100%!');
   console.log('ALL PHOTO & PROFILE STUDIO TESTS PASSED 100%!');
   console.log('ALL PUBLIC STOREFRONT & AUTO-MATCHER TESTS PASSED 100%!');
+  console.log('ALL AUTHENTICATION & VIEW-ONLY STORE CONSTRAINTS PASSED 100%!');
   console.log('ALL TESTS PASSED COMPLETELY WITHOUT ANY ERRORS!');
 } catch (err) {
   console.error('ERROR during testing:', err);

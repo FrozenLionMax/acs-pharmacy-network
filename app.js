@@ -129,13 +129,19 @@ class ACSApp {
 
   // --- Storage & Session Layer ---
   loadStores() {
-    const saved = localStorage.getItem("ACS_STORES_DATA_V1");
+    const saved = localStorage.getItem("ACS_STORES_DATA_V2");
     if (saved) {
       try {
         this.stores = JSON.parse(saved);
+        // Ensure Deoria Drug House is present as the primary store
+        if (!this.stores || !this.stores.some((s) => s.slug === "deoria-drug-house")) {
+          this.stores = JSON.parse(JSON.stringify(INITIAL_STORES_DATA));
+          this.saveStores();
+        }
       } catch (e) {
         console.error("Failed to parse local storage, falling back to initial data", e);
         this.stores = JSON.parse(JSON.stringify(INITIAL_STORES_DATA));
+        this.saveStores();
       }
     } else {
       this.stores = JSON.parse(JSON.stringify(INITIAL_STORES_DATA));
@@ -159,18 +165,22 @@ class ACSApp {
   }
 
   saveStores() {
-    localStorage.setItem("ACS_STORES_DATA_V1", JSON.stringify(this.stores));
+    localStorage.setItem("ACS_STORES_DATA_V2", JSON.stringify(this.stores));
   }
 
   loadUserSession() {
-    const savedUser = localStorage.getItem("ACS_USER_SESSION_V1");
+    const savedUser = localStorage.getItem("ACS_USER_SESSION_V2");
     if (savedUser) {
       try {
-        this.currentUser = JSON.parse(savedUser);
-        if (this.currentUser.storeId) {
-          this.currentStoreId = this.currentUser.storeId;
+        const u = JSON.parse(savedUser);
+        if (u && (u.email === "akhil@acs.com" || u.role === "pharmacy_owner" || u.role === "admin")) {
+          this.currentUser = u;
+          this.currentStoreId = "store-up-001";
+          this.activeTab = "store-detail";
+        } else {
+          this.currentUser = null;
+          this.activeTab = "landing";
         }
-        this.activeTab = "store-detail";
       } catch (e) {
         this.currentUser = null;
         this.activeTab = "landing";
@@ -183,9 +193,9 @@ class ACSApp {
 
   saveUserSession() {
     if (this.currentUser) {
-      localStorage.setItem("ACS_USER_SESSION_V1", JSON.stringify(this.currentUser));
+      localStorage.setItem("ACS_USER_SESSION_V2", JSON.stringify(this.currentUser));
     } else {
-      localStorage.removeItem("ACS_USER_SESSION_V1");
+      localStorage.removeItem("ACS_USER_SESSION_V2");
     }
   }
 
@@ -193,24 +203,37 @@ class ACSApp {
     return this.stores.find((s) => s.id === this.currentStoreId) || this.stores[0] || null;
   }
 
-  // --- Authentication System (2 Roles: Pharmacy Owner & Admin) ---
-  loginAsOwner(storeId, customOwnerName) {
-    const store = this.stores.find((s) => s.id === storeId) || this.stores[0];
-    this.currentStoreId = store.id;
-    this.currentUser = {
-      role: "pharmacy_owner",
-      name: customOwnerName || store.ownerName,
-      storeId: store.id,
-      storeName: store.name
-    };
-    this.saveUserSession();
-    this.activeTab = "store-detail";
-    this.renderHeaderBar();
-    this.renderCurrentView();
-    this.showToast(`Logged in as Pharmacy Owner: ${this.currentUser.name} (${store.name})`, "success");
+  // --- Authentication System (Single Authorized Account: akhil@acs.com / akhil123) ---
+  authenticate(email, password) {
+    const cleanEmail = (email || "").trim().toLowerCase();
+    const cleanPass = (password || "").trim();
 
-    // Show celebratory post-login option
-    this.promptOwnerPostLoginActions(store);
+    if (cleanEmail === "akhil@acs.com" && cleanPass === "akhil123") {
+      const deoriaStore = this.stores.find((s) => s.id === "store-up-001" || s.slug === "deoria-drug-house") || this.stores[0];
+      this.currentStoreId = deoriaStore.id;
+      this.currentUser = {
+        role: "pharmacy_owner",
+        email: "akhil@acs.com",
+        name: "Akhileshwar Tripathi",
+        storeId: deoriaStore.id,
+        storeName: deoriaStore.name
+      };
+      this.saveUserSession();
+      this.activeTab = "store-detail";
+      this.closeModal();
+      this.renderHeaderBar();
+      this.renderCurrentView();
+      this.showToast(`Welcome, Akhileshwar Tripathi! Logged into Deoria Drug House.`, "success");
+      return true;
+    } else {
+      this.showToast("Invalid credentials! Authorized login: akhil@acs.com / akhil123", "danger");
+      return false;
+    }
+  }
+
+  loginAsOwner(storeId, customOwnerName) {
+    // Backward-compatible invocation mapping to Deoria Drug House
+    return this.authenticate("akhil@acs.com", "akhil123");
   }
 
   loginAsAdmin(adminName = "Dr. Alok Srivastava") {
@@ -230,9 +253,84 @@ class ACSApp {
     this.currentUser = null;
     this.saveUserSession();
     this.activeTab = "landing";
+    this.landingSubTab = "gateway";
     this.renderHeaderBar();
     this.renderCurrentView();
     this.showToast("Logged out successfully. Returned to Portal Gateway.", "info");
+  }
+
+  openLoginModal() {
+    const modal = document.getElementById("modal-generic");
+    const title = document.getElementById("modal-generic-title");
+    const body = document.getElementById("modal-generic-body");
+    if (!modal || !title || !body) return;
+
+    title.innerHTML = `<i class="fa fa-lock text-amber-500"></i> Pharmacist &amp; Store Owner Login`;
+    body.innerHTML = `
+      <div class="space-y-4 text-xs">
+        <div class="p-3.5 bg-teal-50 border border-teal-200 rounded-xl text-teal-900 flex items-start gap-3">
+          <i class="fa fa-shield text-xl text-[#135c7e] flex-shrink-0 mt-0.5"></i>
+          <div>
+            <strong class="font-bold text-sm text-[#135c7e] block">Deoria Drug House Management Portal</strong>
+            <span class="text-slate-600 text-[11px] block mt-0.5">
+              Subhash Chowk, Station Road, Deoria • Owner: <strong>Akhileshwar Tripathi</strong>
+            </span>
+          </div>
+        </div>
+
+        <form onsubmit="event.preventDefault(); const em = document.getElementById('modal-login-email').value; const pw = document.getElementById('modal-login-pass').value; if(window.acsApp.authenticate(em, pw)){ window.acsApp.closeModal(); } else { const err = document.getElementById('modal-login-error'); if(err){ err.innerText = 'Invalid credentials. Please enter akhil@acs.com / akhil123'; err.classList.remove('hidden'); } }" class="space-y-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Pharmacist Login ID / Email:</label>
+            <div class="relative">
+              <i class="fa fa-envelope text-slate-400 absolute left-3 top-2.5"></i>
+              <input 
+                type="email" 
+                id="modal-login-email" 
+                value="akhil@acs.com" 
+                placeholder="akhil@acs.com" 
+                class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e] font-mono text-xs font-semibold" 
+              />
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Password:</label>
+            <div class="relative">
+              <i class="fa fa-key text-slate-400 absolute left-3 top-2.5"></i>
+              <input 
+                type="password" 
+                id="modal-login-pass" 
+                value="akhil123" 
+                placeholder="Enter password" 
+                class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e] text-xs font-semibold" 
+              />
+            </div>
+          </div>
+
+          <div class="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-[11px] flex items-center justify-between">
+            <span class="flex items-center gap-1.5"><i class="fa fa-info-circle text-amber-600"></i> Authorized Credentials:</span>
+            <span class="font-mono font-bold text-slate-900">akhil@acs.com / akhil123</span>
+          </div>
+
+          <div id="modal-login-error" class="text-rose-600 font-semibold text-xs hidden"></div>
+
+          <div class="pt-2 flex items-center justify-end gap-2">
+            <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl">
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              class="px-5 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white font-black rounded-xl shadow transition flex items-center gap-2"
+            >
+              <i class="fa fa-sign-in"></i>
+              <span>Login to Deoria Drug House</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    modal.classList.remove("hidden");
   }
 
   promptOwnerPostLoginActions(store) {
@@ -309,17 +407,23 @@ class ACSApp {
     const storeSelectorContainer = document.getElementById("header-store-selector-container");
     const navBar = document.getElementById("portal-nav-bar");
 
+    // Dropdown is removed - always hide store switcher container
+    if (storeSelectorContainer) {
+      storeSelectorContainer.classList.add("hidden");
+    }
+
     if (this.currentUser) {
-      // User is logged in
+      // User is logged in as Akhileshwar Tripathi (Deoria Drug House)
       if (authContainer) {
-        const isOwner = this.currentUser.role === "pharmacy_owner";
         authContainer.innerHTML = `
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2.5 sm:gap-3">
             <div class="bg-white/15 px-3 py-1.5 rounded-xl border border-white/20 text-xs text-right">
-              <span class="text-[10px] uppercase font-bold text-amber-300 block">
-                ${isOwner ? "Pharmacy Store Owner" : "State Regulatory Admin"}
+              <span class="text-[10px] uppercase font-black text-amber-300 block flex items-center justify-end gap-1">
+                <i class="fa fa-hospital-o"></i> Deoria Drug House
               </span>
-              <span class="font-bold text-white">${this.currentUser.name}</span>
+              <span class="font-bold text-white text-[11px] sm:text-xs">
+                <i class="fa fa-user-circle text-teal-200 mr-1"></i>Akhileshwar Tripathi
+              </span>
             </div>
             <button onclick="window.acsApp.logout()" class="bg-rose-600/90 hover:bg-rose-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow">
               <i class="fa fa-sign-out"></i> Logout
@@ -328,51 +432,20 @@ class ACSApp {
         `;
       }
 
-      if (storeSelectorContainer) {
-        if (this.currentUser.role === "admin") {
-          storeSelectorContainer.classList.remove("hidden");
-          const selector = document.getElementById("header-store-select");
-          if (selector) {
-            selector.innerHTML = this.stores
-              .map(
-                (s) =>
-                  `<option value="${s.id}" ${s.id === this.currentStoreId ? "selected" : ""}>
-                    ${s.name} (${s.district})
-                  </option>`
-              )
-              .join("");
-          }
-        } else {
-          // Pharmacy owner: lock to their store or show switcher if multiple
-          storeSelectorContainer.classList.remove("hidden");
-          const selector = document.getElementById("header-store-select");
-          if (selector) {
-            selector.innerHTML = `
-              <option value="${this.currentUser.storeId}" selected>
-                ${this.currentUser.storeName}
-              </option>
-            `;
-          }
-        }
-      }
-
       if (navBar) {
         navBar.classList.remove("hidden");
-        // Update nav buttons
         this.updateNavButtonsVisibility();
       }
     } else {
-      // Guest / Not logged in: Show Gateway Button
+      // Guest / Not logged in: Show single Pharmacist Login button
       if (authContainer) {
         authContainer.innerHTML = `
-          <button onclick="window.acsApp.switchTab('landing')" class="bg-amber-400 hover:bg-amber-500 text-slate-900 px-4 py-2 rounded-xl text-xs font-bold shadow-md transition flex items-center gap-1.5">
-            <i class="fa fa-lock"></i> Portal Login / Access
-          </button>
+          <div class="flex items-center gap-2">
+            <button onclick="window.acsApp.openLoginModal()" class="bg-amber-400 hover:bg-amber-500 text-slate-950 px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-black shadow-md transition flex items-center gap-1.5">
+              <i class="fa fa-lock"></i> Pharmacist Login
+            </button>
+          </div>
         `;
-      }
-
-      if (storeSelectorContainer) {
-        storeSelectorContainer.classList.add("hidden");
       }
 
       if (navBar) {
@@ -867,10 +940,16 @@ class ACSApp {
                     <img src="${s.photoUrl}" alt="${s.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500 opacity-90" onerror="this.src='https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80'" />
                     <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/20"></div>
 
-                    <div class="absolute top-3 left-3 flex items-center gap-1.5">
-                      <span class="bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow">
-                        <i class="fa fa-check-circle"></i> UP FSDA Verified
-                      </span>
+                    <div class="absolute top-3 left-3 flex items-center gap-1.5 flex-wrap">
+                      ${s.isViewOnly ? `
+                        <span class="bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow">
+                          <i class="fa fa-eye"></i> Deployed • View Only
+                        </span>
+                      ` : `
+                        <span class="bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow">
+                          <i class="fa fa-check-circle"></i> Managed Store
+                        </span>
+                      `}
                       ${s.is24x7 ? `<span class="bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase shadow">24x7 Open</span>` : ''}
                     </div>
 
@@ -954,18 +1033,26 @@ class ACSApp {
                     </button>
                   </div>
 
-                  <div class="grid grid-cols-2 gap-2 text-[11px]">
+                  <div class="grid grid-cols-3 gap-1.5 text-[11px]">
                     <button 
                       onclick="window.acsApp.openStoreCertificateModal('${s.id}')" 
-                      class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 py-1.5 px-2.5 rounded-xl font-bold transition flex items-center justify-center gap-1"
+                      class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 py-1.5 px-2 rounded-xl font-bold transition flex items-center justify-center gap-1"
                     >
-                      <i class="fa fa-certificate text-amber-600"></i> QR Certificate
+                      <i class="fa fa-certificate text-amber-600"></i> Cert
                     </button>
                     <a 
                       href="tel:${cleanPhone}" 
-                      class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 py-1.5 px-2.5 rounded-xl font-bold transition flex items-center justify-center gap-1 text-center"
+                      class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 py-1.5 px-2 rounded-xl font-bold transition flex items-center justify-center gap-1 text-center"
                     >
-                      <i class="fa fa-phone text-[#135c7e]"></i> ${s.phone}
+                      <i class="fa fa-phone text-[#135c7e]"></i> Call
+                    </a>
+                    <a 
+                      href="${s.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name + ' ' + s.address)}`}" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 py-1.5 px-2 rounded-xl font-bold transition flex items-center justify-center gap-1 text-center"
+                    >
+                      <i class="fa fa-location-arrow text-rose-600"></i> Map
                     </a>
                   </div>
                 </div>
@@ -1231,50 +1318,75 @@ class ACSApp {
       if (this.landingLoginRole === "pharmacy_owner") {
         formContainer.innerHTML = `
           <div class="space-y-3.5 text-xs">
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">Select Your Registered Pharmacy:</label>
-              <select id="landing-owner-store-select" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#135c7e] font-medium">
-                ${this.stores.map(s => `<option value="${s.id}">${s.name} (${s.district})</option>`).join("")}
-              </select>
+            <div class="p-2.5 bg-teal-50 border border-teal-200 rounded-xl text-teal-900 flex items-center gap-2.5">
+              <i class="fa fa-hospital-o text-lg text-[#135c7e] flex-shrink-0"></i>
+              <div>
+                <strong class="font-bold text-xs text-[#135c7e] block">Deoria Drug House</strong>
+                <span class="text-slate-600 text-[11px] block">Owner: <strong>Akhileshwar Tripathi</strong> • Subhash Chowk</span>
+              </div>
             </div>
 
             <div>
-              <label class="block font-bold text-slate-700 mb-1">Owner Name / Pharmacist Mobile:</label>
-              <input type="text" id="landing-owner-mobile" value="+91 94150 28419" placeholder="Enter registered phone number" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#135c7e]" />
+              <label class="block font-bold text-slate-700 mb-1">Pharmacist Login ID / Email:</label>
+              <div class="relative">
+                <i class="fa fa-envelope text-slate-400 absolute left-3 top-2.5"></i>
+                <input 
+                  type="email" 
+                  id="landing-owner-email" 
+                  value="akhil@acs.com" 
+                  placeholder="akhil@acs.com" 
+                  class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#135c7e] font-mono text-xs font-semibold" 
+                />
+              </div>
             </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Password:</label>
+              <div class="relative">
+                <i class="fa fa-key text-slate-400 absolute left-3 top-2.5"></i>
+                <input 
+                  type="password" 
+                  id="landing-owner-password" 
+                  value="akhil123" 
+                  placeholder="Enter password" 
+                  class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#135c7e] text-xs font-semibold" 
+                />
+              </div>
+            </div>
+
+            <div class="p-2 bg-amber-50 rounded-lg border border-amber-200 text-amber-900 text-[11px] flex items-center justify-between">
+              <span class="flex items-center gap-1.5"><i class="fa fa-info-circle text-amber-600"></i> Authorized Credentials:</span>
+              <span class="font-mono font-bold text-slate-900">akhil@acs.com / akhil123</span>
+            </div>
+
+            <div id="landing-owner-error" class="text-rose-600 font-semibold text-xs hidden"></div>
 
             <div class="pt-2 flex flex-col gap-2">
               <button id="btn-submit-owner-login" class="w-full py-2.5 bg-[#135c7e] hover:bg-[#0f4b67] text-white font-bold rounded-xl shadow transition flex items-center justify-center gap-2">
-                <span>Enter Pharmacy Dashboard</span>
-                <i class="fa fa-arrow-right"></i>
+                <i class="fa fa-sign-in"></i>
+                <span>Login to Deoria Drug House</span>
               </button>
-
-              <button id="btn-landing-onboard-store" class="w-full py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold rounded-xl transition flex items-center justify-center gap-1.5">
-                <i class="fa fa-plus-circle text-amber-600"></i>
-                <span>Host a Brand New Pharmacy</span>
-              </button>
-            </div>
-
-            <div class="text-[11px] text-slate-400 text-center pt-1">
-              <i class="fa fa-info-circle text-teal-600"></i> No password required for demo testing. Pre-linked to UP Form 20/21 licenses.
             </div>
           </div>
         `;
 
         const btnLogin = document.getElementById("btn-submit-owner-login");
-        const btnOnboard = document.getElementById("btn-landing-onboard-store");
-        const selectStore = document.getElementById("landing-owner-store-select");
+        const emailInput = document.getElementById("landing-owner-email");
+        const passInput = document.getElementById("landing-owner-password");
+        const errEl = document.getElementById("landing-owner-error");
 
-        if (btnLogin && selectStore) {
+        if (btnLogin && emailInput && passInput) {
           btnLogin.addEventListener("click", () => {
-            const storeId = selectStore.value;
-            this.loginAsOwner(storeId);
-          });
-        }
-
-        if (btnOnboard) {
-          btnOnboard.addEventListener("click", () => {
-            this.openAddStoreModal();
+            const em = emailInput.value;
+            const pw = passInput.value;
+            if (this.authenticate(em, pw)) {
+              if (errEl) errEl.classList.add("hidden");
+            } else {
+              if (errEl) {
+                errEl.innerText = "Invalid credentials. Authorized login: akhil@acs.com / akhil123";
+                errEl.classList.remove("hidden");
+              }
+            }
           });
         }
 
@@ -6598,6 +6710,10 @@ class ACSApp {
   openEditStoreModal(storeId) {
     const store = this.stores.find((s) => s.id === storeId);
     if (!store) return;
+    if (store.isViewOnly) {
+      this.showToast("This pharmacy is deployed for public view only. Editing is disabled.", "warning");
+      return;
+    }
 
     const modal = document.getElementById("modal-generic");
     const title = document.getElementById("modal-generic-title");
@@ -6920,6 +7036,10 @@ class ACSApp {
   openManageStorePhotosModal(storeId) {
     const store = this.stores.find((s) => s.id === storeId) || this.getCurrentStore();
     if (!store) return;
+    if (store.isViewOnly) {
+      this.showToast("This pharmacy is deployed for public view only. Photo management is disabled.", "warning");
+      return;
+    }
     const gallery = this.ensureStoreGallery(store);
 
     const modal = document.getElementById("modal-generic");
