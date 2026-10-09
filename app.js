@@ -1602,6 +1602,12 @@ class ACSApp {
             <button onclick="window.acsApp.openStoreCertificateModal('${store.id}')" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-xs">
               <i class="fa fa-certificate text-amber-600"></i> UP License Certificate
             </button>
+            <button onclick="window.acsApp.copyStoreLink('/pharmacy/${store.slug}')" class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs" title="Copy website link to share">
+              <i class="fa fa-clone text-[#135c7e]"></i> Copy Link
+            </button>
+            <a href="https://www.google.com/search?q=${encodeURIComponent(store.name + ' ' + (store.district || '') + ' ' + (store.ownerName || ''))}" target="_blank" rel="noopener noreferrer" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 px-3 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs hidden lg:inline-flex" title="Search pharmacy on Google">
+              <i class="fa fa-google text-red-500"></i> Google
+            </a>
             ${this.currentUser && this.currentUser.storeId === store.id ? `
               <button onclick="window.acsApp.switchTab('store-detail')" class="bg-slate-900 hover:bg-black text-white px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm">
                 <i class="fa fa-dashboard text-amber-400"></i> Owner Portal
@@ -4226,6 +4232,54 @@ class ACSApp {
               <div class="p-3 bg-white border border-slate-200 rounded-lg">
                 <span class="text-slate-400 block">Operating Hours:</span>
                 <span class="font-bold text-slate-800 text-sm">${store.operatingHours}</span>
+              </div>
+            </div>
+
+            <!-- Live Deployed Web Address & Quick Sharing Strip -->
+            <div class="mt-4 p-4 bg-gradient-to-r from-teal-50 via-slate-50 to-amber-50 rounded-2xl border border-teal-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3.5">
+              <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span class="text-[11px] font-black uppercase tracking-wider text-teal-900">Live Deployed Public Web Address</span>
+                  <span class="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded-full border border-emerald-300">Live &amp; Google Ready</span>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <code class="text-xs sm:text-sm font-mono font-black text-[#135c7e] bg-white px-2.5 py-1 rounded-lg border border-teal-200 shadow-2xs select-all">
+                    https://acsakhil.com/pharmacy/${store.slug}
+                  </code>
+                </div>
+                <p class="text-[11px] text-slate-500">
+                  Patients and customers can open this link on phone or PC to view live stock, check prices, and order on WhatsApp.
+                </p>
+              </div>
+
+              <div class="flex items-center gap-2 flex-wrap self-start md:self-auto">
+                <button 
+                  type="button" 
+                  onclick="window.acsApp.copyStoreLink('/pharmacy/${store.slug}')" 
+                  class="px-3.5 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5 shadow-xs"
+                  title="Copy website link to clipboard"
+                >
+                  <i class="fa fa-clone"></i> Copy Link
+                </button>
+                <a 
+                  href="/pharmacy/${store.slug}" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  class="px-3.5 py-2 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black rounded-xl text-xs transition flex items-center gap-1.5 shadow-xs"
+                  title="Open live hosted website in new tab"
+                >
+                  <i class="fa fa-external-link"></i> Open Webpage
+                </a>
+                <a 
+                  href="https://www.google.com/search?q=${encodeURIComponent(store.name + ' ' + (store.district || '') + ' ' + (store.ownerName || ''))}" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  class="px-3 py-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold rounded-xl text-xs transition flex items-center gap-1.5 shadow-2xs"
+                  title="Search on Google"
+                >
+                  <i class="fa fa-google text-red-500"></i> Google Link
+                </a>
               </div>
             </div>
 
