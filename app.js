@@ -1490,7 +1490,29 @@ class ACSApp {
   }
 
   getHostedWebsiteViewHtml(store) {
-    if (!store) return `<div class="p-8 text-center bg-white rounded-xl">No store found.</div>`;
+    if (!store) {
+      return `
+        <div class="max-w-2xl mx-auto my-12 p-8 bg-white rounded-3xl border border-slate-200 shadow-sm text-center space-y-5 animate-fade-in">
+          <div class="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 mx-auto flex items-center justify-center text-2xl shadow-xs">
+            <i class="fa fa-hospital-o"></i>
+          </div>
+          <div class="space-y-2">
+            <h2 class="text-2xl font-black text-slate-900">Pharmacy Record Not Found in State Registry</h2>
+            <p class="text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+              The pharmacy link you requested could not be located or may have been updated. You can browse all verified pharmacies or open our featured flagship store below.
+            </p>
+          </div>
+          <div class="flex items-center justify-center gap-3 flex-wrap pt-2">
+            <a href="/pharmacy/deoria-drug-house" onclick="event.preventDefault(); window.acsApp.viewHostedWebsite('store-up-001')" class="px-4 py-2.5 bg-[#135c7e] hover:bg-[#0f4b67] text-white font-bold rounded-xl text-xs transition flex items-center gap-2 shadow-xs">
+              <i class="fa fa-shield text-amber-400"></i> Open Deoria Drug House (Flagship)
+            </a>
+            <a href="/" onclick="event.preventDefault(); window.acsApp.openDeployedShowcase()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition flex items-center gap-2">
+              <i class="fa fa-globe"></i> Browse All Verified Stores
+            </a>
+          </div>
+        </div>
+      `;
+    }
 
     const isAudit = this.hostedSubTab === "audit-dossier";
     const cleanPhone = store.phone.replace(/[^0-9]/g, "");
