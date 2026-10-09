@@ -1023,18 +1023,22 @@ class ACSApp {
                 <!-- Card Actions -->
                 <div class="p-4 bg-slate-50/80 border-t border-slate-100 flex flex-col gap-2">
                   <div class="grid grid-cols-2 gap-2 text-xs">
-                    <button 
-                      onclick="window.acsApp.viewHostedWebsite('${s.id}')" 
+                    <a 
+                      href="/pharmacy/${s.slug}"
+                      onclick="event.preventDefault(); window.acsApp.viewHostedWebsite('${s.id}')" 
                       class="bg-[#135c7e] hover:bg-[#0f4b67] text-white py-2 px-3 rounded-xl font-bold transition flex items-center justify-center gap-1.5 shadow-xs"
+                      title="Open live storefront website"
                     >
                       <i class="fa fa-globe"></i> Open Storefront
-                    </button>
-                    <button 
-                      onclick="window.acsApp.viewHostedAudit('${s.id}')" 
+                    </a>
+                    <a 
+                      href="/pharmacy/${s.slug}/audit"
+                      onclick="event.preventDefault(); window.acsApp.viewHostedAudit('${s.id}')" 
                       class="bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 py-2 px-3 rounded-xl font-bold transition flex items-center justify-center gap-1.5"
+                      title="View statutory compliance dossier"
                     >
                       <i class="fa fa-file-text-o"></i> Audit Dossier
-                    </button>
+                    </a>
                   </div>
 
                   <div class="grid grid-cols-3 gap-1.5 text-[11px]">
@@ -1281,9 +1285,13 @@ class ACSApp {
                   <span class="text-[11px] text-slate-500 block"><i class="fa fa-map-marker text-amber-500"></i> ${s.district}, UP</span>
                 </div>
                 <div class="mt-3 pt-2 border-t border-slate-200 flex flex-col gap-1.5">
-                  <button onclick="window.acsApp.viewHostedWebsite('${s.id}')" class="w-full bg-[#135c7e] hover:bg-[#0f4b67] text-white text-[11px] font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1">
+                  <a 
+                    href="/pharmacy/${s.slug}" 
+                    onclick="event.preventDefault(); window.acsApp.viewHostedWebsite('${s.id}')" 
+                    class="w-full bg-[#135c7e] hover:bg-[#0f4b67] text-white text-[11px] font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1"
+                  >
                     <i class="fa fa-globe"></i> View Hosted Site
-                  </button>
+                  </a>
                 </div>
               </div>
             `).join("")}
