@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0e445e"/>
+      <stop offset="100%" stop-color="#135c7e"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background Squircle -->
+  <rect x="16" y="16" width="480" height="480" rx="110" fill="url(#bgGrad)" stroke="#f59e0b" stroke-width="12" filter="url(#shadow)"/>
+  
+  <!-- Inner Rim -->
+  <rect x="36" y="36" width="440" height="440" rx="90" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="4"/>
+
+  <!-- Outer White Medical Cross -->
+  <rect x="211" y="100" width="90" height="260" rx="24" fill="#ffffff"/>
+  <rect x="126" y="185" width="260" height="90" rx="24" fill="#ffffff"/>
+
+  <!-- Inner Emerald Green Cross -->
+  <rect x="229" y="118" width="54" height="224" rx="14" fill="#10b981"/>
+  <rect x="144" y="203" width="224" height="54" rx="14" fill="#10b981"/>
+
+  <!-- Center Gold Core -->
+  <circle cx="256" cy="230" r="26" fill="#f59e0b"/>
+  <circle cx="256" cy="230" r="12" fill="#ffffff"/>
+
+  <!-- ACS Banner Badge -->
+  <rect x="126" y="396" width="260" height="66" rx="20" fill="#0f172a" stroke="#f59e0b" stroke-width="4"/>
+  <text x="256" y="442" font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif" font-size="34" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="7">ACS</text>
+</svg>
