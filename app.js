@@ -2796,7 +2796,8 @@ class ACSApp {
               <th class="py-3.5 px-3 min-w-[140px]">Batch &amp; Expiry</th>
               <th class="py-3.5 px-3 min-w-[120px]">Packaging</th>
               <th class="py-3.5 px-3 min-w-[120px] text-center">Availability</th>
-              <th class="py-3.5 px-4 min-w-[140px] text-right">Retail Price (MRP)</th>
+              <th class="py-3.5 px-3 min-w-[130px] text-right">Cost Price (CP)</th>
+              <th class="py-3.5 px-4 min-w-[150px] text-right">Retail Price (MRP)</th>
               <th class="py-3.5 px-4 text-center min-w-[180px]">Actions</th>
             </tr>
           </thead>
@@ -2813,6 +2814,19 @@ class ACSApp {
               } else if (isScheduleH) {
                 schedBadge = `<span class="bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded text-[10px] font-bold">${m.schedule}</span>`;
               }
+
+              let unitDoseBadge = "";
+              const unitMatch = m.unit && m.unit.match(/\((\d+)\s*(tabs?|caps?|vials?|ml)\)/i);
+              if (unitMatch && m.mrp > 0) {
+                const count = parseInt(unitMatch[1], 10);
+                if (count > 0) {
+                  const doseUnit = unitMatch[2].toLowerCase();
+                  const perPrice = (m.mrp / count).toFixed(2);
+                  unitDoseBadge = `<span class="text-[9px] text-teal-800 font-mono block">~₹ ${perPrice} / ${doseUnit}</span>`;
+                }
+              }
+
+              const cpFormatted = (typeof m.purchaseRate === 'number' && m.purchaseRate > 0) ? `₹ ${m.purchaseRate.toFixed(2)}` : 'Trade N/A';
 
               return `
                 <tr class="hover:bg-teal-50/30 transition">
@@ -2842,9 +2856,14 @@ class ACSApp {
                       ${inStock ? 'In Stock' : 'Out of Stock'}
                     </span>
                   </td>
+                  <td class="py-3.5 px-3 text-right">
+                    <span class="text-sm font-bold font-mono text-slate-700 block">${cpFormatted}</span>
+                    <span class="text-[9px] text-slate-400 block font-normal">Wholesale / CP</span>
+                  </td>
                   <td class="py-3.5 px-4 text-right">
                     <span class="text-base font-black font-mono text-emerald-700 block">₹ ${m.mrp.toFixed(2)}</span>
-                    <span class="text-[9px] text-slate-400 block">Per ${m.unit}</span>
+                    <span class="text-[9px] text-slate-500 font-medium block">Per ${m.unit}</span>
+                    ${unitDoseBadge}
                   </td>
                   <td class="py-3.5 px-4 text-center">
                     <div class="inline-flex items-center gap-1.5">
@@ -2883,6 +2902,18 @@ class ACSApp {
           const isScheduleH = m.schedule && m.schedule.includes("H");
           const waUrl = `${waBase}?text=Hello%20${encodeURIComponent(store.name)},%20I%20am%20inquiring%20about%20availability%20of%20${encodeURIComponent(m.name)}%20(${encodeURIComponent(m.saltName)}).`;
 
+          let unitDoseBadge = "";
+          const unitMatch = m.unit && m.unit.match(/\((\d+)\s*(tabs?|caps?|vials?|ml)\)/i);
+          if (unitMatch && m.mrp > 0) {
+            const count = parseInt(unitMatch[1], 10);
+            if (count > 0) {
+              const doseUnit = unitMatch[2].toLowerCase();
+              const perPrice = (m.mrp / count).toFixed(2);
+              unitDoseBadge = `<span class="text-[8px] text-teal-800 font-mono block">~₹ ${perPrice} / ${doseUnit}</span>`;
+            }
+          }
+          const cpFormatted = (typeof m.purchaseRate === 'number' && m.purchaseRate > 0) ? `₹ ${m.purchaseRate.toFixed(2)}` : 'Trade N/A';
+
           return `
             <div class="bg-white rounded-2xl border border-slate-200 hover:border-teal-400/80 hover:shadow-md transition p-4 sm:p-5 flex flex-col justify-between space-y-3 group">
               <div>
@@ -2910,12 +2941,18 @@ class ACSApp {
               </div>
 
               <div class="pt-2.5 border-t border-slate-100 space-y-2.5">
-                <div class="flex items-baseline justify-between">
+                <div class="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
                   <div>
-                    <span class="text-[9px] uppercase font-bold text-slate-400 block">Retail Price (MRP)</span>
-                    <span class="text-lg font-black text-emerald-700 font-mono">₹ ${m.mrp.toFixed(2)}</span>
+                    <span class="text-[9px] uppercase font-bold text-slate-500 block">Cost Price (CP)</span>
+                    <span class="text-sm font-bold text-slate-700 font-mono block">${cpFormatted}</span>
+                    <span class="text-[8px] text-slate-400 block">Wholesale Rate</span>
                   </div>
-                  <span class="text-[10px] text-slate-500 font-medium">Per ${m.unit}</span>
+                  <div class="text-right">
+                    <span class="text-[9px] uppercase font-bold text-emerald-800 block">Retail Price (MRP)</span>
+                    <span class="text-base font-black text-emerald-700 font-mono block">₹ ${m.mrp.toFixed(2)}</span>
+                    <span class="text-[8px] text-slate-500 font-medium block">Per ${m.unit}</span>
+                    ${unitDoseBadge}
+                  </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">
@@ -3050,10 +3087,17 @@ class ACSApp {
             <p class="text-xs text-slate-600 mt-0.5 font-medium">${med.manufacturer}</p>
           </div>
 
-          <div class="text-right sm:text-right bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-xs self-start sm:self-auto">
-            <span class="text-[10px] uppercase font-bold text-slate-400 block">Retail Price (MRP)</span>
-            <span class="text-2xl font-black text-emerald-700">₹ ${med.mrp.toFixed(2)}</span>
-            <span class="text-[10px] text-slate-400 block mt-0.5">Per ${med.unit} (Inc. all taxes)</span>
+          <div class="bg-white px-4 py-3 rounded-2xl border border-slate-200 shadow-xs self-start sm:self-auto flex items-center gap-4">
+            <div class="text-left pr-4 border-r border-slate-200">
+              <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Cost Price (CP)</span>
+              <span class="text-lg font-bold text-slate-700 font-mono">₹ ${(typeof med.purchaseRate === 'number' && med.purchaseRate > 0) ? med.purchaseRate.toFixed(2) : 'N/A'}</span>
+              <span class="text-[9px] text-slate-400 block mt-0.5">Wholesale / Trade</span>
+            </div>
+            <div class="text-right">
+              <span class="text-[10px] uppercase font-bold text-emerald-800 block tracking-wider">Retail Price (MRP)</span>
+              <span class="text-2xl font-black text-emerald-700 font-mono">₹ ${med.mrp.toFixed(2)}</span>
+              <span class="text-[10px] text-slate-500 font-medium block mt-0.5">Per ${med.unit} (Inc. all taxes)</span>
+            </div>
           </div>
         </div>
 
