@@ -31,6 +31,7 @@ class ACSApp {
     // Hosted site search & sub-tab (Page 1 vs Page 2)
     this.hostedStockSearch = "";
     this.hostedCategoryFilter = "ALL"; // 'ALL', 'RX', 'OTC', 'AYUSH'
+    this.hostedCatalogViewMode = "table"; // 'table' | 'cards'
     this.selectedRxMedicines = [];
     this.hostedSubTab = "storefront"; // 'storefront' (Page 1) or 'audit-dossier' (Page 2)
 
@@ -1749,6 +1750,127 @@ class ACSApp {
                   </div>
                 </div>
 
+                <!-- Statutory Staff & Qualified Dispenser Personnel Roster (Tabular on Desktop, Optimized Cards on Phones) -->
+                <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-5 sm:p-7 space-y-4">
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="w-8 h-8 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center font-bold text-sm shadow-2xs">
+                          <i class="fa fa-users"></i>
+                        </span>
+                        <h3 class="text-base sm:text-lg font-black text-slate-900">
+                          Statutory Staff &amp; Dispensing Pharmacist Roster
+                        </h3>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200">
+                          ${store.staff.length} Verified Personnel
+                        </span>
+                      </div>
+                      <p class="text-xs text-slate-500 mt-1">
+                        Mandated public duty disclosure under Section 42 of the Pharmacy Act 1948 and Rule 65 of the Drugs &amp; Cosmetics Rules.
+                      </p>
+                    </div>
+                    <span class="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl flex items-center gap-1.5 self-start sm:self-auto">
+                      <i class="fa fa-check-circle text-emerald-600"></i> UPPC &amp; Biometric Compliant
+                    </span>
+                  </div>
+
+                  <!-- Desktop Tabular View (hidden on small phone screens) -->
+                  <div class="hidden sm:block overflow-x-auto rounded-2xl border border-slate-200">
+                    <table class="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                          <th class="py-3 px-4">Staff Member &amp; Designation</th>
+                          <th class="py-3 px-3">State Council Reg No</th>
+                          <th class="py-3 px-3">Qualification</th>
+                          <th class="py-3 px-3">Shift Hours</th>
+                          <th class="py-3 px-4 text-center">Duty Status</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-slate-100">
+                        ${store.staff.map((st) => {
+                          const isPh = st.uppcRegNo && st.uppcRegNo.startsWith("UPPC");
+                          return `
+                            <tr class="hover:bg-teal-50/40 transition">
+                              <td class="py-3.5 px-4">
+                                <div class="flex items-center gap-2.5">
+                                  <div class="w-8 h-8 rounded-full overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center text-xs flex-shrink-0">
+                                    ${st.avatarUrl ? `<img src="${st.avatarUrl}" alt="${st.name}" class="w-full h-full object-cover" />` : `<i class="fa ${isPh ? 'fa-user-md text-teal-700' : 'fa-user text-slate-500'}"></i>`}
+                                  </div>
+                                  <div>
+                                    <strong class="text-slate-900 block text-xs font-black">${st.name}</strong>
+                                    <span class="text-[11px] text-slate-500">${st.role}</span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td class="py-3.5 px-3">
+                                ${isPh ? `
+                                  <span class="font-mono font-bold text-teal-900 bg-teal-50 px-2 py-0.5 rounded text-[11px] border border-teal-200">
+                                    ${st.uppcRegNo}
+                                  </span>
+                                ` : `
+                                  <span class="text-slate-400 font-mono text-[11px]">Non-Technical</span>
+                                `}
+                              </td>
+                              <td class="py-3.5 px-3">
+                                <span class="font-semibold text-slate-800 text-xs">${st.qualification}</span>
+                              </td>
+                              <td class="py-3.5 px-3">
+                                <span class="text-slate-600 font-medium text-xs">${st.shift}</span>
+                              </td>
+                              <td class="py-3.5 px-4 text-center">
+                                <span class="inline-flex items-center gap-1 font-bold text-[10px] px-2.5 py-1 rounded-full ${st.isOnDuty ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-slate-100 text-slate-700 border border-slate-200'}">
+                                  <span class="w-1.5 h-1.5 rounded-full ${st.isOnDuty ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}"></span>
+                                  ${st.isOnDuty ? 'Active On Duty' : 'Scheduled Shift'}
+                                </span>
+                              </td>
+                            </tr>
+                          `;
+                        }).join("")}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <!-- Mobile Screen Optimized Cards (sm:hidden) -->
+                  <div class="sm:hidden space-y-2.5">
+                    ${store.staff.map((st) => {
+                      const isPh = st.uppcRegNo && st.uppcRegNo.startsWith("UPPC");
+                      return `
+                        <div class="p-3.5 bg-slate-50/70 border border-slate-200 rounded-2xl space-y-2 text-xs">
+                          <div class="flex items-start justify-between gap-2">
+                            <div class="flex items-center gap-2.5">
+                              <div class="w-9 h-9 rounded-full overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center flex-shrink-0">
+                                ${st.avatarUrl ? `<img src="${st.avatarUrl}" alt="${st.name}" class="w-full h-full object-cover" />` : `<i class="fa ${isPh ? 'fa-user-md text-teal-700' : 'fa-user text-slate-500'}"></i>`}
+                              </div>
+                              <div>
+                                <strong class="text-slate-900 block font-bold text-xs">${st.name}</strong>
+                                <span class="text-[11px] text-teal-800 font-medium">${st.role}</span>
+                              </div>
+                            </div>
+                            <span class="inline-flex items-center gap-1 font-bold text-[9px] px-2 py-0.5 rounded-full ${st.isOnDuty ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-slate-100 text-slate-600'}">
+                              <span class="w-1.5 h-1.5 rounded-full ${st.isOnDuty ? 'bg-emerald-500' : 'bg-slate-400'}"></span>
+                              ${st.isOnDuty ? 'On Duty' : 'Shift'}
+                            </span>
+                          </div>
+
+                          <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/60 text-[11px]">
+                            <div>
+                              <span class="text-slate-400 block text-[10px]">Registration:</span>
+                              <span class="font-mono font-bold text-slate-800">${isPh ? st.uppcRegNo : 'Non-Technical'}</span>
+                            </div>
+                            <div>
+                              <span class="text-slate-400 block text-[10px]">Qualification:</span>
+                              <span class="font-semibold text-slate-800">${st.qualification}</span>
+                            </div>
+                          </div>
+                          <div class="text-[11px] text-slate-600 pt-1">
+                            <span class="text-slate-400">Hours:</span> <strong class="text-slate-700">${st.shift}</strong>
+                          </div>
+                        </div>
+                      `;
+                    }).join("")}
+                  </div>
+                </div>
+
                 <!-- Customer Bill & Price Verification Banner -->
                 <div class="p-6 rounded-3xl bg-gradient-to-r from-teal-900 via-[#135c7e] to-slate-900 text-white shadow-lg flex flex-col lg:flex-row items-center justify-between gap-6">
                   <div class="space-y-2 max-w-2xl">
@@ -1781,10 +1903,32 @@ class ACSApp {
                         Search genuine medicines, generic salts, or brand names available in stock at ${store.name}.
                       </p>
                     </div>
-                    <span id="hosted-medicine-count-badge" class="text-xs bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold px-3.5 py-1.5 rounded-full self-start md:self-auto flex items-center gap-1.5">
-                      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      ${store.stocks.length} Medicines In Stock
-                    </span>
+                    <div class="flex items-center gap-2 self-start md:self-auto flex-wrap">
+                      <span id="hosted-medicine-count-badge" class="text-xs bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold px-3.5 py-1.5 rounded-full flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        ${store.stocks.length} Medicines In Stock
+                      </span>
+                      <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                        <button 
+                          type="button" 
+                          id="hosted-view-toggle-table" 
+                          onclick="window.acsApp.setHostedCatalogViewMode('table')" 
+                          class="px-2.5 py-1 rounded-lg font-bold text-xs transition flex items-center gap-1 ${(!this.hostedCatalogViewMode || this.hostedCatalogViewMode === 'table') ? 'bg-[#135c7e] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}"
+                          title="Table View (Like Owner Register)"
+                        >
+                          <i class="fa fa-table"></i> Table
+                        </button>
+                        <button 
+                          type="button" 
+                          id="hosted-view-toggle-cards" 
+                          onclick="window.acsApp.setHostedCatalogViewMode('cards')" 
+                          class="px-2.5 py-1 rounded-lg font-bold text-xs transition flex items-center gap-1 ${this.hostedCatalogViewMode === 'cards' ? 'bg-[#135c7e] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}"
+                          title="Card View (Compact)"
+                        >
+                          <i class="fa fa-th-large"></i> Cards
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   <!-- Search Bar & Category Filter Pills -->
@@ -1837,8 +1981,8 @@ class ACSApp {
                     </div>
                   </div>
 
-                  <!-- Medicine Cards Grid Container -->
-                  <div id="hosted-medicine-results-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <!-- Medicine Results Container -->
+                  <div id="hosted-medicine-results-container" class="space-y-4">
                     ${this.getHostedMedicineCatalogHtml(store)}
                   </div>
 
@@ -2595,12 +2739,14 @@ class ACSApp {
   getHostedMedicineCatalogHtml(store) {
     const categoryFilter = this.hostedCategoryFilter || "ALL";
     const q = (this.hostedStockSearch || "").toLowerCase().trim();
+    const viewMode = this.hostedCatalogViewMode || "table";
 
     const filteredPublicStock = store.stocks.filter((m) => {
       const matchSearch = !q || (
-        m.name.toLowerCase().includes(q) ||
-        m.saltName.toLowerCase().includes(q) ||
-        m.manufacturer.toLowerCase().includes(q)
+        (m.name && m.name.toLowerCase().includes(q)) ||
+        (m.saltName && m.saltName.toLowerCase().includes(q)) ||
+        (m.manufacturer && m.manufacturer.toLowerCase().includes(q)) ||
+        (m.batchNo && m.batchNo.toLowerCase().includes(q))
       );
       let matchCat = true;
       if (categoryFilter === "RX") {
@@ -2613,12 +2759,12 @@ class ACSApp {
       return matchSearch && matchCat;
     });
 
-    const cleanPhone = store.phone.replace(/[^0-9]/g, "");
+    const cleanPhone = (store.whatsapp || store.phone || "").replace(/[^0-9]/g, "");
     const waBase = `https://wa.me/${cleanPhone.startsWith('91') ? cleanPhone : '91' + cleanPhone}`;
 
     if (filteredPublicStock.length === 0) {
       return `
-        <div class="col-span-full py-12 px-4 text-center bg-slate-50 border border-slate-200 rounded-2xl">
+        <div class="py-12 px-4 text-center bg-slate-50 border border-slate-200 rounded-2xl">
           <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-2xl mx-auto mb-3">
             <i class="fa fa-medkit"></i>
           </div>
@@ -2631,75 +2777,203 @@ class ACSApp {
               <i class="fa fa-phone"></i> Call Store Pharmacist
             </a>
             <button onclick="window.acsApp.openPrescriptionUploadModal('${store.name}', '${encodeURIComponent(this.hostedStockSearch || '')}')" class="px-4 py-2 bg-amber-400 text-slate-950 font-black rounded-xl text-xs shadow-xs">
-              <i class="fa fa-upload"></i> Upload Prescription to Inquire
+              <i class="fa fa-upload"></i> Upload Bill / Rx to Inquire
             </button>
           </div>
         </div>
       `;
     }
 
-    return filteredPublicStock.map((m) => {
-      const inStock = m.quantity > 0;
-      const isScheduleH = m.schedule && m.schedule.includes("H");
-      const waUrl = `${waBase}?text=Hello%20${encodeURIComponent(store.name)},%20I%20am%20inquiring%20about%20availability%20of%20${encodeURIComponent(m.name)}%20(${encodeURIComponent(m.saltName)}).`;
+    // DESKTOP & TABLET MASTER TABLE (Similar to Pharmacy Owner's View, but strictly sanitized & uneditable)
+    const tableHtml = `
+      <div class="overflow-x-auto rounded-2xl border border-slate-200 shadow-xs bg-white">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+              <th class="py-3.5 px-4 min-w-[210px]">Medicine &amp; Brand</th>
+              <th class="py-3.5 px-3 min-w-[190px]">Active Generic Salt / Formulation</th>
+              <th class="py-3.5 px-3 min-w-[120px]">Category</th>
+              <th class="py-3.5 px-3 min-w-[140px]">Batch &amp; Expiry</th>
+              <th class="py-3.5 px-3 min-w-[120px]">Packaging</th>
+              <th class="py-3.5 px-3 min-w-[120px] text-center">Availability</th>
+              <th class="py-3.5 px-4 min-w-[140px] text-right">Retail Price (MRP)</th>
+              <th class="py-3.5 px-4 text-center min-w-[180px]">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            ${filteredPublicStock.map((m) => {
+              const inStock = m.quantity > 0;
+              const isScheduleH1 = m.schedule && m.schedule.includes("H1");
+              const isScheduleH = m.schedule && m.schedule.includes("H");
+              const waUrl = `${waBase}?text=Hello%20${encodeURIComponent(store.name)},%20I%20am%20inquiring%20about%20availability%20of%20${encodeURIComponent(m.name)}%20(${encodeURIComponent(m.saltName)}).`;
 
-      return `
-        <div class="bg-white rounded-2xl border border-slate-200 hover:border-teal-400/80 hover:shadow-md transition p-5 flex flex-col justify-between space-y-4 group">
-          <div>
-            <!-- Badges -->
-            <div class="flex items-center justify-between gap-2 mb-2.5">
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${inStock ? 'bg-emerald-50 text-emerald-800 border border-emerald-300' : 'bg-rose-50 text-rose-800 border border-rose-300'}">
-                <i class="fa ${inStock ? 'fa-check-circle' : 'fa-times-circle'}"></i> ${inStock ? 'In Stock' : 'Out of Stock'}
-              </span>
-              <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isScheduleH ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-teal-50 text-teal-800 border border-teal-200'}">
-                ${m.schedule}
-              </span>
-            </div>
+              let schedBadge = `<span class="bg-teal-50 text-teal-800 border border-teal-200 px-2 py-0.5 rounded text-[10px] font-bold">${m.schedule}</span>`;
+              if (isScheduleH1) {
+                schedBadge = `<span class="bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded text-[10px] font-bold"><i class="fa fa-exclamation-circle"></i> ${m.schedule}</span>`;
+              } else if (isScheduleH) {
+                schedBadge = `<span class="bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded text-[10px] font-bold">${m.schedule}</span>`;
+              }
 
-            <!-- Medicine Name & Salt -->
-            <h4 class="text-base font-black text-slate-900 group-hover:text-[#135c7e] transition leading-snug">
-              ${m.name}
-            </h4>
-            <div class="mt-1 p-2 bg-slate-50 border border-slate-100 rounded-lg">
-              <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Active Generic Salt:</span>
-              <span class="text-[11px] font-mono font-semibold text-slate-700 block line-clamp-2">${m.saltName}</span>
-            </div>
+              return `
+                <tr class="hover:bg-teal-50/30 transition">
+                  <td class="py-3.5 px-4">
+                    <strong class="font-extrabold text-slate-900 text-sm block leading-snug">${m.name}</strong>
+                    <span class="text-[10px] text-slate-400 mt-0.5 block"><i class="fa fa-industry text-slate-300 mr-1"></i>${m.manufacturer}</span>
+                  </td>
+                  <td class="py-3.5 px-3">
+                    <span class="text-[11px] font-mono font-semibold text-slate-700 leading-tight block">${m.saltName}</span>
+                  </td>
+                  <td class="py-3.5 px-3">
+                    ${schedBadge}
+                  </td>
+                  <td class="py-3.5 px-3">
+                    <div class="font-mono text-slate-700 text-xs font-semibold">${m.batchNo}</div>
+                    <div class="flex items-center gap-1.5 mt-0.5">
+                      <span class="font-mono text-[10px] text-slate-500">${m.expiryDate}</span>
+                      <span class="text-[9px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">Fresh</span>
+                    </div>
+                  </td>
+                  <td class="py-3.5 px-3">
+                    <span class="text-slate-600 font-medium text-xs">${m.unit}</span>
+                  </td>
+                  <td class="py-3.5 px-3 text-center">
+                    <span class="inline-flex items-center gap-1 font-bold text-[10px] px-2.5 py-1 rounded-full ${inStock ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'}">
+                      <span class="w-1.5 h-1.5 rounded-full ${inStock ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}"></span>
+                      ${inStock ? 'In Stock' : 'Out of Stock'}
+                    </span>
+                  </td>
+                  <td class="py-3.5 px-4 text-right">
+                    <span class="text-base font-black font-mono text-emerald-700 block">₹ ${m.mrp.toFixed(2)}</span>
+                    <span class="text-[9px] text-slate-400 block">Per ${m.unit}</span>
+                  </td>
+                  <td class="py-3.5 px-4 text-center">
+                    <div class="inline-flex items-center gap-1.5">
+                      <button 
+                        type="button" 
+                        onclick="window.acsApp.openMedicineDetailModal('${m.id}', '${store.id}')" 
+                        class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-[11px] transition inline-flex items-center gap-1 shadow-2xs"
+                        title="View Formulation & Storage Details"
+                      >
+                        <i class="fa fa-info-circle text-[#135c7e]"></i> Details
+                      </button>
+                      <a 
+                        href="${waUrl}" 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-[11px] transition inline-flex items-center gap-1 shadow-2xs"
+                        title="Inquire via WhatsApp"
+                      >
+                        <i class="fa fa-whatsapp"></i> Inquire
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
 
-            <p class="text-[11px] text-slate-500 mt-2 font-medium">
-              <i class="fa fa-industry text-slate-400 mr-1"></i> ${m.manufacturer}
-            </p>
-          </div>
+    // MOBILE SCREEN CARDS (Optimized for phone screens)
+    const cardsHtml = `
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        ${filteredPublicStock.map((m) => {
+          const inStock = m.quantity > 0;
+          const isScheduleH = m.schedule && m.schedule.includes("H");
+          const waUrl = `${waBase}?text=Hello%20${encodeURIComponent(store.name)},%20I%20am%20inquiring%20about%20availability%20of%20${encodeURIComponent(m.name)}%20(${encodeURIComponent(m.saltName)}).`;
 
-          <div class="pt-3 border-t border-slate-100 space-y-3">
-            <div class="flex items-baseline justify-between">
+          return `
+            <div class="bg-white rounded-2xl border border-slate-200 hover:border-teal-400/80 hover:shadow-md transition p-4 sm:p-5 flex flex-col justify-between space-y-3 group">
               <div>
-                <span class="text-[10px] uppercase font-bold text-slate-400 block">Retail Price (MRP)</span>
-                <span class="text-lg font-black text-emerald-700 font-mono">₹ ${m.mrp.toFixed(2)}</span>
-              </div>
-              <span class="text-[10px] text-slate-500 font-medium">Per ${m.unit}</span>
-            </div>
+                <div class="flex items-center justify-between gap-2 mb-2">
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${inStock ? 'bg-emerald-50 text-emerald-800 border border-emerald-300' : 'bg-rose-50 text-rose-800 border border-rose-300'}">
+                    <i class="fa ${inStock ? 'fa-check-circle' : 'fa-times-circle'}"></i> ${inStock ? 'In Stock' : 'Out of Stock'}
+                  </span>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isScheduleH ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-teal-50 text-teal-800 border border-teal-200'}">
+                    ${m.schedule}
+                  </span>
+                </div>
 
-            <div class="grid grid-cols-2 gap-2">
-              <button 
-                type="button" 
-                onclick="window.acsApp.openMedicineDetailModal('${m.id}', '${store.id}')" 
-                class="w-full py-2 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition text-center flex items-center justify-center gap-1"
-              >
-                <i class="fa fa-info-circle text-[#135c7e]"></i> View Details
-              </button>
-              <a 
-                href="${waUrl}" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                class="w-full py-2 px-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition text-center shadow-xs flex items-center justify-center gap-1"
-              >
-                <i class="fa fa-whatsapp"></i> Inquire
-              </a>
+                <h4 class="text-base font-black text-slate-900 group-hover:text-[#135c7e] transition leading-snug">
+                  ${m.name}
+                </h4>
+                <div class="mt-1 p-2 bg-slate-50 border border-slate-100 rounded-xl">
+                  <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Active Generic Salt:</span>
+                  <span class="text-[11px] font-mono font-semibold text-slate-700 block line-clamp-2">${m.saltName}</span>
+                </div>
+
+                <div class="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
+                  <span class="truncate max-w-[160px]"><i class="fa fa-industry text-slate-400 mr-1"></i>${m.manufacturer}</span>
+                  <span class="font-mono text-[10px] text-slate-400">Batch: ${m.batchNo}</span>
+                </div>
+              </div>
+
+              <div class="pt-2.5 border-t border-slate-100 space-y-2.5">
+                <div class="flex items-baseline justify-between">
+                  <div>
+                    <span class="text-[9px] uppercase font-bold text-slate-400 block">Retail Price (MRP)</span>
+                    <span class="text-lg font-black text-emerald-700 font-mono">₹ ${m.mrp.toFixed(2)}</span>
+                  </div>
+                  <span class="text-[10px] text-slate-500 font-medium">Per ${m.unit}</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                  <button 
+                    type="button" 
+                    onclick="window.acsApp.openMedicineDetailModal('${m.id}', '${store.id}')" 
+                    class="w-full py-2 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition text-center flex items-center justify-center gap-1"
+                  >
+                    <i class="fa fa-info-circle text-[#135c7e]"></i> View Details
+                  </button>
+                  <a 
+                    href="${waUrl}" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    class="w-full py-2 px-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition text-center shadow-xs flex items-center justify-center gap-1"
+                  >
+                    <i class="fa fa-whatsapp"></i> Inquire
+                  </a>
+                </div>
+              </div>
             </div>
-          </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+
+    if (viewMode === "table") {
+      // In table mode: on desktop show master table, on mobile (md:hidden) show cards so phone screens never have horizontal overflow!
+      return `
+        <div class="hidden md:block">
+          ${tableHtml}
+        </div>
+        <div class="md:hidden">
+          ${cardsHtml}
         </div>
       `;
-    }).join("");
+    } else {
+      return cardsHtml;
+    }
+  }
+
+  setHostedCatalogViewMode(mode) {
+    this.hostedCatalogViewMode = mode;
+    const store = this.getCurrentStore();
+    if (store) {
+      this.updateHostedMedicineCatalog(store);
+      const btnTable = document.getElementById("hosted-view-toggle-table");
+      const btnCards = document.getElementById("hosted-view-toggle-cards");
+      if (btnTable && btnCards) {
+        if (mode === "table") {
+          btnTable.className = "px-2.5 py-1 rounded-lg font-bold text-xs transition flex items-center gap-1 bg-[#135c7e] text-white shadow-xs";
+          btnCards.className = "px-2.5 py-1 rounded-lg font-bold text-xs transition flex items-center gap-1 text-slate-600 hover:text-slate-900";
+        } else {
+          btnTable.className = "px-2.5 py-1 rounded-lg font-bold text-xs transition flex items-center gap-1 text-slate-600 hover:text-slate-900";
+          btnCards.className = "px-2.5 py-1 rounded-lg font-bold text-xs transition flex items-center gap-1 bg-[#135c7e] text-white shadow-xs";
+        }
+      }
+    }
   }
 
   updateHostedMedicineCatalog(store) {

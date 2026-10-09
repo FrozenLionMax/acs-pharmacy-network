@@ -265,9 +265,30 @@ try {
   if (!catalogHtml || catalogHtml.length === 0) throw new Error('getHostedMedicineCatalogHtml returned empty string');
   console.log('getHostedMedicineCatalogHtml() rendered successfully! Length:', catalogHtml.length);
 
+  app.setHostedCatalogViewMode('cards');
+  if (app.hostedCatalogViewMode !== 'cards') throw new Error('setHostedCatalogViewMode cards failed');
+  const cardsHtml = app.getHostedMedicineCatalogHtml(currentStore);
+  if (!cardsHtml || cardsHtml.length === 0) throw new Error('cards view failed');
+  console.log('setHostedCatalogViewMode("cards") rendered successfully! Length:', cardsHtml.length);
+
+  app.setHostedCatalogViewMode('table');
+  if (app.hostedCatalogViewMode !== 'table') throw new Error('setHostedCatalogViewMode table failed');
+  console.log('setHostedCatalogViewMode("table") set successfully!');
+
   app.setHostedCategoryFilter('RX');
   if (app.hostedCategoryFilter !== 'RX') throw new Error('setHostedCategoryFilter failed');
   console.log('setHostedCategoryFilter("RX") set successfully!');
+
+  // Verify staff roster table presence in hosted website HTML (Page 1 Storefront)
+  app.hostedSubTab = 'storefront';
+  const hostedHtmlCheck = app.getHostedWebsiteViewHtml(currentStore);
+  if (!hostedHtmlCheck.includes('Statutory Staff &amp; Dispensing Pharmacist Roster') && !hostedHtmlCheck.includes('Statutory Staff & Dispensing Pharmacist Roster')) {
+    throw new Error('Statutory staff roster table missing from public storefront view');
+  }
+  if (!hostedHtmlCheck.includes('Akhileshwar Tripathi') || !hostedHtmlCheck.includes('UPPC-PH-29841')) {
+    throw new Error('Chief Pharmacist Akhileshwar Tripathi credentials missing from storefront');
+  }
+  console.log('Verified Statutory Staff & Pharmacist Roster table rendered with Akhileshwar Tripathi UPPC-PH-29841!');
 
   const firstMed = currentStore.stocks[0];
   app.openMedicineDetailModal(firstMed.id, currentStore.id);
