@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <!-- ACS Central Portal Gateway -->
+  <!-- ACS Central Pharmacy Network Gateway -->
   <url>
     <loc>https://acsakhil.com/</loc>
     <lastmod>2026-10-09</lastmod>
@@ -8,43 +8,59 @@
     <priority>1.0</priority>
   </url>
 
-  <!-- Anand Chemist - Deoria Storefront -->
+  <!-- Deoria Drug House - Primary Flagship Pharmacy (Akhileshwar Tripathi / Akhil) -->
   <url>
-    <loc>https://acsakhil.com/pharmacy/anand-chemist</loc>
+    <loc>https://acsakhil.com/pharmacy/deoria-drug-house</loc>
     <lastmod>2026-10-09</lastmod>
-    <changefreq>weekly</changefreq>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Clean Direct Alias for Deoria Drug House -->
+  <url>
+    <loc>https://acsakhil.com/deoria-drug-house</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
 
-  <!-- Sanjeevani Medicos & Healthcare - Lucknow -->
+  <!-- Maa Vindhyavasini Medicos & Healthcare - Deoria -->
   <url>
-    <loc>https://acsakhil.com/pharmacy/sanjeevani-medicos-lucknow</loc>
+    <loc>https://acsakhil.com/pharmacy/maa-vindhyavasini-medicos</loc>
     <lastmod>2026-10-09</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
+    <priority>0.8</priority>
   </url>
 
-  <!-- Kashi Care Pharmacy - Varanasi -->
+  <!-- Kushwaha Medical Store & Surgical - Deoria -->
   <url>
-    <loc>https://acsakhil.com/pharmacy/kashi-care-pharmacy-varanasi</loc>
+    <loc>https://acsakhil.com/pharmacy/kushwaha-medical-store</loc>
     <lastmod>2026-10-09</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
+    <priority>0.8</priority>
   </url>
 
-  <!-- Kanpur Medipoint & Chemist - Kanpur Nagar -->
+  <!-- Raghav Chemist & Druggists - Deoria -->
   <url>
-    <loc>https://acsakhil.com/pharmacy/kanpur-medipoint-chemist</loc>
+    <loc>https://acsakhil.com/pharmacy/raghav-chemist</loc>
     <lastmod>2026-10-09</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
+    <priority>0.8</priority>
   </url>
 
-  <!-- Apex Chemist & Critical Care - Gautam Buddha Nagar (Noida) -->
+  <!-- Ganga Medical Hall & Healthcare - Kanpur Nagar -->
   <url>
-    <loc>https://acsakhil.com/pharmacy/apex-chemist-critical-care-noida</loc>
+    <loc>https://acsakhil.com/pharmacy/ganga-medical-hall</loc>
     <lastmod>2026-10-09</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Awadh Care Chemist & Surgical - Lucknow -->
+  <url>
+    <loc>https://acsakhil.com/pharmacy/awadh-care-chemist</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
 </urlset>

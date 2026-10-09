@@ -1,10 +1,10 @@
-# Robots.txt for ACS Uttar Pradesh Pharmacy Network
+# Robots.txt for ACS Uttar Pradesh Pharmacy Network (acsakhil.com)
 # Allows Googlebot and all search engine crawlers to index individual pharmacy storefronts
 User-agent: *
 Allow: /
 Allow: /pharmacy/*
+Allow: /deoria-drug-house
 Allow: /sitemap.xml
 
 # XML Sitemap listing all hosted retail pharmacies in Uttar Pradesh
 Sitemap: https://acsakhil.com/sitemap.xml
-Sitemap: https://acs-pharmacy-network.vercel.app/sitemap.xml

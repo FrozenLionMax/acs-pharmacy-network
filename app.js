@@ -105,17 +105,27 @@ class ACSApp {
       const hashParts = window.location.hash.replace("#/pharmacy/", "").split("/").filter(Boolean);
       slug = hashParts[0] ? hashParts[0].trim() : null;
       if (hashParts[1] === "audit") isAudit = true;
+    } else if (path && path !== "/" && path !== "/index.html") {
+      const cleanPath = path.replace(/^\/+|\/+$/g, "").trim().toLowerCase();
+      const parts = cleanPath.split("/").filter(Boolean);
+      if (parts.length > 0 && !["directory", "login", "landing", "verify", "staff", "revenue"].includes(parts[0])) {
+        slug = (parts[0] === "store" || parts[0] === "p") && parts[1] ? parts[1] : parts[0];
+        if (parts[1] === "audit" || parts[1] === "dossier" || parts[2] === "audit") {
+          isAudit = true;
+        }
+      }
     }
 
     if (slug) {
+      const cleanSlug = slug.toLowerCase().trim();
       let target = this.stores.find((s) => 
-        s.slug === slug || 
-        s.id === slug || 
-        (s.slugAliases && s.slugAliases.includes(slug)) ||
-        (s.name && s.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").includes(slug))
+        (s.slug && s.slug.toLowerCase() === cleanSlug) || 
+        (s.id && s.id.toLowerCase() === cleanSlug) || 
+        (s.slugAliases && s.slugAliases.some(a => a.toLowerCase() === cleanSlug)) ||
+        (s.name && s.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").includes(cleanSlug))
       );
-      if (!target && slug.includes("anand")) {
-        target = this.stores.find((s) => (s.slug && s.slug.includes("anand")) || (s.name && s.name.toLowerCase().includes("anand")));
+      if (!target && (cleanSlug.includes("akhil") || cleanSlug.includes("deoria"))) {
+        target = this.stores.find((s) => s.id === "store-up-001" || s.slug === "deoria-drug-house");
       }
       if (target) {
         this.currentStoreId = target.id;
@@ -583,19 +593,20 @@ class ACSApp {
       : "https://acsakhil.com";
 
     if (this.activeTab === "hosted-site" && store) {
-      document.title = `${store.name} - UP FSDA Licensed Retail Pharmacy | ${store.district}, UP`;
-      const desc = `${store.name} in ${store.district}, Uttar Pradesh. Official licensed retail pharmacy (Form 20 Lic: ${store.license20}, Form 21 Lic: ${store.license21}). UPPC registered pharmacist on duty. Search live medicine availability, verify drug prices, and order online.`;
-      const keywords = `${store.name}, ${store.name} ${store.district}, pharmacy in ${store.city}, chemist ${store.district}, buy medicine ${store.district}, UPPC registered pharmacist, Form 20 ${store.license20}, Schedule H drugs, retail pharmacy Uttar Pradesh`;
+      const ownerLabel = store.ownerName ? ` (${store.ownerName})` : "";
+      document.title = `${store.name}${ownerLabel} - UP FSDA Licensed Retail Pharmacy | ${store.district}, UP`;
+      const desc = `${store.name} owned by Chief Pharmacist ${store.ownerName || 'Qualified Pharmacist'}. ${store.address}. Official licensed retail pharmacy (Form 20 Lic: ${store.license20}, Form 21 Lic: ${store.license21}). UPPC registered pharmacist on duty. Search live medicine availability, check retail MRP prices, and order on WhatsApp.`;
+      const keywords = `${store.name}, ${store.name} akhil, ${store.name} ${store.ownerName || ''}, ${store.name} ${store.district}, pharmacy in ${store.city}, chemist ${store.district}, medical store station road deoria, subhash chowk chemist, buy medicine ${store.district}, UPPC registered pharmacist, Form 20 ${store.license20}, retail pharmacy Uttar Pradesh`;
       const storeUrl = `${baseOrigin}/pharmacy/${store.slug}`;
 
       setAttr(metaDesc, "content", desc);
       setAttr(metaKeywords, "content", keywords);
       setAttr(canonical, "href", storeUrl);
-      setAttr(ogTitle, "content", `${store.name} | UP FSDA Licensed Pharmacy`);
+      setAttr(ogTitle, "content", `${store.name}${ownerLabel} | UP FSDA Licensed Pharmacy`);
       setAttr(ogDesc, "content", desc);
       setAttr(ogUrl, "content", storeUrl);
       setAttr(ogImg, "content", store.photoUrl);
-      setAttr(twitterTitle, "content", `${store.name} | UP FSDA Licensed Pharmacy`);
+      setAttr(twitterTitle, "content", `${store.name}${ownerLabel} | UP FSDA Licensed Pharmacy`);
       setAttr(twitterDesc, "content", desc);
 
       if (schemaScript) {
@@ -603,22 +614,29 @@ class ACSApp {
           "@context": "https://schema.org",
           "@type": "Pharmacy",
           "name": store.name,
+          "alternateName": `${store.name} Akhil`,
           "description": desc,
           "image": store.photoUrl,
           "telephone": store.phone,
           "url": storeUrl,
+          "founder": {
+            "@type": "Person",
+            "name": store.ownerName,
+            "jobTitle": "Chief Pharmacist & Store Owner"
+          },
           "address": {
             "@type": "PostalAddress",
             "streetAddress": store.address,
             "addressLocality": store.city,
             "addressRegion": "Uttar Pradesh",
+            "postalCode": "274001",
             "addressCountry": "IN"
           },
           "priceRange": "₹₹",
           "currenciesAccepted": "INR",
           "paymentAccepted": "Cash, UPI, Credit Card, Debit Card",
           "openingHours": store.is24x7 ? "Mo-Su 00:00-24:00" : store.operatingHours,
-          "hasMap": `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.name + ' ' + store.address)}`,
+          "hasMap": store.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.name + ' ' + store.address)}`,
           "identifier": [
             {
               "@type": "PropertyValue",

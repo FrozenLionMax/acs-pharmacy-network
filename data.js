@@ -9,6 +9,7 @@ const INITIAL_STORES_DATA = [
   {
     id: "store-up-001",
     slug: "deoria-drug-house",
+    slugAliases: ["deoria-drug-house", "deoriadrughouse", "deoriadrug", "akhil", "akhildrughouse", "deoria"],
     name: "Deoria Drug House",
     district: "Deoria",
     city: "Deoria",

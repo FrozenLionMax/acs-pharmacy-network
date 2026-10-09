@@ -369,6 +369,51 @@ try {
   if (app.currentUser !== null) throw new Error('Logout failed to clear currentUser');
   console.log('Logout verified! currentUser is null and app returned to guest mode.');
 
+  // 13. Test Unique URL Routing & SEO Metadata Verification
+  console.log('--- Testing Unique URL Routing & Google SEO Metadata ---');
+  
+  // (a) Test /pharmacy/deoria-drug-house
+  mockWindow.location.pathname = '/pharmacy/deoria-drug-house';
+  const routedApp1 = new ACSAppClass();
+  if (routedApp1.activeTab !== 'hosted-site' || routedApp1.currentStoreId !== 'store-up-001') {
+    throw new Error('Routing to /pharmacy/deoria-drug-house failed!');
+  }
+  console.log('Route /pharmacy/deoria-drug-house resolved cleanly to Deoria Drug House!');
+
+  // (b) Test direct clean slug /deoria-drug-house
+  mockWindow.location.pathname = '/deoria-drug-house';
+  const routedApp2 = new ACSAppClass();
+  if (routedApp2.activeTab !== 'hosted-site' || routedApp2.currentStoreId !== 'store-up-001') {
+    throw new Error('Routing to /deoria-drug-house failed!');
+  }
+  console.log('Route /deoria-drug-house resolved cleanly to Deoria Drug House!');
+
+  // (c) Test alias /akhil
+  mockWindow.location.pathname = '/akhil';
+  const routedApp3 = new ACSAppClass();
+  if (routedApp3.activeTab !== 'hosted-site' || routedApp3.currentStoreId !== 'store-up-001') {
+    throw new Error('Routing to alias /akhil failed!');
+  }
+  console.log('Route alias /akhil resolved cleanly to Deoria Drug House!');
+
+  // (d) Test other store routing /pharmacy/ganga-medical-hall
+  mockWindow.location.pathname = '/pharmacy/ganga-medical-hall';
+  const routedApp4 = new ACSAppClass();
+  if (routedApp4.activeTab !== 'hosted-site' || routedApp4.currentStoreId !== 'store-up-005') {
+    throw new Error('Routing to /pharmacy/ganga-medical-hall failed!');
+  }
+  console.log('Route /pharmacy/ganga-medical-hall resolved cleanly to Ganga Medical Hall (Kanpur)!');
+
+  // (e) Verify SEO Metadata Generation
+  routedApp1.updatePageSeo(ddh);
+  if (!mockWindow.document.title.includes('Deoria Drug House') || !mockWindow.document.title.includes('Akhileshwar Tripathi')) {
+    throw new Error('SEO Document Title does not contain store and owner name: ' + mockWindow.document.title);
+  }
+  console.log('SEO Document Title verified:', mockWindow.document.title);
+
+  // Reset window pathname
+  mockWindow.location.pathname = '/';
+
   console.log('ALL CONNECTION TESTS VERIFIED AND PASSED 100%!');
   console.log('ALL PHOTO & PROFILE STUDIO TESTS PASSED 100%!');
   console.log('ALL PUBLIC STOREFRONT & AUTO-MATCHER TESTS PASSED 100%!');
