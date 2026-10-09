@@ -1075,20 +1075,29 @@ class ACSApp {
         <div class="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md border border-amber-300">
           <div class="flex items-center gap-3">
             <span class="w-10 h-10 rounded-xl bg-slate-950 text-amber-400 flex items-center justify-center text-lg flex-shrink-0 shadow">
-              <i class="fa fa-globe"></i>
+              <i class="fa fa-hospital-o"></i>
             </span>
             <div>
-              <strong class="text-slate-950 text-sm font-black block">Explore All 5 Live Deployed Pharmacy Storefronts</strong>
-              <span class="text-slate-900 text-xs font-medium">Browse verified pharmacy websites with Form 20/21 compliance, photos, and live medicine stocks.</span>
+              <strong class="text-slate-950 text-sm font-black block">Featured Flagship Pharmacy: Deoria Drug House (Akhileshwar Tripathi)</strong>
+              <span class="text-slate-900 text-xs font-medium">Subhash Chowk, Station Road, Deoria • UP FSDA Licensed • UPPC-PH-29841 Verified</span>
             </div>
           </div>
-          <button 
-            onclick="window.acsApp.setLandingSubTab('showcase')" 
-            class="bg-slate-950 hover:bg-slate-900 text-white text-xs font-black px-4 py-2 rounded-xl transition flex items-center gap-2 self-start sm:self-auto shadow-sm"
-          >
-            <span>Open Deployed Websites Directory</span>
-            <i class="fa fa-arrow-right text-amber-400"></i>
-          </button>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button 
+              onclick="window.acsApp.viewHostedWebsite('store-up-001')" 
+              class="bg-slate-950 hover:bg-slate-900 text-white text-xs font-black px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-sm"
+            >
+              <i class="fa fa-external-link text-amber-400"></i>
+              <span>Visit Deoria Drug House Live</span>
+            </button>
+            <button 
+              onclick="window.acsApp.setLandingSubTab('showcase')" 
+              class="bg-white/80 hover:bg-white text-slate-950 text-xs font-bold px-3 py-2.5 rounded-xl transition flex items-center gap-1.5"
+            >
+              <span>All 6 Pharmacies</span>
+              <i class="fa fa-arrow-right"></i>
+            </button>
+          </div>
         </div>
 
         <!-- Hero Section with Dual Columns -->
