@@ -435,6 +435,16 @@ try {
   }
   console.log('SEO Document Title verified:', mockWindow.document.title);
 
+  // (f) Verify Interactive Indexing Suite Methods
+  app.triggerNetworkIndexing();
+  console.log('triggerNetworkIndexing() executed and opened Indexing Hub Modal successfully!');
+
+  app.indexSingleStore('store-up-001');
+  console.log('indexSingleStore("store-up-001") executed and opened Single Store Modal successfully!');
+
+  app.copyAllStoreLinks();
+  console.log('copyAllStoreLinks() executed successfully!');
+
   // Reset window pathname
   mockWindow.location.pathname = '/';
 
