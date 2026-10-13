@@ -32,7 +32,32 @@ const mockDocument = {
   querySelector: (sel) => ({ innerHTML: '', style: {}, classList: { add: () => {}, remove: () => {} } }),
   querySelectorAll: (sel) => [],
   addEventListener: () => {},
-  createElement: (tag) => ({ innerHTML: '', style: {}, classList: { add: () => {}, remove: () => {} }, appendChild: () => {}, remove: () => {} }),
+  createElement: (tag) => ({
+    innerHTML: '',
+    style: {},
+    classList: { add: () => {}, remove: () => {} },
+    appendChild: () => {},
+    remove: () => {},
+    getContext: () => ({
+      fillRect: () => {},
+      save: () => {},
+      restore: () => {},
+      translate: () => {},
+      rotate: () => {},
+      scale: () => {},
+      drawImage: () => {},
+      clearRect: () => {},
+      beginPath: () => {},
+      rect: () => {},
+      arc: () => {},
+      fill: () => {},
+      stroke: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      setLineDash: () => {}
+    }),
+    toDataURL: () => 'data:image/jpeg;base64,mockCanvasData'
+  }),
   body: { classList: { add: () => {}, remove: () => {} } }
 };
 
@@ -63,6 +88,7 @@ const sandbox = {
 
 vm.createContext(sandbox);
 
+async function runTests() {
 try {
   vm.runInContext(dataCode.replace("const INITIAL_STORES_DATA", "var INITIAL_STORES_DATA"), sandbox);
   console.log('data.js executed successfully! Stores loaded:', sandbox.INITIAL_STORES_DATA.length);
@@ -259,6 +285,43 @@ try {
   app.deleteGalleryPhoto(currentStore.id, addedPhoto.id);
   if (currentStore.galleryPhotos.some(p => p.id === addedPhoto.id)) throw new Error('deleteGalleryPhoto failed to delete photo');
   console.log('deleteGalleryPhoto() removed photo cleanly!');
+
+  // Test Image Compression Engine Methods
+  if (typeof app.compressImageFile !== 'function') throw new Error('compressImageFile method missing from app');
+  if (typeof app.compressDataUrl !== 'function') throw new Error('compressDataUrl method missing from app');
+  const dummyDataUrl = "data:image/jpeg;base64," + "A".repeat(500);
+  const compressedResult = await app.compressDataUrl(dummyDataUrl, 900, 0.8);
+  if (typeof compressedResult !== 'string') throw new Error('compressDataUrl failed to return string');
+  console.log('compressDataUrl executed successfully!');
+
+  // Test Photo Studio Apply & Save for Store Primary Cover
+  const newTestCoverUrl = 'https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80';
+  app.openPhotoStudioModal('store-primary', currentStore.id, newTestCoverUrl);
+  app.saveStudioPhoto('store-primary', currentStore.id);
+  if (!currentStore.photoUrl) throw new Error('saveStudioPhoto store-primary failed to set photoUrl');
+  console.log('saveStudioPhoto("store-primary") updated and verified successfully!');
+
+  // Test Photo Studio Apply & Save for Pharmacist Staff Avatar
+  const newStaffAvatarUrl = 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=600&q=80';
+  app.openPhotoStudioModal('staff-avatar', currentStore.staff[0].id, newStaffAvatarUrl);
+  app.saveStudioPhoto('staff-avatar', currentStore.staff[0].id);
+  if (currentStore.staff[0].avatarUrl !== newStaffAvatarUrl && !currentStore.staff[0].avatarUrl.startsWith('data:image/')) {
+    throw new Error('saveStudioPhoto staff-avatar failed to update avatarUrl');
+  }
+  console.log('saveStudioPhoto("staff-avatar") updated and verified successfully!');
+
+  // Test Hosted Website View has owner edit buttons when logged in
+  app.authenticate('akhil@acs.com', 'akhil123');
+  app.hostedSubTab = 'storefront';
+  const loggedInHostedHtml = app.getHostedWebsiteViewHtml(currentStore);
+  if (!loggedInHostedHtml.includes('Edit Cover Photo')) {
+    throw new Error('Hosted website view missing Edit Cover Photo button for logged-in owner');
+  }
+  if (!loggedInHostedHtml.includes('Edit Pharmacist Photo')) {
+    throw new Error('Hosted website view missing Edit Pharmacist Photo button for logged-in owner');
+  }
+  console.log('Hosted website view verified: Edit Cover Photo & Edit Pharmacist Photo rendered for owner!');
+  app.logout();
 
   // 10. Test Public Patient Storefront & Medicine Detail & Rx Auto-Matcher
   const catalogHtml = app.getHostedMedicineCatalogHtml(currentStore);
@@ -506,7 +569,10 @@ try {
   console.log('ALL PUBLIC STOREFRONT & AUTO-MATCHER TESTS PASSED 100%!');
   console.log('ALL AUTHENTICATION & VIEW-ONLY STORE CONSTRAINTS PASSED 100%!');
   console.log('ALL TESTS PASSED COMPLETELY WITHOUT ANY ERRORS!');
-} catch (err) {
-  console.error('ERROR during testing:', err);
-  process.exit(1);
+  } catch (err) {
+    console.error('ERROR during testing:', err);
+    process.exit(1);
+  }
 }
+
+runTests();

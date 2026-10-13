@@ -287,6 +287,10 @@
               <i class="fa fa-google text-red-500"></i> Google
             </a>
             
+              <button onclick="window.acsApp.openLoginModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs" title="Pharmacist Login to edit store, stock and photos">
+                <i class="fa fa-lock text-amber-600"></i> Pharmacist Login
+              </button>
+            
           </div>
         </header>
 
@@ -298,10 +302,12 @@
             <!-- ======================================================== -->
             <div>
               <!-- Store Hero Banner Image -->
-              <div class="relative h-72 sm:h-96 bg-slate-900 overflow-hidden">
+              <div class="relative h-72 sm:h-96 bg-slate-900 overflow-hidden group">
                 <img id="storefront-hero-img" src="https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=1200&q=80" alt="Deoria Drug House" class="w-full h-full object-cover opacity-90 transition duration-500" onerror="this.src='https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80'" />
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/40 to-transparent"></div>
                 
+                
+
                 <div class="absolute bottom-6 left-4 right-4 sm:bottom-8 sm:left-10 sm:right-10 text-white flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                   <div>
                     <span class="text-xs font-black uppercase tracking-widest text-amber-300 block mb-1">
@@ -327,7 +333,7 @@
                 </div>
               </div>
 
-              <!-- Multi-Photo Gallery Showcase Strip (VIEW ONLY - ZERO EDIT BUTTONS) -->
+              <!-- Multi-Photo Gallery Showcase Strip -->
               <div class="bg-slate-900 border-t border-white/10 px-4 sm:px-10 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
                 <div class="flex items-center gap-2 overflow-x-auto py-1">
                   <span class="text-amber-400 font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 flex-shrink-0">
@@ -392,14 +398,15 @@
                   <button type="button" onclick="window.acsApp.openPhotoViewerModal('https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=1200&q=80', 'Deoria Drug House - Store Front')" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold text-xs transition flex items-center gap-1.5">
                     <i class="fa fa-search-plus text-amber-400"></i> View Fullscreen
                   </button>
+                  
                 </div>
               </div>
 
               <!-- Main Body Grid: Pharmacist on Duty & Live Medicine Search -->
               <div class="max-w-7xl mx-auto p-4 sm:p-10 space-y-8">
-                <!-- Grid: 3 Trust & Facility Cards (100% Read-Only) -->
+                <!-- Grid: 3 Trust & Facility Cards -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <!-- Pharmacist On Duty (VIEW ONLY) -->
+                  <!-- Pharmacist On Duty -->
                   <div class="p-6 rounded-2xl bg-teal-50/70 border border-teal-200 flex flex-col justify-between shadow-xs">
                     <div>
                       <div class="flex items-center justify-between gap-2 mb-3">
@@ -412,17 +419,20 @@
                       </div>
 
                       <div class="flex items-center gap-3.5 mb-3">
-                        <div class="relative w-14 h-14 rounded-full overflow-hidden border-2 border-teal-500 shadow-md flex-shrink-0 bg-teal-100 flex items-center justify-center">
+                        <div class="relative w-14 h-14 rounded-full overflow-hidden border-2 border-teal-500 shadow-md flex-shrink-0 bg-teal-100 flex items-center justify-center " >
                           
                             <i class="fa fa-user-md text-2xl text-[#135c7e]"></i>
+                          
                           
                         </div>
                         <div>
                           <h3 class="text-base font-black text-slate-900">Akhileshwar Tripathi</h3>
                           <span class="text-xs text-teal-800 font-semibold block">B.Pharm (KGMU / UP Tech Univ)</span>
-                          <span class="text-[10px] text-emerald-700 font-bold mt-0.5 inline-flex items-center gap-1">
-                            <i class="fa fa-shield"></i> State Council Verified Professional
-                          </span>
+                          
+                            <span class="text-[10px] text-emerald-700 font-bold mt-0.5 inline-flex items-center gap-1">
+                              <i class="fa fa-shield"></i> State Council Verified Professional
+                            </span>
+                          
                         </div>
                       </div>
                       

@@ -222,9 +222,118 @@ class ACSApp {
     return str;
   }
 
+  compressImageFile(file, maxDimension = 900, quality = 0.8) {
+    return new Promise((resolve, reject) => {
+      if (!file) {
+        resolve("");
+        return;
+      }
+      if (typeof FileReader === "undefined") {
+        resolve("");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const rawResult = e.target.result;
+        if (typeof Image === "undefined" || typeof document === "undefined" || !document.createElement) {
+          resolve(rawResult);
+          return;
+        }
+        const img = new Image();
+        img.onload = () => {
+          try {
+            let w = img.naturalWidth || img.width || 800;
+            let h = img.naturalHeight || img.height || 600;
+            if (w > maxDimension || h > maxDimension) {
+              if (w > h) {
+                h = Math.round((h * maxDimension) / w);
+                w = maxDimension;
+              } else {
+                w = Math.round((w * maxDimension) / h);
+                h = maxDimension;
+              }
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.fillStyle = "#ffffff";
+              ctx.fillRect(0, 0, w, h);
+              ctx.drawImage(img, 0, 0, w, h);
+              resolve(canvas.toDataURL("image/jpeg", quality));
+            } else {
+              resolve(rawResult);
+            }
+          } catch (err) {
+            console.warn("Image canvas compression fallback:", err);
+            resolve(rawResult);
+          }
+        };
+        img.onerror = () => resolve(rawResult);
+        img.src = rawResult;
+      };
+      reader.onerror = () => reject(new Error("Failed to read image file"));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  compressDataUrl(dataUrl, maxDimension = 900, quality = 0.8) {
+    return new Promise((resolve) => {
+      if (!dataUrl || typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) {
+        resolve(dataUrl || "");
+        return;
+      }
+      if (dataUrl.length < 90000) {
+        resolve(dataUrl);
+        return;
+      }
+      if (typeof Image === "undefined" || typeof document === "undefined" || !document.createElement) {
+        resolve(dataUrl);
+        return;
+      }
+      const img = new Image();
+      img.onload = () => {
+        try {
+          let w = img.naturalWidth || img.width || 800;
+          let h = img.naturalHeight || img.height || 600;
+          if (w > maxDimension || h > maxDimension) {
+            if (w > h) {
+              h = Math.round((h * maxDimension) / w);
+              w = maxDimension;
+            } else {
+              w = Math.round((w * maxDimension) / h);
+              h = maxDimension;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, w, h);
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL("image/jpeg", quality));
+          } else {
+            resolve(dataUrl);
+          }
+        } catch (_) {
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+
   saveStores(syncToCloud = true) {
     if (typeof localStorage !== "undefined") {
-      localStorage.setItem("ACS_STORES_DATA_V2", JSON.stringify(this.stores));
+      try {
+        localStorage.setItem("ACS_STORES_DATA_V2", JSON.stringify(this.stores));
+      } catch (err) {
+        console.warn("LocalStorage save warning (possible quota exceeded):", err);
+      }
     }
 
     if (syncToCloud) {
@@ -308,12 +417,16 @@ class ACSApp {
 
       const isCloudNewer = cloudTimestamp > localTimestamp;
       const hasNeverSynced = typeof localStorage !== "undefined" && !localStorage.getItem("ACS_CLOUD_LAST_MODIFIED");
+      const currentJson = JSON.stringify(this.stores);
+      const newJson = JSON.stringify(cloudPayload.stores);
+      const isContentDifferent = currentJson !== newJson;
 
-      if (isCloudNewer || (isInitial && hasNeverSynced)) {
-        const currentJson = JSON.stringify(this.stores);
-        const newJson = JSON.stringify(cloudPayload.stores);
+      // Safeguard: do not overwrite in the middle of user actively editing in a modal
+      const activeModal = typeof document !== "undefined" ? document.getElementById("modal-generic") : null;
+      const isEditingInModal = activeModal && !activeModal.classList.contains("hidden");
 
-        if (currentJson !== newJson) {
+      if ((isCloudNewer || (isInitial && hasNeverSynced) || isContentDifferent) && !isEditingInModal) {
+        if (isContentDifferent) {
           this.stores = cloudPayload.stores;
           this.stores.forEach((s) => {
             if (Array.isArray(s.stocks)) {
@@ -324,16 +437,20 @@ class ACSApp {
           });
 
           if (typeof localStorage !== "undefined") {
-            localStorage.setItem("ACS_STORES_DATA_V2", JSON.stringify(this.stores));
+            try {
+              localStorage.setItem("ACS_STORES_DATA_V2", JSON.stringify(this.stores));
+            } catch (quotaErr) {
+              console.warn("Storage quota warning on cloud sync:", quotaErr);
+            }
             localStorage.setItem("ACS_CLOUD_LAST_MODIFIED", String(cloudTimestamp || Date.now()));
           }
 
-          // Re-render views reactively so this device immediately updates prices and stocks
+          // Re-render views reactively so this device immediately updates prices, stocks and photos
           this.renderCurrentView();
           this.updateCloudSyncBadge("synced", "Synchronized across all devices");
 
           if (!isInitial) {
-            this.showToast("Real-time Update: Live stock and price updates synchronized from cloud.", "info");
+            this.showToast("Real-time Update: Live pharmacy data & photos synchronized from database.", "info");
           }
         }
       } else {
@@ -1918,7 +2035,11 @@ class ACSApp {
               <button onclick="window.acsApp.switchTab('store-detail')" class="bg-slate-900 hover:bg-black text-white px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm">
                 <i class="fa fa-dashboard text-amber-400"></i> Owner Portal
               </button>
-            ` : ''}
+            ` : `
+              <button onclick="window.acsApp.openLoginModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs" title="Pharmacist Login to edit store, stock and photos">
+                <i class="fa fa-lock text-amber-600"></i> Pharmacist Login
+              </button>
+            `}
           </div>
         </header>
 
@@ -1930,10 +2051,22 @@ class ACSApp {
             <!-- ======================================================== -->
             <div>
               <!-- Store Hero Banner Image -->
-              <div class="relative h-72 sm:h-96 bg-slate-900 overflow-hidden">
+              <div class="relative h-72 sm:h-96 bg-slate-900 overflow-hidden group">
                 <img id="storefront-hero-img" src="${store.photoUrl}" alt="${store.name}" class="w-full h-full object-cover opacity-90 transition duration-500" onerror="this.src='https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80'" />
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/40 to-transparent"></div>
                 
+                ${this.currentUser && this.currentUser.storeId === store.id ? `
+                  <!-- Owner Quick Photo Edit Floating Bar -->
+                  <div class="absolute top-4 right-4 z-20 flex items-center gap-2">
+                    <button type="button" onclick="window.acsApp.openPhotoStudioModal('store-primary', '${store.id}', '${store.photoUrl}')" class="bg-black/75 hover:bg-black text-white backdrop-blur-md px-3.5 py-2 rounded-xl text-xs font-bold border border-white/20 shadow-md transition flex items-center gap-1.5">
+                      <i class="fa fa-camera text-amber-400"></i> Edit Cover Photo
+                    </button>
+                    <button type="button" onclick="window.acsApp.openManageStorePhotosModal('${store.id}')" class="bg-teal-800/80 hover:bg-teal-800 text-white backdrop-blur-md px-3.5 py-2 rounded-xl text-xs font-bold border border-teal-400/40 shadow-md transition flex items-center gap-1.5">
+                      <i class="fa fa-picture-o text-teal-200"></i> Gallery Photos (${galleryPhotos.length})
+                    </button>
+                  </div>
+                ` : ''}
+
                 <div class="absolute bottom-6 left-4 right-4 sm:bottom-8 sm:left-10 sm:right-10 text-white flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                   <div>
                     <span class="text-xs font-black uppercase tracking-widest text-amber-300 block mb-1">
@@ -1959,7 +2092,7 @@ class ACSApp {
                 </div>
               </div>
 
-              <!-- Multi-Photo Gallery Showcase Strip (VIEW ONLY - ZERO EDIT BUTTONS) -->
+              <!-- Multi-Photo Gallery Showcase Strip -->
               <div class="bg-slate-900 border-t border-white/10 px-4 sm:px-10 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
                 <div class="flex items-center gap-2 overflow-x-auto py-1">
                   <span class="text-amber-400 font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 flex-shrink-0">
@@ -1984,14 +2117,19 @@ class ACSApp {
                   <button type="button" onclick="window.acsApp.openPhotoViewerModal('${store.photoUrl}', '${store.name} - Store Front')" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold text-xs transition flex items-center gap-1.5">
                     <i class="fa fa-search-plus text-amber-400"></i> View Fullscreen
                   </button>
+                  ${this.currentUser && this.currentUser.storeId === store.id ? `
+                    <button type="button" onclick="window.acsApp.openManageStorePhotosModal('${store.id}')" class="px-3 py-1.5 bg-teal-700 hover:bg-teal-800 text-white rounded-lg font-bold text-xs transition flex items-center gap-1.5 shadow-xs">
+                      <i class="fa fa-plus-circle text-amber-400"></i> Add / Manage Photos
+                    </button>
+                  ` : ''}
                 </div>
               </div>
 
               <!-- Main Body Grid: Pharmacist on Duty & Live Medicine Search -->
               <div class="max-w-7xl mx-auto p-4 sm:p-10 space-y-8">
-                <!-- Grid: 3 Trust & Facility Cards (100% Read-Only) -->
+                <!-- Grid: 3 Trust & Facility Cards -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <!-- Pharmacist On Duty (VIEW ONLY) -->
+                  <!-- Pharmacist On Duty -->
                   <div class="p-6 rounded-2xl bg-teal-50/70 border border-teal-200 flex flex-col justify-between shadow-xs">
                     <div>
                       <div class="flex items-center justify-between gap-2 mb-3">
@@ -2004,19 +2142,30 @@ class ACSApp {
                       </div>
 
                       <div class="flex items-center gap-3.5 mb-3">
-                        <div class="relative w-14 h-14 rounded-full overflow-hidden border-2 border-teal-500 shadow-md flex-shrink-0 bg-teal-100 flex items-center justify-center">
+                        <div class="relative w-14 h-14 rounded-full overflow-hidden border-2 border-teal-500 shadow-md flex-shrink-0 bg-teal-100 flex items-center justify-center ${this.currentUser && this.currentUser.storeId === store.id && chiefPharmacist ? 'cursor-pointer group' : ''}" ${this.currentUser && this.currentUser.storeId === store.id && chiefPharmacist ? `onclick="window.acsApp.openStaffProfilePhotoModal('${chiefPharmacist.id}')" title="Click to crop / edit profile photo"` : ''}>
                           ${chiefPharmacist && chiefPharmacist.avatarUrl ? `
                             <img src="${chiefPharmacist.avatarUrl}" alt="${chiefPharmacist.name}" class="w-full h-full object-cover" />
                           ` : `
                             <i class="fa fa-user-md text-2xl text-[#135c7e]"></i>
                           `}
+                          ${this.currentUser && this.currentUser.storeId === store.id && chiefPharmacist ? `
+                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs">
+                              <i class="fa fa-camera"></i>
+                            </div>
+                          ` : ''}
                         </div>
                         <div>
                           <h3 class="text-base font-black text-slate-900">${chiefPharmacist ? chiefPharmacist.name : 'Qualified Pharmacist'}</h3>
                           <span class="text-xs text-teal-800 font-semibold block">${chiefPharmacist ? chiefPharmacist.qualification : 'B.Pharm (UP)'}</span>
-                          <span class="text-[10px] text-emerald-700 font-bold mt-0.5 inline-flex items-center gap-1">
-                            <i class="fa fa-shield"></i> State Council Verified Professional
-                          </span>
+                          ${this.currentUser && this.currentUser.storeId === store.id && chiefPharmacist ? `
+                            <button type="button" onclick="window.acsApp.openStaffProfilePhotoModal('${chiefPharmacist.id}')" class="text-teal-700 hover:text-teal-900 font-bold text-[10px] inline-flex items-center gap-1 mt-0.5">
+                              <i class="fa fa-camera"></i> Edit Pharmacist Photo
+                            </button>
+                          ` : `
+                            <span class="text-[10px] text-emerald-700 font-bold mt-0.5 inline-flex items-center gap-1">
+                              <i class="fa fa-shield"></i> State Council Verified Professional
+                            </span>
+                          `}
                         </div>
                       </div>
                       
@@ -6562,7 +6711,7 @@ class ACSApp {
                 <div>
                   <div class="flex items-start justify-between gap-2">
                     <div class="flex items-center gap-3">
-                      <div class="relative w-12 h-12 rounded-full overflow-hidden border-2 ${isPharmacist ? 'border-teal-400' : 'border-slate-300'} shadow-xs flex items-center justify-center bg-slate-100 flex-shrink-0">
+                      <div class="relative w-12 h-12 rounded-full overflow-hidden border-2 ${isPharmacist ? 'border-teal-400' : 'border-slate-300'} shadow-xs flex items-center justify-center bg-slate-100 flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-teal-400 transition" onclick="window.acsApp.openPhotoStudioModal('staff-avatar', '${st.id}', '${st.avatarUrl || ''}')" title="Click to crop / edit profile photo">
                         ${st.avatarUrl ? `
                           <img src="${st.avatarUrl}" alt="${st.name}" class="w-full h-full object-cover" />
                         ` : `
@@ -7682,15 +7831,18 @@ class ACSApp {
     const previewImg = document.getElementById("edit-store-photo-preview");
 
     if (fileInput) {
-      fileInput.addEventListener("change", (e) => {
+      fileInput.addEventListener("change", async (e) => {
         const file = e.target.files && e.target.files[0];
         if (file) {
-          const reader = new FileReader();
-          reader.onload = (loadEvt) => {
-            if (previewImg) previewImg.src = loadEvt.target.result;
-            if (urlInput) urlInput.value = loadEvt.target.result;
-          };
-          reader.readAsDataURL(file);
+          try {
+            this.showToast("Compressing & optimizing photo...", "info");
+            const compressed = await this.compressImageFile(file, 900, 0.8);
+            if (previewImg) previewImg.src = compressed;
+            if (urlInput) urlInput.value = compressed;
+            this.showToast("Storefront photo ready for live multi-device sync!", "success");
+          } catch (err) {
+            console.warn("Photo load error:", err);
+          }
         }
       });
     }
@@ -7711,7 +7863,7 @@ class ACSApp {
       });
     }
 
-    document.getElementById("form-edit-store").onsubmit = (e) => {
+    document.getElementById("form-edit-store").onsubmit = async (e) => {
       e.preventDefault();
       const oldName = store.name;
       store.name = document.getElementById("edit-store-name").value.trim();
@@ -7726,7 +7878,13 @@ class ACSApp {
       store.whatsapp = (document.getElementById("edit-store-whatsapp").value || store.phone).replace(/[^0-9]/g, "");
       store.operatingHours = document.getElementById("edit-store-hours").value.trim();
       store.is24x7 = document.getElementById("edit-store-24x7").checked;
-      store.photoUrl = document.getElementById("edit-store-photo").value.trim() || store.photoUrl;
+
+      let photoVal = document.getElementById("edit-store-photo").value.trim() || store.photoUrl;
+      if (photoVal.startsWith("data:image/") && photoVal.length > 90000) {
+        photoVal = await this.compressDataUrl(photoVal, 900, 0.8);
+      }
+      store.photoUrl = photoVal;
+
       const curGallery = this.ensureStoreGallery(store);
       if (curGallery.length > 0) {
         const prim = curGallery.find((p) => p.isPrimary) || curGallery[0];
@@ -7751,7 +7909,7 @@ class ACSApp {
         this.saveUserSession();
       }
 
-      this.saveStores();
+      this.saveStores(true);
       this.closeModal();
       this.renderHeaderBar();
       this.renderCurrentView();
@@ -7761,7 +7919,7 @@ class ACSApp {
         window.dispatchEvent(new Event("storage"));
       } catch (err) {}
 
-      this.showToast(`Pharmacy profile and storefront photo updated successfully.`, "success");
+      this.showToast(`Pharmacy details and storefront photo updated & synced across all devices.`, "success");
     };
   }
 
@@ -8045,19 +8203,21 @@ class ACSApp {
     let currentInputDataUrl = "";
 
     if (fileInput) {
-      fileInput.addEventListener("change", (e) => {
+      fileInput.addEventListener("change", async (e) => {
         const file = e.target.files && e.target.files[0];
         if (file) {
-          const reader = new FileReader();
-          reader.onload = (loadEvt) => {
-            currentInputDataUrl = loadEvt.target.result;
+          try {
+            this.showToast("Compressing & optimizing photo...", "info");
+            currentInputDataUrl = await this.compressImageFile(file, 900, 0.8);
             if (previewThumb) previewThumb.src = currentInputDataUrl;
             if (previewContainer) {
               previewContainer.classList.remove("hidden");
               previewContainer.classList.add("flex");
             }
-          };
-          reader.readAsDataURL(file);
+            this.showToast("Gallery photo optimized & ready to add!", "success");
+          } catch (err) {
+            console.warn("Gallery photo load error:", err);
+          }
         }
       });
     }
@@ -8076,27 +8236,34 @@ class ACSApp {
     }
 
     if (form) {
-      form.onsubmit = (e) => {
+      form.onsubmit = async (e) => {
         e.preventDefault();
-        const url = currentInputDataUrl || (urlInput ? urlInput.value.trim() : "");
+        let url = currentInputDataUrl || (urlInput ? urlInput.value.trim() : "");
         if (!url) {
           this.showToast("Please choose a photo file or enter an image URL.", "warning");
           return;
         }
+        if (url.startsWith("data:image/") && url.length > 90000) {
+          url = await this.compressDataUrl(url, 900, 0.8);
+        }
         const title = (document.getElementById("new-gallery-title") ? document.getElementById("new-gallery-title").value : "") || "Store View";
         const caption = document.getElementById("new-gallery-caption") ? document.getElementById("new-gallery-caption").value : "";
-        this.addGalleryPhoto(store.id, url, title, caption);
+        await this.addGalleryPhoto(store.id, url, title, caption);
       };
     }
   }
 
-  addGalleryPhoto(storeId, url, title, caption) {
+  async addGalleryPhoto(storeId, url, title, caption) {
     const store = this.stores.find((s) => s.id === storeId);
     if (!store || !url) return;
+    let cleanUrl = url.trim();
+    if (cleanUrl.startsWith("data:image/") && cleanUrl.length > 90000) {
+      cleanUrl = await this.compressDataUrl(cleanUrl, 900, 0.8);
+    }
     const gallery = this.ensureStoreGallery(store);
     const newPhoto = {
       id: `gp-${store.id}-${Date.now()}`,
-      url: url.trim(),
+      url: cleanUrl,
       title: title ? title.trim() : `Store View ${gallery.length + 1}`,
       caption: caption ? caption.trim() : "Pharmacy physical facility view.",
       tag: title ? title.slice(0, 14) : "Facility",
@@ -8106,8 +8273,8 @@ class ACSApp {
     if (newPhoto.isPrimary) {
       store.photoUrl = newPhoto.url;
     }
-    this.saveStores();
-    this.showToast(`Added "${newPhoto.title}" to store photo gallery!`, "success");
+    this.saveStores(true);
+    this.showToast(`Added "${newPhoto.title}" to store photo gallery & synced across devices!`, "success");
     this.openManageStorePhotosModal(storeId);
   }
 
@@ -8120,8 +8287,8 @@ class ACSApp {
 
     gallery.forEach((p) => (p.isPrimary = p.id === photoId));
     store.photoUrl = target.url;
-    this.saveStores();
-    this.showToast(`Updated primary storefront cover to "${target.title}"!`, "success");
+    this.saveStores(true);
+    this.showToast(`Updated primary storefront cover to "${target.title}" and synced across all devices!`, "success");
     this.openManageStorePhotosModal(storeId);
   }
 
@@ -8142,8 +8309,8 @@ class ACSApp {
       gallery[0].isPrimary = true;
       store.photoUrl = gallery[0].url;
     }
-    this.saveStores();
-    this.showToast("Photo removed from store gallery.", "info");
+    this.saveStores(true);
+    this.showToast("Photo removed from store gallery and synced across devices.", "info");
     this.openManageStorePhotosModal(storeId);
   }
 
@@ -8504,14 +8671,17 @@ class ACSApp {
     // File Input Listener
     const fileInput = document.getElementById("studio-file-input");
     if (fileInput) {
-      fileInput.addEventListener("change", (e) => {
+      fileInput.addEventListener("change", async (e) => {
         const file = e.target.files && e.target.files[0];
         if (file) {
-          const reader = new FileReader();
-          reader.onload = (loadEvt) => {
-            this.setStudioImageSource(loadEvt.target.result);
-          };
-          reader.readAsDataURL(file);
+          try {
+            this.showToast("Compressing & optimizing photo...", "info");
+            const maxDim = window._acsStudioState && window._acsStudioState.isAvatar ? 600 : 1000;
+            const compressed = await this.compressImageFile(file, maxDim, 0.85);
+            this.setStudioImageSource(compressed);
+          } catch (err) {
+            console.warn("Studio photo load error:", err);
+          }
         }
       });
     }
@@ -8743,14 +8913,15 @@ class ACSApp {
     const cw = canvas.width;
     const ch = canvas.height;
 
-    // Create offscreen export canvas without guides
+    // Create offscreen export canvas without guides (optimized resolution)
     const outCanvas = document.createElement("canvas");
-    const outW = state.isAvatar ? 400 : 800;
+    const outW = state.isAvatar ? 360 : 800;
     const outH = Math.round((outW * ch) / cw);
     outCanvas.width = outW;
     outCanvas.height = outH;
 
-    const ctx = outCanvas.getContext("2d");
+    const ctx = (outCanvas && typeof outCanvas.getContext === "function") ? outCanvas.getContext("2d") : null;
+    if (!ctx) return (state.img && state.img.src) || "";
     ctx.fillStyle = "#0f172a";
     ctx.fillRect(0, 0, outW, outH);
 
@@ -8773,7 +8944,9 @@ class ACSApp {
     ctx.rotate((state.rotation * Math.PI) / 180);
     ctx.scale(state.flipH * state.zoom, state.zoom);
 
-    const imgRatio = state.img.naturalWidth / state.img.naturalHeight;
+    const nw = state.img.naturalWidth || state.img.width || 800;
+    const nh = state.img.naturalHeight || state.img.height || 600;
+    const imgRatio = nw / nh;
     const canvasRatio = outW / outH;
     let drawW, drawH;
     if (imgRatio > canvasRatio) {
@@ -8784,11 +8957,14 @@ class ACSApp {
       drawH = outW / imgRatio;
     }
 
-    ctx.drawImage(state.img, -drawW / 2, -drawH / 2, drawW, drawH);
+    try {
+      ctx.drawImage(state.img, -drawW / 2, -drawH / 2, drawW, drawH);
+    } catch (_) {}
     ctx.restore();
 
     try {
-      return outCanvas.toDataURL("image/jpeg", 0.92);
+      const q = state.isAvatar ? 0.82 : 0.78;
+      return outCanvas.toDataURL("image/jpeg", q);
     } catch (err) {
       console.warn("Canvas export fallback:", err);
       return state.img.src;
@@ -8811,10 +8987,10 @@ class ACSApp {
           const prim = gallery.find((p) => p.isPrimary) || gallery[0];
           prim.url = finalDataUrl;
         }
-        this.saveStores();
+        this.saveStores(true);
         this.closeModal();
         this.renderCurrentView();
-        this.showToast("Storefront cover photo updated and framed.", "success");
+        this.showToast("Storefront cover photo updated and synced across all devices.", "success");
       }
     } else if (targetType === "store-gallery") {
       const store = this.stores.find((s) => s.id === targetId);
@@ -8827,8 +9003,8 @@ class ACSApp {
             store.photoUrl = finalDataUrl;
           }
         }
-        this.saveStores();
-        this.showToast("Gallery photo adjusted and saved.", "success");
+        this.saveStores(true);
+        this.showToast("Gallery photo adjusted and synced across all devices.", "success");
         this.openManageStorePhotosModal(targetId);
       }
     } else if (targetType === "staff-avatar") {
@@ -8847,10 +9023,10 @@ class ACSApp {
       if (targetStaff) {
         targetStaff.avatarUrl = finalDataUrl;
         targetStaff.avatar = finalDataUrl;
-        this.saveStores();
+        this.saveStores(true);
         this.closeModal();
         this.renderCurrentView();
-        this.showToast(`Pharmacist profile photo updated for ${targetStaff.name}.`, "success");
+        this.showToast(`Pharmacist profile photo updated and synced across all devices for ${targetStaff.name}.`, "success");
       }
     } else if (targetType === "owner-avatar") {
       const store = this.stores.find((s) => s.id === targetId);
@@ -8860,10 +9036,10 @@ class ACSApp {
           this.currentUser.avatarUrl = finalDataUrl;
           this.saveUserSession();
         }
-        this.saveStores();
+        this.saveStores(true);
         this.closeModal();
         this.renderCurrentView();
-        this.showToast("Proprietor profile photo updated.", "success");
+        this.showToast("Proprietor profile photo updated and synced across all devices.", "success");
       }
     }
   }
@@ -9160,6 +9336,8 @@ class ACSApp {
         id: `st-${Date.now()}`,
         name: document.getElementById("staff-name").value,
         role: document.getElementById("staff-role").value,
+        avatarUrl: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=600&q=80",
+        avatar: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=600&q=80",
         uppcRegNo: document.getElementById("staff-uppc").value || "N/A (Non-Technical)",
         qualification: document.getElementById("staff-qual").value || "Higher Secondary",
         regDate: "2024-01-01",
@@ -9167,14 +9345,15 @@ class ACSApp {
         phone: document.getElementById("staff-phone").value,
         shift: document.getElementById("staff-shift").value,
         isAadhaarVerified: document.getElementById("staff-aadhaar").checked,
+        isOnDuty: false,
         status: "Active"
       };
 
       store.staff.push(newStaff);
-      this.saveStores();
+      this.saveStores(true);
       this.closeModal();
       this.renderCurrentView();
-      this.showToast(`Enrolled ${newStaff.name} to store staff roster`, "success");
+      this.showToast(`Enrolled ${newStaff.name} to store staff roster & synced to database.`, "success");
     };
   }
 
