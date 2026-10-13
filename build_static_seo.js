@@ -184,9 +184,60 @@ stores.forEach((store) => {
   }
 });
 
-// Update sitemap.xml with today's lastmod date
-let sitemap = fs.readFileSync(path.join(baseDir, 'sitemap.xml'), 'utf8');
-sitemap = sitemap.replace(/<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/g, `<lastmod>${currentDate}</lastmod>`);
-fs.writeFileSync(path.join(baseDir, 'sitemap.xml'), sitemap, 'utf8');
-console.log(`Updated sitemap.xml with lastmod: ${currentDate}`);
-console.log('Static SEO Pre-rendering build completed successfully!');
+  const https = require('https');
+
+  // Dynamically generate master sitemap.xml with all stores
+  let sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+  sitemapXml += `  <!-- ACS Central Gateway -->\n  <url>\n    <loc>${baseOrigin}/</loc>\n    <lastmod>${currentDate}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>1.0</priority>\n  </url>\n`;
+
+  const allIndexedUrls = [`${baseOrigin}/`];
+
+  stores.forEach(store => {
+    const storeUrl = `${baseOrigin}/pharmacy/${store.slug}`;
+    allIndexedUrls.push(storeUrl);
+    allIndexedUrls.push(`${baseOrigin}/${store.slug}`);
+
+    sitemapXml += `  <!-- ${store.name} -->\n  <url>\n    <loc>${storeUrl}</loc>\n    <lastmod>${currentDate}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>1.0</priority>\n  </url>\n`;
+    sitemapXml += `  <url>\n    <loc>${baseOrigin}/${store.slug}</loc>\n    <lastmod>${currentDate}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>0.9</priority>\n  </url>\n`;
+  });
+
+  sitemapXml += `</urlset>\n`;
+  fs.writeFileSync(path.join(baseDir, 'sitemap.xml'), sitemapXml, 'utf8');
+  console.log(`Generated dynamic sitemap.xml with ${stores.length} pharmacies and ${allIndexedUrls.length} indexed URLs!`);
+
+  // Write indexnow.json
+  const indexNowPayload = {
+    host: "acsakhil.com",
+    key: "acsakhil2026indexnow",
+    keyLocation: "https://acsakhil.com/acsakhil2026indexnow.txt",
+    urlList: allIndexedUrls
+  };
+  fs.writeFileSync(path.join(baseDir, 'indexnow.json'), JSON.stringify(indexNowPayload, null, 2), 'utf8');
+  console.log(`Generated indexnow.json for automated search engine submission.`);
+
+  // Auto-ping IndexNow API for instant search engine notification
+  try {
+    const reqData = JSON.stringify(indexNowPayload);
+    const req = https.request({
+      hostname: 'api.indexnow.org',
+      port: 443,
+      path: '/indexnow',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Length': Buffer.byteLength(reqData)
+      }
+    }, (res) => {
+      console.log(`Automated IndexNow Dispatch: Search engines notified with HTTP status ${res.statusCode}`);
+    });
+    req.on('error', (err) => {
+      console.log(`IndexNow ping notice: ${err.message}`);
+    });
+    req.write(reqData);
+    req.end();
+  } catch (e) {
+    console.log(`IndexNow notification skipped: ${e.message}`);
+  }
+
+  console.log('Static SEO Pre-rendering & Automated Indexing build completed successfully!');
+
