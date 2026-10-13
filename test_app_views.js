@@ -312,29 +312,44 @@ try {
   app.removeMedicineFromRxList(0);
   console.log('removeMedicineFromRxList() removed item cleanly!');
 
-  // 10b. Test Bulk Free Scheme across Customer Catalog & Owner Inventory
-  console.log('--- Testing Bulk Free Scheme Suite ---');
+  // 10b. Test Free Scheme & Stock Columns across Customer Catalog & Owner Inventory
+  console.log('--- Testing Stock & Free Scheme Suite ---');
   if (!firstMed.freeScheme) throw new Error('freeScheme missing on initial stock');
   const ddhCatalog = app.getHostedMedicineCatalogHtml(currentStore);
-  if (!ddhCatalog.includes('Bulk Free Scheme')) {
-    throw new Error('Bulk Free Scheme header missing from customer catalog');
+  if (!ddhCatalog.includes('>Stock<')) {
+    throw new Error('Stock header missing from customer catalog');
+  }
+  if (ddhCatalog.includes('>Availability<')) {
+    throw new Error('Old Availability header still present in customer catalog');
+  }
+  if (!ddhCatalog.includes('>Free<')) {
+    throw new Error('Free header missing from customer catalog');
   }
   if (!ddhCatalog.includes(firstMed.freeScheme)) {
     throw new Error(`Customer catalog missing freeScheme badge for: ${firstMed.freeScheme}`);
   }
   app.setStockHorizonFilter('ALL');
   const ownerStocksHtml = app.getStocksViewHtml(currentStore);
-  if (!ownerStocksHtml.includes('Bulk Free Scheme')) {
-    throw new Error('Bulk Free Scheme header missing from owner stocks view');
+  if (!ownerStocksHtml.includes('>Stock<')) {
+    throw new Error('Stock header missing from owner stocks view');
+  }
+  if (!ownerStocksHtml.includes('>Free<')) {
+    throw new Error('Free header missing from owner stocks view');
   }
   if (!ownerStocksHtml.includes(`updateStockInline('${firstMed.id}', 'freeScheme', this.value)`)) {
     throw new Error('Inline editor for freeScheme missing from owner stocks view');
   }
+  if (!ownerStocksHtml.includes(`updateStockInline('${firstMed.id}', 'unit', this.value)`)) {
+    throw new Error('Inline editor for unit missing from owner stocks view');
+  }
   // Test updating freeScheme inline
-  app.updateStockInline(firstMed.id, 'freeScheme', '15 + 2 Free');
-  if (firstMed.freeScheme !== '15 + 2 Free') throw new Error('updateStockInline failed to update freeScheme');
-  app.updateStockInline(firstMed.id, 'freeScheme', '10 + 1 Free');
-  console.log('Bulk Free Scheme verified across customer catalog and owner inline editor!');
+  app.updateStockInline(firstMed.id, 'freeScheme', '+2 Free');
+  if (firstMed.freeScheme !== '+2 Free') throw new Error('updateStockInline failed to update freeScheme');
+  app.updateStockInline(firstMed.id, 'freeScheme', '+1 Free');
+  // Test updating unit inline
+  app.updateStockInline(firstMed.id, 'unit', 'Strips (10 tabs)');
+  if (firstMed.unit !== 'Strips (10 tabs)') throw new Error('updateStockInline failed to update unit');
+  console.log('Stock and Free Scheme verified across customer catalog and owner inline editor!');
 
   // 11. Verify Common Deployed Page for ALL 5 Stores (No edit buttons, 100% clean consumer UI)
   app.stores.forEach(s => {

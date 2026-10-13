@@ -76,7 +76,7 @@ class ACSApp {
           this.saveStores();
           window.location.hash = "";
           setTimeout(() => {
-            this.showToast("📲 Device Synchronized! Live pharmacy database imported via QR bridge.", "success");
+            this.showToast("Device Synchronized: Live pharmacy database imported via QR bridge.", "success");
           }, 300);
         }
       } catch (err) {
@@ -171,17 +171,6 @@ class ACSApp {
       s.purchaseExpenses = s.purchaseExpenses || [];
       if (!s.revenueData) s.revenueData = {};
       s.revenueData.transactions = s.revenueData.transactions || [];
-      if (s.stocks) {
-        s.stocks.forEach((m) => {
-          if (!m.freeScheme) {
-            if (m.name.includes("Dolo")) m.freeScheme = "20 + 2 Free";
-            else if (m.name.includes("Augmentin") || m.name.includes("Pan-D") || m.name.includes("Telma") || m.name.includes("Mont")) m.freeScheme = "10 + 1 Free";
-            else if (m.name.includes("Azithral")) m.freeScheme = "5 + 1 Free";
-            else if (m.name.includes("Liv.52")) m.freeScheme = "12 + 1 Free";
-            else m.freeScheme = "10 + 1 Free";
-          }
-        });
-      }
     });
 
     if (!this.currentStoreId && this.stores.length > 0) {
@@ -1828,8 +1817,8 @@ class ACSApp {
                         ${store.address}
                       </p>
                       <div class="mt-3 space-y-1 text-xs text-slate-700 font-medium">
-                        <div>🕒 Hours: <strong>${store.operatingHours}</strong></div>
-                        <div>📞 Phone: <strong>${store.phone}</strong></div>
+                        <div><i class="fa fa-clock-o text-slate-400 mr-1.5"></i> Hours: <strong>${store.operatingHours}</strong></div>
+                        <div><i class="fa fa-phone text-slate-400 mr-1.5"></i> Phone: <strong>${store.phone}</strong></div>
                       </div>
                     </div>
                     <div class="mt-4 pt-3 border-t border-slate-200">
@@ -1987,7 +1976,7 @@ class ACSApp {
                   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                       <h3 class="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2">
-                        <i class="fa fa-search text-[#135c7e]"></i> Check Live Medicine Availability &amp; Prices
+                        <i class="fa fa-search text-[#135c7e]"></i> Check Live Medicine Stock &amp; Prices
                       </h3>
                       <p class="text-xs text-slate-500 mt-1">
                         Search genuine medicines, generic salts, or brand names available in stock at ${store.name}.
@@ -2223,9 +2212,9 @@ class ACSApp {
                         <th class="py-3 px-3">Expiry Date</th>
                         <th class="py-3 px-3">Rack Bay</th>
                         <th class="py-3 px-3">Schedule</th>
-                        <th class="py-3 px-3 text-center">In-Stock Quantity</th>
+                        <th class="py-3 px-3 text-center">Stock</th>
                         <th class="py-3 px-3">Purchase & MRP</th>
-                        <th class="py-3 px-3 text-center">Bulk Free Scheme</th>
+                        <th class="py-3 px-3 text-center">Free</th>
                         <th class="py-3 px-3 text-right">Actions</th>
                       </tr>
                     </thead>
@@ -2283,9 +2272,9 @@ class ACSApp {
                               <div class="text-[11px] text-slate-600 font-semibold mt-0.5">Buying Cost: ₹ ${m.purchaseRate.toFixed(2)}</div>
                             </td>
                             <td class="py-3 px-3 text-center">
-                              ${m.freeScheme ? `
+                              ${(m.freeScheme && m.freeScheme.trim() && m.freeScheme !== '-') ? `
                                 <span class="bg-amber-50 text-amber-900 border border-amber-200 px-2.5 py-1 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 shadow-2xs">
-                                  <i class="fa fa-gift text-amber-600"></i> ${m.freeScheme}
+                                  ${m.freeScheme}
                                 </span>
                               ` : `
                                 <span class="text-slate-400 font-mono text-xs">-</span>
@@ -2886,19 +2875,19 @@ class ACSApp {
 
     // DESKTOP & TABLET MASTER TABLE (Similar to Pharmacy Owner's View, but strictly sanitized & uneditable)
     const tableHtml = `
-      <!-- Wholesale & Bulk Purchase Scheme Notice -->
-      <div class="mb-4 p-3 bg-gradient-to-r from-amber-50 via-amber-50/70 to-emerald-50/60 border border-amber-200/90 rounded-2xl flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+      <!-- Verified Pharmacy Stock & Schemes Notice -->
+      <div class="mb-4 p-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-wrap items-center justify-between gap-2 shadow-2xs">
         <div class="flex items-center gap-2.5">
-          <div class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
-            <i class="fa fa-gift"></i>
+          <div class="w-7 h-7 rounded-lg bg-teal-500/10 text-[#135c7e] flex items-center justify-center text-xs font-bold flex-shrink-0">
+            <i class="fa fa-list-alt"></i>
           </div>
           <div>
-            <span class="text-xs font-extrabold text-amber-950 block">Wholesale &amp; Bulk Purchase Free Medicine Scheme Active</span>
-            <span class="text-[11px] text-amber-800">Verified retail pharmacies offer FREE bonus medicines on bulk orders (e.g. 10+1 Free, 20+2 Free). See scheme column below.</span>
+            <span class="text-xs font-bold text-slate-900 block">Verified Pharmacy Stock &amp; Free Scheme Register</span>
+            <span class="text-[11px] text-slate-500">Live inventory with exact measured stock, packaging, MRP, and eligible manufacturer free schemes.</span>
           </div>
         </div>
-        <span class="px-2.5 py-1 bg-amber-400 text-slate-950 font-black rounded-lg text-[10px] uppercase tracking-wider shadow-2xs">
-          <i class="fa fa-check-circle"></i> Bulk Bonus Eligible
+        <span class="px-2.5 py-1 bg-white text-slate-700 font-bold rounded-lg text-[10px] uppercase tracking-wider border border-slate-200">
+          <i class="fa fa-check-circle text-emerald-600"></i> Active Inventory
         </span>
       </div>
 
@@ -2911,10 +2900,10 @@ class ACSApp {
               <th class="py-3.5 px-3 min-w-[120px]">Category</th>
               <th class="py-3.5 px-3 min-w-[140px]">Batch &amp; Expiry</th>
               <th class="py-3.5 px-3 min-w-[120px]">Packaging</th>
-              <th class="py-3.5 px-3 min-w-[120px] text-center">Availability</th>
+              <th class="py-3.5 px-3 min-w-[130px] text-center">Stock</th>
               <th class="py-3.5 px-3 min-w-[130px] text-right">Cost Price (CP)</th>
               <th class="py-3.5 px-4 min-w-[150px] text-right">Retail Price (MRP)</th>
-              <th class="py-3.5 px-3 min-w-[145px] text-center">Bulk Free Scheme</th>
+              <th class="py-3.5 px-3 min-w-[110px] text-center">Free</th>
               <th class="py-3.5 px-4 text-center min-w-[180px]">Actions</th>
             </tr>
           </thead>
@@ -2968,9 +2957,9 @@ class ACSApp {
                     <span class="text-slate-600 font-medium text-xs">${m.unit}</span>
                   </td>
                   <td class="py-3.5 px-3 text-center">
-                    <span class="inline-flex items-center gap-1 font-bold text-[10px] px-2.5 py-1 rounded-full ${inStock ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'}">
-                      <span class="w-1.5 h-1.5 rounded-full ${inStock ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}"></span>
-                      ${inStock ? 'In Stock' : 'Out of Stock'}
+                    <span class="inline-flex items-center gap-1.5 font-bold font-mono text-xs px-2.5 py-1 rounded-lg ${inStock ? 'bg-emerald-50 text-emerald-900 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}">
+                      <span class="w-1.5 h-1.5 rounded-full ${inStock ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
+                      ${inStock ? `${m.quantity} ${m.unit || 'Strips'}` : '0 Strips (Out of Stock)'}
                     </span>
                   </td>
                   <td class="py-3.5 px-3 text-right">
@@ -2983,11 +2972,10 @@ class ACSApp {
                     ${unitDoseBadge}
                   </td>
                   <td class="py-3.5 px-3 text-center">
-                    ${m.freeScheme ? `
-                      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-950 border border-amber-300 rounded-full font-extrabold text-[11px] shadow-2xs">
-                        <i class="fa fa-gift text-amber-600"></i> ${m.freeScheme}
+                    ${(m.freeScheme && m.freeScheme.trim() && m.freeScheme !== '-') ? `
+                      <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-950 border border-amber-300 rounded-md font-bold text-xs shadow-2xs">
+                        ${m.freeScheme}
                       </span>
-                      <span class="text-[9px] text-amber-700/80 font-semibold block mt-0.5">Free on Bulk</span>
                     ` : `
                       <span class="text-slate-400 font-mono text-xs">-</span>
                     `}
@@ -3045,8 +3033,8 @@ class ACSApp {
             <div class="bg-white rounded-2xl border border-slate-200 hover:border-teal-400/80 hover:shadow-md transition p-4 sm:p-5 flex flex-col justify-between space-y-3 group">
               <div>
                 <div class="flex items-center justify-between gap-2 mb-2">
-                  <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${inStock ? 'bg-emerald-50 text-emerald-800 border border-emerald-300' : 'bg-rose-50 text-rose-800 border border-rose-300'}">
-                    <i class="fa ${inStock ? 'fa-check-circle' : 'fa-times-circle'}"></i> ${inStock ? 'In Stock' : 'Out of Stock'}
+                  <span class="px-2.5 py-0.5 rounded-lg text-[11px] font-bold font-mono ${inStock ? 'bg-emerald-50 text-emerald-900 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'}">
+                    <span class="text-slate-500 font-sans font-medium text-[10px] mr-1">Stock:</span>${inStock ? `${m.quantity} ${m.unit || 'Strips'}` : '0 Strips'}
                   </span>
                   <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isScheduleH ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-teal-50 text-teal-800 border border-teal-200'}">
                     ${m.schedule}
@@ -3082,9 +3070,9 @@ class ACSApp {
                   </div>
                 </div>
 
-                ${m.freeScheme ? `
-                  <div class="py-1.5 px-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-950">
-                    <span class="flex items-center gap-1.5 text-[11px] font-bold"><i class="fa fa-gift text-amber-600"></i> Bulk Free Scheme:</span>
+                ${(m.freeScheme && m.freeScheme.trim() && m.freeScheme !== '-') ? `
+                  <div class="py-1 px-2.5 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between text-xs text-amber-950">
+                    <span class="text-[11px] font-bold text-amber-800">Free Scheme:</span>
                     <span class="font-extrabold text-amber-900 font-mono text-xs bg-amber-100/90 px-2 py-0.5 rounded border border-amber-300 shadow-2xs">${m.freeScheme}</span>
                   </div>
                 ` : ''}
@@ -3235,20 +3223,20 @@ class ACSApp {
           </div>
         </div>
 
-        ${med.freeScheme ? `
-          <!-- Bulk Purchase Free Medicine Deal Box -->
-          <div class="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+        ${(med.freeScheme && med.freeScheme.trim() && med.freeScheme !== '-') ? `
+          <!-- Free Medicine Scheme Box -->
+          <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-2xs">
             <div class="flex items-center gap-3">
               <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center text-base font-bold flex-shrink-0">
                 <i class="fa fa-gift"></i>
               </div>
               <div>
-                <span class="text-[10px] uppercase font-extrabold text-amber-900 tracking-wider block">Wholesale Bulk Free Scheme</span>
-                <span class="text-xs text-amber-800 font-semibold">Special deal on bulk / carton orders: Free medicines included</span>
+                <span class="text-[10px] uppercase font-extrabold text-amber-900 tracking-wider block">Bonus Free Scheme</span>
+                <span class="text-xs text-amber-800 font-semibold">Special promotional deal: Free medicines included</span>
               </div>
             </div>
             <span class="px-3.5 py-1.5 bg-amber-400 text-slate-950 font-black rounded-xl text-xs font-mono shadow-2xs">
-              <i class="fa fa-gift mr-1"></i> ${med.freeScheme}
+              ${med.freeScheme}
             </span>
           </div>
         ` : ''}
@@ -4737,7 +4725,7 @@ class ACSApp {
               <select id="stock-rack-select" class="w-full py-2.5 px-3 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#135c7e] bg-white font-medium">
                 <option value="ALL" ${this.stockRackFilter === "ALL" ? "selected" : ""}>All Racks & Bays (${existingRacks.length})</option>
                 ${existingRacks.map(rack => `
-                  <option value="${rack}" ${this.stockRackFilter === rack ? "selected" : ""}>📍 ${rack}</option>
+                  <option value="${rack}" ${this.stockRackFilter === rack ? "selected" : ""}>${rack}</option>
                 `).join("")}
               </select>
             </div>
@@ -4777,10 +4765,10 @@ class ACSApp {
                   ${colPrefs.batch || colPrefs.rack ? `<th class="py-3.5 px-3 min-w-[130px]">Batch & Rack</th>` : ''}
                   ${colPrefs.exp ? `<th class="py-3.5 px-3 min-w-[100px]">Expiry</th>` : ''}
                   ${colPrefs.sched ? `<th class="py-3.5 px-3">Schedule</th>` : ''}
-                  <th class="py-3.5 px-3 min-w-[160px] text-center">In-Stock Qty</th>
+                  <th class="py-3.5 px-3 min-w-[160px] text-center">Stock</th>
                   ${colPrefs.buyCost ? `<th class="py-3.5 px-3 min-w-[130px]">Buying Cost (CP)</th>` : ''}
                   ${colPrefs.sellMrp ? `<th class="py-3.5 px-3 min-w-[130px]">Selling Price (MRP)</th>` : ''}
-                  ${colPrefs.freeScheme ? `<th class="py-3.5 px-3 min-w-[145px]">Bulk Free Scheme</th>` : ''}
+                  ${colPrefs.freeScheme ? `<th class="py-3.5 px-3 min-w-[120px] text-center">Free</th>` : ''}
                   <th class="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -4869,7 +4857,13 @@ class ACSApp {
                           <button onclick="window.acsApp.adjustStockQty('${m.id}', 5)" class="stepper-btn w-6 h-6 rounded-lg bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 font-bold text-[10px] shadow-xs transition" title="Plus 5 units">+5</button>
                         </div>
                         <div class="flex items-center justify-center gap-1 mt-1">
-                          <span class="text-[10px] text-slate-400">${m.unit || 'Strips'}</span>
+                          <input 
+                            type="text" 
+                            value="${m.unit || 'Strips'}" 
+                            onchange="window.acsApp.updateStockInline('${m.id}', 'unit', this.value)"
+                            class="w-24 text-center bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 rounded px-1 py-0.5 text-[10px] text-slate-700 font-semibold outline-none focus:ring-1 focus:ring-[#135c7e] transition"
+                            title="Direct edit packaging unit (e.g. Strips, Strips (10 tabs), Bottles)"
+                          />
                           ${isLow ? `<span class="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-700 font-bold text-[9px]">Low Stock</span>` : ''}
                         </div>
                       </td>
@@ -4912,21 +4906,19 @@ class ACSApp {
                         </td>
                       ` : ''}
 
-                      <!-- Bulk Free Scheme with Tactile Inline Editor -->
+                      <!-- Free Scheme with Tactile Inline Editor -->
                       ${colPrefs.freeScheme ? `
-                        <td class="py-3.5 px-3">
-                          <div class="price-pill-input flex items-center gap-1.5 bg-amber-50/70 hover:bg-white focus-within:bg-white border border-amber-200 focus-within:border-amber-500 rounded-xl px-2.5 py-1.5 transition">
-                            <i class="fa fa-gift text-amber-600 text-xs flex-shrink-0"></i>
+                        <td class="py-3.5 px-3 text-center">
+                          <div class="price-pill-input inline-flex items-center gap-1.5 bg-amber-50/70 hover:bg-white focus-within:bg-white border border-amber-200 focus-within:border-amber-500 rounded-xl px-2.5 py-1.5 transition">
                             <input 
                               type="text" 
                               value="${m.freeScheme || ''}" 
-                              placeholder="e.g. 10 + 1 Free" 
+                              placeholder="e.g. +1 Free" 
                               onchange="window.acsApp.updateStockInline('${m.id}', 'freeScheme', this.value)"
-                              class="w-24 bg-transparent text-amber-950 font-bold text-xs outline-none placeholder:text-slate-300"
-                              title="Direct edit Bulk Free Scheme (e.g. 10 + 1 Free, 20 + 2 Free)"
+                              class="w-20 bg-transparent text-amber-950 font-bold text-xs text-center outline-none placeholder:text-slate-300"
+                              title="Direct edit Free Scheme (e.g. +1 Free, or leave blank for none)"
                             />
                           </div>
-                          <span class="text-[10px] text-amber-700/80 font-semibold block mt-0.5">Free on Bulk</span>
                         </td>
                       ` : ''}
 
@@ -4996,7 +4988,7 @@ class ACSApp {
                   <!-- Cashier Stepper & Prices -->
                   <div class="pt-2 border-t border-slate-100 grid grid-cols-2 gap-3 items-center">
                     <div>
-                      <span class="text-[10px] text-slate-400 block mb-1">In-Stock Units (${m.unit || 'Strips'})</span>
+                      <span class="text-[10px] text-slate-400 block mb-1">Stock (${m.unit || 'Strips'})</span>
                       <div class="inline-flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
                         <button onclick="window.acsApp.adjustStockQty('${m.id}', -1)" class="stepper-btn w-7 h-7 rounded-lg bg-white text-slate-700 font-black text-sm shadow-xs">-</button>
                         <input 
@@ -5040,11 +5032,11 @@ class ACSApp {
                         </div>
                       </div>
                       <div class="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100">
-                        <span class="text-amber-800 font-bold flex items-center gap-1"><i class="fa fa-gift text-amber-600"></i> Bulk Free:</span>
+                        <span class="text-amber-800 font-bold flex items-center gap-1"><i class="fa fa-gift text-amber-600"></i> Free:</span>
                         <input 
                           type="text" 
                           value="${m.freeScheme || ''}" 
-                          placeholder="e.g. 10 + 1 Free" 
+                          placeholder="e.g. +1 Free (or blank)" 
                           onchange="window.acsApp.updateStockInline('${m.id}', 'freeScheme', this.value)"
                           class="w-24 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded text-right font-bold text-amber-950 text-xs placeholder:text-slate-300 focus:bg-white"
                         />
@@ -5192,6 +5184,8 @@ class ACSApp {
       value = Math.max(0, parseInt(rawValue) || 0);
     } else if (field === "mrp" || field === "purchaseRate") {
       value = Math.max(0, parseFloat(rawValue) || 0);
+    } else if (field === "unit") {
+      value = rawValue.trim() || "Strips";
     } else if (typeof rawValue === "string") {
       value = rawValue.trim();
     }
@@ -5200,7 +5194,20 @@ class ACSApp {
     this.saveStores();
     this.renderCurrentView();
 
-    this.showToast(`Updated "${item.name}": Selling Price ₹${item.mrp.toFixed(2)}, Buying Cost ₹${item.purchaseRate.toFixed(2)}`, "success");
+    let toastMsg = `Updated "${item.name}" successfully.`;
+    if (field === "quantity") {
+      toastMsg = `Updated "${item.name}" stock: ${item.quantity} ${item.unit || 'Strips'}`;
+    } else if (field === "unit") {
+      toastMsg = `Updated "${item.name}" packaging unit: ${item.unit}`;
+    } else if (field === "freeScheme") {
+      toastMsg = `Updated "${item.name}" Free scheme: ${item.freeScheme || 'None'}`;
+    } else if (field === "mrp" || field === "purchaseRate") {
+      toastMsg = `Updated "${item.name}": Selling Price ₹${item.mrp.toFixed(2)}, Buying Cost ₹${item.purchaseRate.toFixed(2)}`;
+    } else if (field === "rackLocation") {
+      toastMsg = `Updated "${item.name}" rack: ${item.rackLocation}`;
+    }
+
+    this.showToast(toastMsg, "success");
   }
 
   adjustStockQty(medicineId, delta) {
@@ -5211,7 +5218,7 @@ class ACSApp {
     item.quantity = Math.max(0, item.quantity + delta);
     this.saveStores();
     this.renderCurrentView();
-    this.showToast(`Updated "${item.name}" stock: ${item.quantity} units`, "info");
+    this.showToast(`Updated "${item.name}" stock: ${item.quantity} ${item.unit || 'Strips'}`, "info");
   }
 
   deleteMedicine(medicineId) {
@@ -5234,7 +5241,7 @@ class ACSApp {
       return;
     }
 
-    const headers = ["Medicine Name", "Salt / Generic Name", "Manufacturer", "Batch No", "Expiry Date", "Quantity", "Unit", "MRP", "Purchase Rate", "Schedule", "Rack Location", "Bulk Free Scheme"];
+    const headers = ["Medicine Name", "Salt / Generic Name", "Manufacturer", "Batch No", "Expiry Date", "Stock Qty", "Unit", "MRP", "Purchase Rate", "Schedule", "Rack Location", "Free Scheme"];
     const rows = store.stocks.map((m) => [
       `"${m.name.replace(/"/g, '""')}"`,
       `"${m.saltName.replace(/"/g, '""')}"`,
@@ -5716,7 +5723,7 @@ class ACSApp {
           unit: unit,
           mrp: mrp,
           purchaseRate: buyCost,
-          freeScheme: freeScheme || "10 + 1 Free",
+          freeScheme: freeScheme || "",
           schedule: sched,
           rackLocation: rack,
           minAlertThreshold: 20
@@ -5729,7 +5736,7 @@ class ACSApp {
     this.closeModal();
     this.renderCurrentView();
 
-    this.showToast(`🎉 Import Complete! ${updatedCount} existing batches incremented, ${addedCount} new medicines added.`, "success");
+    this.showToast(`Import Complete: ${updatedCount} existing batches incremented, ${addedCount} new medicines added.`, "success");
   }
 
   // ==========================================
@@ -5919,7 +5926,7 @@ class ACSApp {
         </div>
 
         <div class="flex items-center justify-between pt-1">
-          <span class="text-slate-500 text-[11px]">📍 Location: <strong>${match.rackLocation || 'General Shelf'}</strong></span>
+          <span class="text-slate-500 text-[11px]"><i class="fa fa-map-marker text-slate-400 mr-1"></i> Location: <strong>${match.rackLocation || 'General Shelf'}</strong></span>
           <div class="flex items-center gap-1.5">
             <button onclick="window.acsApp.adjustStockQty('${match.id}', 1); window.acsApp.lookupBarcodeInStock('${code}');" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow-xs">
               +1 Unit
@@ -5983,7 +5990,7 @@ class ACSApp {
 
       recognition.onstart = () => {
         this.isVoiceRecording = true;
-        this.showToast("🎙️ Listening... Speak medicine brand or generic salt (e.g., 'Paracetamol', 'Augmentin')", "info");
+        this.showToast("Listening... Speak medicine brand or generic salt (e.g., 'Paracetamol', 'Augmentin')", "info");
         const btn = document.getElementById("btn-voice-search");
         if (btn) btn.classList.add("mic-recording");
       };
@@ -5992,7 +5999,7 @@ class ACSApp {
         const speechResult = event.results[0][0].transcript.trim();
         this.stockSearchQuery = speechResult;
         this.isVoiceRecording = false;
-        this.showToast(`🎤 Voice Recognized: "${speechResult}"`, "success");
+        this.showToast(`Voice Recognized: "${speechResult}"`, "success");
         this.renderCurrentView();
       };
 
@@ -6052,7 +6059,7 @@ class ACSApp {
             ${Object.entries(rackCounts).map(([rackName, count]) => `
               <div class="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between shadow-2xs">
                 <div>
-                  <strong class="text-slate-800 text-sm block font-mono">📍 ${rackName}</strong>
+                  <strong class="text-slate-800 text-sm block font-mono"><i class="fa fa-archive text-slate-400 mr-1.5"></i> ${rackName}</strong>
                   <span class="text-slate-500 text-[11px]">${count} Medicine Batches Assigned</span>
                 </div>
                 <button onclick="window.acsApp.filterBySpecificRack('${rackName}')" class="px-2.5 py-1 bg-slate-100 hover:bg-[#135c7e] hover:text-white rounded-lg font-bold text-xs transition">
@@ -6142,7 +6149,7 @@ class ACSApp {
       sched: "Statutory Schedule Category (H, H1, X, OTC)",
       buyCost: "Buying Cost (CP ₹) Wholesale Rate",
       sellMrp: "Selling Price (MRP ₹) Retail Rate",
-      freeScheme: "Bulk Free Scheme / Bonus Deal (e.g. 10 + 1 Free)"
+      freeScheme: "Free Scheme / Bonus (e.g. +1 Free)"
     };
 
     title.innerHTML = `<i class="fa fa-columns text-[#135c7e]"></i> Customize Inventory Columns`;
@@ -7228,7 +7235,7 @@ class ACSApp {
 
       // Immediately show their real hosted website!
       this.viewHostedWebsite(newStore.id);
-      this.showToast(`🎉 Congratulations! Your pharmacy website "${newStore.name}" is now live and hosted online!`, "success");
+      this.showToast(`Your pharmacy website "${newStore.name}" is now live and hosted online.`, "success");
     };
   }
 
@@ -7477,7 +7484,7 @@ class ACSApp {
         window.dispatchEvent(new Event("storage"));
       } catch (err) {}
 
-      this.showToast(`🎉 Pharmacy profile & storefront photo updated! Live hosted website synchronized (URL aliases preserved).`, "success");
+      this.showToast(`Pharmacy profile and storefront photo updated successfully.`, "success");
     };
   }
 
@@ -8028,22 +8035,22 @@ class ACSApp {
               </span>
               <div class="grid grid-cols-3 gap-1.5">
                 <button type="button" onclick="window.acsApp.applyStudioPreset(0, 0, 0, 0)" class="px-2 py-1.5 bg-white hover:bg-teal-50 border rounded-lg text-slate-800 font-semibold text-[10px] text-left truncate">
-                  🌿 Natural / Original
+                  Natural / Original
                 </button>
                 <button type="button" onclick="window.acsApp.applyStudioPreset(12, 16, 5, 0)" class="px-2 py-1.5 bg-white hover:bg-teal-50 border rounded-lg text-teal-900 font-bold text-[10px] text-left truncate">
-                  💡 Clinical Bright
+                  Clinical Bright
                 </button>
                 <button type="button" onclick="window.acsApp.applyStudioPreset(6, 10, 12, 14)" class="px-2 py-1.5 bg-white hover:bg-teal-50 border rounded-lg text-amber-900 font-bold text-[10px] text-left truncate">
-                  🏥 Warm Healthcare
+                  Warm Healthcare
                 </button>
                 <button type="button" onclick="window.acsApp.applyStudioPreset(0, 24, 10, 0)" class="px-2 py-1.5 bg-white hover:bg-teal-50 border rounded-lg text-indigo-900 font-bold text-[10px] text-left truncate">
-                  🔍 High Clarity
+                  High Clarity
                 </button>
                 <button type="button" onclick="window.acsApp.applyStudioPreset(5, -6, -5, 8)" class="px-2 py-1.5 bg-white hover:bg-teal-50 border rounded-lg text-slate-700 font-semibold text-[10px] text-left truncate">
-                  🌙 Soft Ambient
+                  Soft Ambient
                 </button>
                 <button type="button" onclick="window.acsApp.applyStudioPreset(8, 20, -100, 0)" class="px-2 py-1.5 bg-white hover:bg-teal-50 border rounded-lg text-slate-900 font-bold text-[10px] text-left truncate">
-                  🏛️ Executive B&W
+                  Executive B&W
                 </button>
               </div>
             </div>
@@ -8530,7 +8537,7 @@ class ACSApp {
         this.saveStores();
         this.closeModal();
         this.renderCurrentView();
-        this.showToast("🎉 Storefront cover photo updated and framed!", "success");
+        this.showToast("Storefront cover photo updated and framed.", "success");
       }
     } else if (targetType === "store-gallery") {
       const store = this.stores.find((s) => s.id === targetId);
@@ -8544,7 +8551,7 @@ class ACSApp {
           }
         }
         this.saveStores();
-        this.showToast("🎉 Gallery photo look adjusted & saved!", "success");
+        this.showToast("Gallery photo adjusted and saved.", "success");
         this.openManageStorePhotosModal(targetId);
       }
     } else if (targetType === "staff-avatar") {
@@ -8566,7 +8573,7 @@ class ACSApp {
         this.saveStores();
         this.closeModal();
         this.renderCurrentView();
-        this.showToast(`🎉 Pharmacist profile photo updated for ${targetStaff.name}!`, "success");
+        this.showToast(`Pharmacist profile photo updated for ${targetStaff.name}.`, "success");
       }
     } else if (targetType === "owner-avatar") {
       const store = this.stores.find((s) => s.id === targetId);
@@ -8579,7 +8586,7 @@ class ACSApp {
         this.saveStores();
         this.closeModal();
         this.renderCurrentView();
-        this.showToast(`🎉 Proprietor profile photo updated!`, "success");
+        this.showToast("Proprietor profile photo updated.", "success");
       }
     }
   }
@@ -8653,8 +8660,8 @@ class ACSApp {
             <input type="number" id="med-mrp" step="0.01" min="0" required value="120" class="w-full px-3 py-2 border rounded-xl font-extrabold text-emerald-800" />
           </div>
           <div>
-            <label class="block font-semibold text-amber-900 mb-1">Bulk Free Scheme</label>
-            <input type="text" id="med-free" placeholder="e.g. 10 + 1 Free" value="10 + 1 Free" class="w-full px-3 py-2 border border-amber-300 rounded-xl font-bold text-amber-950 bg-amber-50/50" />
+            <label class="block font-semibold text-slate-700 mb-1">Free Scheme</label>
+            <input type="text" id="med-free" placeholder="e.g. +1 Free (or leave blank if none)" value="" class="w-full px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-900 bg-white" />
           </div>
         </div>
 
@@ -8683,7 +8690,7 @@ class ACSApp {
         unit: document.getElementById("med-unit").value || "Strips",
         mrp: parseFloat(document.getElementById("med-mrp").value) || 0,
         purchaseRate: parseFloat(document.getElementById("med-buy").value) || 0,
-        freeScheme: document.getElementById("med-free").value.trim() || "10 + 1 Free",
+        freeScheme: document.getElementById("med-free").value.trim() || "",
         minAlertThreshold: 20
       };
 
@@ -8691,7 +8698,7 @@ class ACSApp {
       this.saveStores();
       this.closeModal();
       this.renderCurrentView();
-      this.showToast(`Added "${newMed.name}" to inventory!`, "success");
+      this.showToast(`Added "${newMed.name}" to inventory successfully.`, "success");
     };
   }
 
@@ -8768,8 +8775,8 @@ class ACSApp {
             <input type="number" step="0.01" min="0" required id="edit-med-mrp" value="${med.mrp}" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-emerald-500 font-extrabold text-emerald-800" />
           </div>
           <div>
-            <label class="block font-bold text-amber-900 mb-1">Bulk Free Scheme</label>
-            <input type="text" id="edit-med-free" value="${med.freeScheme || ''}" placeholder="e.g. 10 + 1 Free" class="w-full px-3 py-2 border border-amber-300 rounded-xl font-bold text-amber-950 bg-amber-50/50 focus:ring-2 focus:ring-amber-500" />
+            <label class="block font-bold text-slate-700 mb-1">Free Scheme</label>
+            <input type="text" id="edit-med-free" value="${med.freeScheme || ''}" placeholder="e.g. +1 Free (or leave blank)" class="w-full px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-900 bg-white focus:ring-2 focus:ring-[#135c7e]" />
           </div>
         </div>
 
@@ -8801,7 +8808,7 @@ class ACSApp {
       this.closeModal();
       this.renderCurrentView();
 
-      this.showToast(`Updated "${med.name}": Selling Price ₹${med.mrp.toFixed(2)}, Buying Cost ₹${med.purchaseRate.toFixed(2)}`, "success");
+      this.showToast(`Updated "${med.name}" inventory details successfully.`, "success");
     };
   }
 
@@ -8960,7 +8967,7 @@ class ACSApp {
         })
       }).then(res => {
         if (res.ok) {
-          this.showToast("⚡ All 6 stores submitted to Search Engine Crawlers (HTTP 200)!", "success");
+          this.showToast("All 6 stores submitted to Search Engine Crawlers (HTTP 200).", "success");
         }
       }).catch(() => {});
     } catch(e) {}
@@ -8983,7 +8990,7 @@ class ACSApp {
         })
       }).then(res => {
         if (res.ok) {
-          this.showToast(`⚡ ${store.name} submitted to Search Engines (HTTP 200)!`, "success");
+          this.showToast(`${store.name} submitted to Search Engines (HTTP 200).`, "success");
         }
       }).catch(() => {});
     } catch(e) {}
