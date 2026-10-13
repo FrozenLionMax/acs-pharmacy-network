@@ -5,6 +5,8 @@ Allow: /
 Allow: /pharmacy/*
 Allow: /deoria-drug-house
 Allow: /sitemap.xml
+Allow: /feed.xml
 
-# XML Sitemap listing all hosted retail pharmacies in Uttar Pradesh
+# XML Sitemap & Live RSS Feed listing all hosted retail pharmacies in Uttar Pradesh
 Sitemap: https://acsakhil.com/sitemap.xml
+Sitemap: https://acsakhil.com/feed.xml

@@ -246,5 +246,38 @@ stores.forEach((store) => {
     console.log(`IndexNow notification skipped: ${e.message}`);
   }
 
+  // Generate live RSS Feed (feed.xml) for rapid Google/Bing feed indexing
+  let rssXml = `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n<channel>\n`;
+  rssXml += `  <title>ACS Uttar Pradesh Pharmacy Network - Live Stores</title>\n`;
+  rssXml += `  <link>${baseOrigin}</link>\n`;
+  rssXml += `  <description>Live directory of licensed retail pharmacies and digital medicine stocks across Uttar Pradesh</description>\n`;
+  rssXml += `  <language>en-in</language>\n`;
+  rssXml += `  <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>\n`;
+  rssXml += `  <atom:link href="${baseOrigin}/feed.xml" rel="self" type="application/rss+xml" />\n`;
+
+  stores.forEach(store => {
+    const sUrl = `${baseOrigin}/pharmacy/${store.slug}`;
+    rssXml += `  <item>\n`;
+    rssXml += `    <title>${store.name} (${store.district || 'UP'})</title>\n`;
+    rssXml += `    <link>${sUrl}</link>\n`;
+    rssXml += `    <guid isPermaLink="true">${sUrl}</guid>\n`;
+    rssXml += `    <pubDate>${new Date().toUTCString()}</pubDate>\n`;
+    rssXml += `    <description>${store.name} located at ${store.address}. Licensed retail pharmacy with live stock and Form 20/21 compliance.</description>\n`;
+    rssXml += `  </item>\n`;
+  });
+  rssXml += `</channel>\n</rss>\n`;
+  fs.writeFileSync(path.join(baseDir, 'feed.xml'), rssXml, 'utf8');
+  console.log(`Generated live RSS Feed: feed.xml with ${stores.length} items!`);
+
+  // Call Google Indexing API automation
+  try {
+    const { notifyGoogleIndexing } = require('./google_indexing.js');
+    notifyGoogleIndexing(allIndexedUrls).catch(e => {
+      console.log('[Google Indexing API Notice]:', e.message);
+    });
+  } catch (e) {
+    console.log('[Google Indexing API Skipped]:', e.message);
+  }
+
   console.log('Static SEO Pre-rendering & Automated Indexing build completed successfully!');
 

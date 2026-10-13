@@ -5,6 +5,7 @@
   "scripts": {
     "start": "python server.py",
     "build": "node build_static_seo.js",
+    "index:google": "node google_indexing.js",
     "test": "node test_app_views.js"
   }
 }
