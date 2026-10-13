@@ -116,6 +116,7 @@ const INITIAL_STORES_DATA = [
         unit: "Strips (10 tabs)",
         mrp: 223.50,
         purchaseRate: 168.00,
+        freeScheme: "10 + 1 Free",
         schedule: "Schedule H",
         rackLocation: "Rack A-01",
         minAlertThreshold: 25
@@ -131,6 +132,7 @@ const INITIAL_STORES_DATA = [
         unit: "Strips (15 tabs)",
         mrp: 34.00,
         purchaseRate: 23.50,
+        freeScheme: "20 + 2 Free",
         schedule: "OTC",
         rackLocation: "Rack B-01",
         minAlertThreshold: 50
@@ -146,6 +148,7 @@ const INITIAL_STORES_DATA = [
         unit: "Strips (15 caps)",
         mrp: 215.00,
         purchaseRate: 155.00,
+        freeScheme: "10 + 1 Free",
         schedule: "Schedule H",
         rackLocation: "Rack C-02",
         minAlertThreshold: 40
@@ -161,6 +164,7 @@ const INITIAL_STORES_DATA = [
         unit: "Strips (15 tabs)",
         mrp: 198.00,
         purchaseRate: 142.00,
+        freeScheme: "10 + 1 Free",
         schedule: "Schedule H",
         rackLocation: "Rack D-01",
         minAlertThreshold: 30
@@ -176,6 +180,7 @@ const INITIAL_STORES_DATA = [
         unit: "Strips (5 tabs)",
         mrp: 132.00,
         purchaseRate: 98.00,
+        freeScheme: "5 + 1 Free",
         schedule: "Schedule H1",
         rackLocation: "Rack A-04",
         minAlertThreshold: 20
@@ -191,6 +196,7 @@ const INITIAL_STORES_DATA = [
         unit: "Strips (10 tabs)",
         mrp: 185.00,
         purchaseRate: 132.00,
+        freeScheme: "10 + 1 Free",
         schedule: "Schedule H",
         rackLocation: "Rack B-03",
         minAlertThreshold: 25
@@ -206,6 +212,7 @@ const INITIAL_STORES_DATA = [
         unit: "Bottles (200ml)",
         mrp: 175.00,
         purchaseRate: 125.00,
+        freeScheme: "12 + 1 Free",
         schedule: "Ayush / OTC",
         rackLocation: "Rack E-02",
         minAlertThreshold: 15

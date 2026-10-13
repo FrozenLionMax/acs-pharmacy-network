@@ -20,9 +20,12 @@ class ACSApp {
     this.stockRackFilter = "ALL";
     try {
       const savedColPrefs = typeof localStorage !== 'undefined' ? localStorage.getItem("ACS_STOCK_COL_PREFS") : null;
-      this.stockColumnPrefs = savedColPrefs ? JSON.parse(savedColPrefs) : { salt: true, mfg: true, batch: true, rack: true, exp: true, sched: true, buyCost: true, sellMrp: true };
+      this.stockColumnPrefs = savedColPrefs ? JSON.parse(savedColPrefs) : { salt: true, mfg: true, batch: true, rack: true, exp: true, sched: true, buyCost: true, sellMrp: true, freeScheme: true };
+      if (this.stockColumnPrefs && this.stockColumnPrefs.freeScheme === undefined) {
+        this.stockColumnPrefs.freeScheme = true;
+      }
     } catch (e) {
-      this.stockColumnPrefs = { salt: true, mfg: true, batch: true, rack: true, exp: true, sched: true, buyCost: true, sellMrp: true };
+      this.stockColumnPrefs = { salt: true, mfg: true, batch: true, rack: true, exp: true, sched: true, buyCost: true, sellMrp: true, freeScheme: true };
     }
     this.isVoiceRecording = false;
     this.speechRecognition = null;
@@ -168,6 +171,17 @@ class ACSApp {
       s.purchaseExpenses = s.purchaseExpenses || [];
       if (!s.revenueData) s.revenueData = {};
       s.revenueData.transactions = s.revenueData.transactions || [];
+      if (s.stocks) {
+        s.stocks.forEach((m) => {
+          if (!m.freeScheme) {
+            if (m.name.includes("Dolo")) m.freeScheme = "20 + 2 Free";
+            else if (m.name.includes("Augmentin") || m.name.includes("Pan-D") || m.name.includes("Telma") || m.name.includes("Mont")) m.freeScheme = "10 + 1 Free";
+            else if (m.name.includes("Azithral")) m.freeScheme = "5 + 1 Free";
+            else if (m.name.includes("Liv.52")) m.freeScheme = "12 + 1 Free";
+            else m.freeScheme = "10 + 1 Free";
+          }
+        });
+      }
     });
 
     if (!this.currentStoreId && this.stores.length > 0) {
@@ -2198,13 +2212,14 @@ class ACSApp {
                         <th class="py-3 px-3">Schedule</th>
                         <th class="py-3 px-3 text-center">In-Stock Quantity</th>
                         <th class="py-3 px-3">Purchase & MRP</th>
+                        <th class="py-3 px-3 text-center">Bulk Free Scheme</th>
                         <th class="py-3 px-3 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                       ${filteredAuditStock.length === 0 ? `
                         <tr>
-                          <td colspan="8" class="py-8 text-center text-slate-400">
+                          <td colspan="9" class="py-8 text-center text-slate-400">
                             No medicine records found matching your filters.
                           </td>
                         </tr>
@@ -2253,6 +2268,15 @@ class ACSApp {
                             <td class="py-3 px-3">
                               <div class="text-slate-900 font-bold text-xs">Selling Price: ₹ ${m.mrp.toFixed(2)}</div>
                               <div class="text-[11px] text-slate-600 font-semibold mt-0.5">Buying Cost: ₹ ${m.purchaseRate.toFixed(2)}</div>
+                            </td>
+                            <td class="py-3 px-3 text-center">
+                              ${m.freeScheme ? `
+                                <span class="bg-amber-50 text-amber-900 border border-amber-200 px-2.5 py-1 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 shadow-2xs">
+                                  <i class="fa fa-gift text-amber-600"></i> ${m.freeScheme}
+                                </span>
+                              ` : `
+                                <span class="text-slate-400 font-mono text-xs">-</span>
+                              `}
                             </td>
                             <td class="py-3 px-3 text-right">
                               <div class="flex items-center justify-end gap-1">
@@ -2849,6 +2873,22 @@ class ACSApp {
 
     // DESKTOP & TABLET MASTER TABLE (Similar to Pharmacy Owner's View, but strictly sanitized & uneditable)
     const tableHtml = `
+      <!-- Wholesale & Bulk Purchase Scheme Notice -->
+      <div class="mb-4 p-3 bg-gradient-to-r from-amber-50 via-amber-50/70 to-emerald-50/60 border border-amber-200/90 rounded-2xl flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+        <div class="flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+            <i class="fa fa-gift"></i>
+          </div>
+          <div>
+            <span class="text-xs font-extrabold text-amber-950 block">Wholesale &amp; Bulk Purchase Free Medicine Scheme Active</span>
+            <span class="text-[11px] text-amber-800">Verified retail pharmacies offer FREE bonus medicines on bulk orders (e.g. 10+1 Free, 20+2 Free). See scheme column below.</span>
+          </div>
+        </div>
+        <span class="px-2.5 py-1 bg-amber-400 text-slate-950 font-black rounded-lg text-[10px] uppercase tracking-wider shadow-2xs">
+          <i class="fa fa-check-circle"></i> Bulk Bonus Eligible
+        </span>
+      </div>
+
       <div class="overflow-x-auto rounded-2xl border border-slate-200 shadow-xs bg-white">
         <table class="w-full text-left border-collapse text-xs">
           <thead>
@@ -2861,6 +2901,7 @@ class ACSApp {
               <th class="py-3.5 px-3 min-w-[120px] text-center">Availability</th>
               <th class="py-3.5 px-3 min-w-[130px] text-right">Cost Price (CP)</th>
               <th class="py-3.5 px-4 min-w-[150px] text-right">Retail Price (MRP)</th>
+              <th class="py-3.5 px-3 min-w-[145px] text-center">Bulk Free Scheme</th>
               <th class="py-3.5 px-4 text-center min-w-[180px]">Actions</th>
             </tr>
           </thead>
@@ -2927,6 +2968,16 @@ class ACSApp {
                     <span class="text-base font-black font-mono text-emerald-700 block">₹ ${m.mrp.toFixed(2)}</span>
                     <span class="text-[9px] text-slate-500 font-medium block">Per ${m.unit}</span>
                     ${unitDoseBadge}
+                  </td>
+                  <td class="py-3.5 px-3 text-center">
+                    ${m.freeScheme ? `
+                      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-950 border border-amber-300 rounded-full font-extrabold text-[11px] shadow-2xs">
+                        <i class="fa fa-gift text-amber-600"></i> ${m.freeScheme}
+                      </span>
+                      <span class="text-[9px] text-amber-700/80 font-semibold block mt-0.5">Free on Bulk</span>
+                    ` : `
+                      <span class="text-slate-400 font-mono text-xs">-</span>
+                    `}
                   </td>
                   <td class="py-3.5 px-4 text-center">
                     <div class="inline-flex items-center gap-1.5">
@@ -3017,6 +3068,13 @@ class ACSApp {
                     ${unitDoseBadge}
                   </div>
                 </div>
+
+                ${m.freeScheme ? `
+                  <div class="py-1.5 px-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-950">
+                    <span class="flex items-center gap-1.5 text-[11px] font-bold"><i class="fa fa-gift text-amber-600"></i> Bulk Free Scheme:</span>
+                    <span class="font-extrabold text-amber-900 font-mono text-xs bg-amber-100/90 px-2 py-0.5 rounded border border-amber-300 shadow-2xs">${m.freeScheme}</span>
+                  </div>
+                ` : ''}
 
                 <div class="grid grid-cols-2 gap-2">
                   <button 
@@ -3163,6 +3221,24 @@ class ACSApp {
             </div>
           </div>
         </div>
+
+        ${med.freeScheme ? `
+          <!-- Bulk Purchase Free Medicine Deal Box -->
+          <div class="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center text-base font-bold flex-shrink-0">
+                <i class="fa fa-gift"></i>
+              </div>
+              <div>
+                <span class="text-[10px] uppercase font-extrabold text-amber-900 tracking-wider block">Wholesale Bulk Free Scheme</span>
+                <span class="text-xs text-amber-800 font-semibold">Special deal on bulk / carton orders: Free medicines included</span>
+              </div>
+            </div>
+            <span class="px-3.5 py-1.5 bg-amber-400 text-slate-950 font-black rounded-xl text-xs font-mono shadow-2xs">
+              <i class="fa fa-gift mr-1"></i> ${med.freeScheme}
+            </span>
+          </div>
+        ` : ''}
 
         <!-- Salt & Composition Card -->
         <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
@@ -4691,13 +4767,14 @@ class ACSApp {
                   <th class="py-3.5 px-3 min-w-[160px] text-center">In-Stock Qty</th>
                   ${colPrefs.buyCost ? `<th class="py-3.5 px-3 min-w-[130px]">Buying Cost (CP)</th>` : ''}
                   ${colPrefs.sellMrp ? `<th class="py-3.5 px-3 min-w-[130px]">Selling Price (MRP)</th>` : ''}
+                  ${colPrefs.freeScheme ? `<th class="py-3.5 px-3 min-w-[145px]">Bulk Free Scheme</th>` : ''}
                   <th class="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100">
                 ${filteredStocks.length === 0 ? `
                   <tr>
-                    <td colspan="9" class="py-14 text-center text-slate-400">
+                    <td colspan="10" class="py-14 text-center text-slate-400">
                       <i class="fa fa-cubes text-4xl mb-2 text-slate-300 block"></i>
                       No medicine records found matching your filters.
                       <div class="mt-3">
@@ -4822,6 +4899,24 @@ class ACSApp {
                         </td>
                       ` : ''}
 
+                      <!-- Bulk Free Scheme with Tactile Inline Editor -->
+                      ${colPrefs.freeScheme ? `
+                        <td class="py-3.5 px-3">
+                          <div class="price-pill-input flex items-center gap-1.5 bg-amber-50/70 hover:bg-white focus-within:bg-white border border-amber-200 focus-within:border-amber-500 rounded-xl px-2.5 py-1.5 transition">
+                            <i class="fa fa-gift text-amber-600 text-xs flex-shrink-0"></i>
+                            <input 
+                              type="text" 
+                              value="${m.freeScheme || ''}" 
+                              placeholder="e.g. 10 + 1 Free" 
+                              onchange="window.acsApp.updateStockInline('${m.id}', 'freeScheme', this.value)"
+                              class="w-24 bg-transparent text-amber-950 font-bold text-xs outline-none placeholder:text-slate-300"
+                              title="Direct edit Bulk Free Scheme (e.g. 10 + 1 Free, 20 + 2 Free)"
+                            />
+                          </div>
+                          <span class="text-[10px] text-amber-700/80 font-semibold block mt-0.5">Free on Bulk</span>
+                        </td>
+                      ` : ''}
+
                       <td class="py-3.5 px-4 text-right">
                         <div class="flex items-center justify-end gap-1">
                           <button onclick="window.acsApp.openEditMedicineModal('${m.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Full Edit (Batch, Salt, Price)">
@@ -4930,6 +5025,16 @@ class ACSApp {
                             class="w-14 bg-emerald-50 border border-emerald-200 px-1 py-0.5 rounded text-right font-black text-emerald-800 text-xs"
                           />
                         </div>
+                      </div>
+                      <div class="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100">
+                        <span class="text-amber-800 font-bold flex items-center gap-1"><i class="fa fa-gift text-amber-600"></i> Bulk Free:</span>
+                        <input 
+                          type="text" 
+                          value="${m.freeScheme || ''}" 
+                          placeholder="e.g. 10 + 1 Free" 
+                          onchange="window.acsApp.updateStockInline('${m.id}', 'freeScheme', this.value)"
+                          class="w-24 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded text-right font-bold text-amber-950 text-xs placeholder:text-slate-300 focus:bg-white"
+                        />
                       </div>
                     </div>
                   </div>
@@ -5116,7 +5221,7 @@ class ACSApp {
       return;
     }
 
-    const headers = ["Medicine Name", "Salt / Generic Name", "Manufacturer", "Batch No", "Expiry Date", "Quantity", "Unit", "MRP", "Purchase Rate", "Schedule", "Rack Location"];
+    const headers = ["Medicine Name", "Salt / Generic Name", "Manufacturer", "Batch No", "Expiry Date", "Quantity", "Unit", "MRP", "Purchase Rate", "Schedule", "Rack Location", "Bulk Free Scheme"];
     const rows = store.stocks.map((m) => [
       `"${m.name.replace(/"/g, '""')}"`,
       `"${m.saltName.replace(/"/g, '""')}"`,
@@ -5128,7 +5233,8 @@ class ACSApp {
       m.mrp,
       m.purchaseRate,
       `"${m.schedule}"`,
-      `"${m.rackLocation}"`
+      `"${m.rackLocation}"`,
+      `"${(m.freeScheme || '').replace(/"/g, '""')}"`
     ]);
 
     const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
@@ -5355,7 +5461,8 @@ class ACSApp {
       purchaseRate: ["buying cost", "purchase rate", "cost price", "rate", "ptr", "net rate", "cp", "cost", "buy rate", "purchase price", "cost / unit", "whsl rate"],
       mrp: ["selling cost", "selling price", "mrp", "retail price", "max retail price", "sale rate", "sp", "public mrp", "retail mrp"],
       schedule: ["schedule", "category", "drug schedule", "sched", "type", "drug type"],
-      rackLocation: ["rack", "rack location", "shelf", "bay", "box", "location", "bin", "shelf no"]
+      rackLocation: ["rack", "rack location", "shelf", "bay", "box", "location", "bin", "shelf no"],
+      freeScheme: ["bulk free scheme", "free scheme", "scheme", "deal", "bulk scheme", "free", "free qty", "bonus", "bonus scheme", "free deal", "bulk free", "scheme offer"]
     };
 
     const mapping = {};
@@ -5570,6 +5677,7 @@ class ACSApp {
       const unit = colMap.unit !== -1 && row[colMap.unit] ? String(row[colMap.unit]).trim() : "Strips";
       const sched = colMap.schedule !== -1 && row[colMap.schedule] ? String(row[colMap.schedule]).trim() : "Schedule H";
       const rack = colMap.rackLocation !== -1 && row[colMap.rackLocation] ? String(row[colMap.rackLocation]).trim() : "General Shelf";
+      const freeScheme = colMap.freeScheme !== undefined && colMap.freeScheme !== -1 && row[colMap.freeScheme] ? String(row[colMap.freeScheme]).trim() : "10 + 1 Free";
 
       const existing = store.stocks.find(m => 
         m.name.toLowerCase() === name.toLowerCase() && 
@@ -5581,6 +5689,7 @@ class ACSApp {
         if (buyCost > 0) existing.purchaseRate = buyCost;
         if (mrp > 0) existing.mrp = mrp;
         if (rack && rack !== "General Shelf") existing.rackLocation = rack;
+        if (freeScheme && freeScheme !== "10 + 1 Free") existing.freeScheme = freeScheme;
         updatedCount++;
       } else {
         store.stocks.push({
@@ -5594,6 +5703,7 @@ class ACSApp {
           unit: unit,
           mrp: mrp,
           purchaseRate: buyCost,
+          freeScheme: freeScheme || "10 + 1 Free",
           schedule: sched,
           rackLocation: rack,
           minAlertThreshold: 20
@@ -6008,7 +6118,7 @@ class ACSApp {
     const body = document.getElementById("modal-generic-body");
     if (!modal || !title || !body) return;
 
-    const prefs = this.stockColumnPrefs || { salt: true, mfg: true, batch: true, rack: true, exp: true, sched: true, buyCost: true, sellMrp: true };
+    const prefs = this.stockColumnPrefs || { salt: true, mfg: true, batch: true, rack: true, exp: true, sched: true, buyCost: true, sellMrp: true, freeScheme: true };
 
     const colLabels = {
       salt: "Generic Salt / Chemical Composition",
@@ -6018,7 +6128,8 @@ class ACSApp {
       exp: "Expiry Date & Horizon Badges",
       sched: "Statutory Schedule Category (H, H1, X, OTC)",
       buyCost: "Buying Cost (CP ₹) Wholesale Rate",
-      sellMrp: "Selling Price (MRP ₹) Retail Rate"
+      sellMrp: "Selling Price (MRP ₹) Retail Rate",
+      freeScheme: "Bulk Free Scheme / Bonus Deal (e.g. 10 + 1 Free)"
     };
 
     title.innerHTML = `<i class="fa fa-columns text-[#135c7e]"></i> Customize Inventory Columns`;
@@ -8511,7 +8622,7 @@ class ACSApp {
           </div>
         </div>
 
-        <div class="grid grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <div>
             <label class="block font-semibold text-slate-700 mb-1">Initial Qty *</label>
             <input type="number" id="med-qty" required min="1" value="50" class="w-full px-3 py-2 border rounded-xl" />
@@ -8527,6 +8638,10 @@ class ACSApp {
           <div>
             <label class="block font-semibold text-slate-700 mb-1">Selling Price (MRP ₹) *</label>
             <input type="number" id="med-mrp" step="0.01" min="0" required value="120" class="w-full px-3 py-2 border rounded-xl font-extrabold text-emerald-800" />
+          </div>
+          <div>
+            <label class="block font-semibold text-amber-900 mb-1">Bulk Free Scheme</label>
+            <input type="text" id="med-free" placeholder="e.g. 10 + 1 Free" value="10 + 1 Free" class="w-full px-3 py-2 border border-amber-300 rounded-xl font-bold text-amber-950 bg-amber-50/50" />
           </div>
         </div>
 
@@ -8555,6 +8670,7 @@ class ACSApp {
         unit: document.getElementById("med-unit").value || "Strips",
         mrp: parseFloat(document.getElementById("med-mrp").value) || 0,
         purchaseRate: parseFloat(document.getElementById("med-buy").value) || 0,
+        freeScheme: document.getElementById("med-free").value.trim() || "10 + 1 Free",
         minAlertThreshold: 20
       };
 
@@ -8621,7 +8737,7 @@ class ACSApp {
           </div>
         </div>
 
-        <div class="grid grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <div>
             <label class="block font-bold text-slate-700 mb-1">Stock Quantity *</label>
             <input type="number" id="edit-med-qty" min="0" required value="${med.quantity}" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-[#135c7e]" />
@@ -8637,6 +8753,10 @@ class ACSApp {
           <div>
             <label class="block font-bold text-slate-700 mb-1">Selling Price (MRP ₹) *</label>
             <input type="number" step="0.01" min="0" required id="edit-med-mrp" value="${med.mrp}" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-emerald-500 font-extrabold text-emerald-800" />
+          </div>
+          <div>
+            <label class="block font-bold text-amber-900 mb-1">Bulk Free Scheme</label>
+            <input type="text" id="edit-med-free" value="${med.freeScheme || ''}" placeholder="e.g. 10 + 1 Free" class="w-full px-3 py-2 border border-amber-300 rounded-xl font-bold text-amber-950 bg-amber-50/50 focus:ring-2 focus:ring-amber-500" />
           </div>
         </div>
 
@@ -8662,6 +8782,7 @@ class ACSApp {
       med.unit = document.getElementById("edit-med-unit").value.trim() || "Strips";
       med.mrp = parseFloat(document.getElementById("edit-med-mrp").value) || 0;
       med.purchaseRate = parseFloat(document.getElementById("edit-med-buy").value) || 0;
+      med.freeScheme = document.getElementById("edit-med-free").value.trim() || "";
 
       this.saveStores();
       this.closeModal();
