@@ -4,6 +4,7 @@
   "description": "Akhil Consultancy Services (ACS) - Uttar Pradesh Pharmacy Network & Compliance Platform",
   "scripts": {
     "start": "python server.py",
+    "build": "node build_static_seo.js",
     "test": "node test_app_views.js"
   }
 }
