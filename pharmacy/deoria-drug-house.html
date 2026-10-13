@@ -106,12 +106,12 @@
   <!-- Custom CSS with UPPC Colors -->
   <link rel="stylesheet" href="/styles.css" />
 </head>
-<body class="bg-[#f4f7fa] text-slate-800 antialiased min-h-screen flex flex-col justify-between">
+<body class="bg-[#f4f7fa] text-slate-800 antialiased min-h-screen flex flex-col justify-between hosted-mode">
 
   <!-- ========================================== -->
   <!-- TOP GOVERNMENT STATUTORY NOTICES & HELPLINE -->
   <!-- ========================================== -->
-  <header class="w-full no-print">
+  <header class="w-full no-print" style="display:none">
     <!-- Top Micro Bar -->
     <div class="top-notice-bar py-1.5 px-4 sm:px-8 flex flex-wrap items-center justify-between text-xs">
       <div class="flex items-center gap-4">
@@ -219,7 +219,7 @@
   <!-- ========================================== -->
   <!-- MAIN APPLICATION CONTENT CONTAINER        -->
   <!-- ========================================== -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 py-6">
+  <main class="w-full p-0 m-0 max-w-none flex-1">
     <div id="main-view-container">
 
       <div class="hosted-standalone-site w-full bg-white text-slate-800 animate-fade-in min-h-screen flex flex-col justify-between">
@@ -1912,7 +1912,7 @@
   <!-- ========================================== -->
   <!-- GOVERNMENT PORTAL FOOTER                   -->
   <!-- ========================================== -->
-  <footer class="bg-[#0b3447] text-slate-300 pt-10 pb-6 border-t-4 border-amber-400 no-print mt-12">
+  <footer class="bg-[#0b3447] text-slate-300 pt-10 pb-6 border-t-4 border-amber-400 no-print mt-12" style="display:none">
     <div class="max-w-7xl mx-auto px-4 sm:px-8">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8 text-xs">
         <div>

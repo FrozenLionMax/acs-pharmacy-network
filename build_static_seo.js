@@ -152,6 +152,13 @@ stores.forEach((store) => {
     `<div id="main-view-container">\n${preRenderedBodyHtml}\n</div>`
   );
 
+  // Set hosted-mode and hide portal header/footer in pre-rendered static HTML
+  html = html.replace('class="bg-[#f4f7fa] text-slate-800 antialiased min-h-screen flex flex-col justify-between"', 'class="bg-[#f4f7fa] text-slate-800 antialiased min-h-screen flex flex-col justify-between hosted-mode"');
+  html = html.replace('<header class="w-full no-print">', '<header class="w-full no-print" style="display:none">');
+  html = html.replace('<footer class="bg-[#0b3447] text-slate-300 pt-10 pb-6 border-t-4 border-amber-400 no-print mt-12">', '<footer class="bg-[#0b3447] text-slate-300 pt-10 pb-6 border-t-4 border-amber-400 no-print mt-12" style="display:none">');
+  html = html.replace('<main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 py-6">', '<main class="w-full p-0 m-0 max-w-none flex-1">');
+
+
   // Write static file in pharmacy/<slug>/index.html and pharmacy/<slug>.html
   const targetDir = path.join(baseDir, 'pharmacy', store.slug);
   fs.mkdirSync(targetDir, { recursive: true });
