@@ -163,6 +163,7 @@ class ACSApp {
     }
 
     // Guarantee data completeness and arrays across all stores
+    let dataModified = false;
     this.stores.forEach((s) => {
       s.slugAliases = s.slugAliases || (s.slug ? [s.slug] : []);
       s.prescriptions = s.prescriptions || [];
@@ -171,11 +172,53 @@ class ACSApp {
       s.purchaseExpenses = s.purchaseExpenses || [];
       if (!s.revenueData) s.revenueData = {};
       s.revenueData.transactions = s.revenueData.transactions || [];
+
+      // Automatically sanitize legacy "10 + 1 Free" or "+1 Free" from existing browser localStorage
+      if (Array.isArray(s.stocks)) {
+        s.stocks.forEach((m) => {
+          if (m.freeScheme !== undefined && m.freeScheme !== null) {
+            const sanitized = this.formatFreeScheme(m.freeScheme);
+            if (m.freeScheme !== sanitized) {
+              m.freeScheme = sanitized;
+              dataModified = true;
+            }
+          }
+        });
+      }
     });
+
+    if (dataModified) {
+      this.saveStores();
+    }
 
     if (!this.currentStoreId && this.stores.length > 0) {
       this.currentStoreId = this.stores[0].id;
     }
+  }
+
+  formatFreeScheme(val) {
+    if (!val || (typeof val !== "string" && typeof val !== "number")) return "";
+    let str = String(val).trim();
+    if (!str || str === "-" || str.toLowerCase() === "none" || str === "0") return "";
+    // Remove redundant "free" word (case-insensitive)
+    str = str.replace(/\bfree\b/gi, "").trim();
+    // Normalize "10 + 1", "10+1", etc. to just the bonus quantity "+1"
+    const tenPlusMatch = str.match(/^(?:10\s*\+\s*(\d+))$/i);
+    if (tenPlusMatch) {
+      return `+${tenPlusMatch[1]}`;
+    }
+    // Remove space after plus e.g. "+ 1" -> "+1"
+    str = str.replace(/^\+\s+/, "+");
+    // Normalize bare numbers e.g. "1" -> "+1"
+    if (/^\d+$/.test(str)) {
+      return `+${str}`;
+    }
+    // If it already starts with plus and has digits e.g. "+1", "+2"
+    if (/^\+\d+/.test(str)) {
+      return str;
+    }
+    if (!str || str === "+") return "";
+    return str;
   }
 
   saveStores() {
@@ -2272,13 +2315,16 @@ class ACSApp {
                               <div class="text-[11px] text-slate-600 font-semibold mt-0.5">Buying Cost: ₹ ${m.purchaseRate.toFixed(2)}</div>
                             </td>
                             <td class="py-3 px-3 text-center">
-                              ${(m.freeScheme && m.freeScheme.trim() && m.freeScheme !== '-') ? `
-                                <span class="bg-amber-50 text-amber-900 border border-amber-200 px-2.5 py-1 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 shadow-2xs">
-                                  ${m.freeScheme}
-                                </span>
-                              ` : `
-                                <span class="text-slate-400 font-mono text-xs">-</span>
-                              `}
+                              ${(() => {
+                                const scheme = this.formatFreeScheme(m.freeScheme);
+                                return (scheme && scheme !== '-') ? `
+                                  <span class="bg-amber-50 text-amber-900 border border-amber-200 px-2.5 py-1 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 shadow-2xs">
+                                    ${scheme}
+                                  </span>
+                                ` : `
+                                  <span class="text-slate-400 font-mono text-xs">-</span>
+                                `;
+                              })()}
                             </td>
                             <td class="py-3 px-3 text-right">
                               <div class="flex items-center justify-end gap-1">
@@ -2972,13 +3018,16 @@ class ACSApp {
                     ${unitDoseBadge}
                   </td>
                   <td class="py-3.5 px-3 text-center">
-                    ${(m.freeScheme && m.freeScheme.trim() && m.freeScheme !== '-') ? `
-                      <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-950 border border-amber-300 rounded-md font-bold text-xs shadow-2xs">
-                        ${m.freeScheme}
-                      </span>
-                    ` : `
-                      <span class="text-slate-400 font-mono text-xs">-</span>
-                    `}
+                    ${(() => {
+                      const scheme = this.formatFreeScheme(m.freeScheme);
+                      return (scheme && scheme !== '-') ? `
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-950 border border-amber-300 rounded-md font-bold text-xs shadow-2xs">
+                          ${scheme}
+                        </span>
+                      ` : `
+                        <span class="text-slate-400 font-mono text-xs">-</span>
+                      `;
+                    })()}
                   </td>
                   <td class="py-3.5 px-4 text-center">
                     <div class="inline-flex items-center gap-1.5">
@@ -3070,12 +3119,15 @@ class ACSApp {
                   </div>
                 </div>
 
-                ${(m.freeScheme && m.freeScheme.trim() && m.freeScheme !== '-') ? `
-                  <div class="py-1 px-2.5 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between text-xs text-amber-950">
-                    <span class="text-[11px] font-bold text-amber-800">Free Scheme:</span>
-                    <span class="font-extrabold text-amber-900 font-mono text-xs bg-amber-100/90 px-2 py-0.5 rounded border border-amber-300 shadow-2xs">${m.freeScheme}</span>
-                  </div>
-                ` : ''}
+                ${(() => {
+                  const scheme = this.formatFreeScheme(m.freeScheme);
+                  return (scheme && scheme !== '-') ? `
+                    <div class="py-1 px-2.5 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between text-xs text-amber-950">
+                      <span class="text-[11px] font-bold text-amber-800">Free Bonus:</span>
+                      <span class="font-extrabold text-amber-900 font-mono text-xs bg-amber-100/90 px-2 py-0.5 rounded border border-amber-300 shadow-2xs">${scheme}</span>
+                    </div>
+                  ` : '';
+                })()}
 
                 <div class="grid grid-cols-2 gap-2">
                   <button 
@@ -3223,7 +3275,9 @@ class ACSApp {
           </div>
         </div>
 
-        ${(med.freeScheme && med.freeScheme.trim() && med.freeScheme !== '-') ? `
+        ${(() => {
+          const scheme = this.formatFreeScheme(med.freeScheme);
+          return (scheme && scheme !== '-') ? `
           <!-- Free Medicine Scheme Box -->
           <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-2xs">
             <div class="flex items-center gap-3">
@@ -3231,15 +3285,16 @@ class ACSApp {
                 <i class="fa fa-gift"></i>
               </div>
               <div>
-                <span class="text-[10px] uppercase font-extrabold text-amber-900 tracking-wider block">Bonus Free Scheme</span>
-                <span class="text-xs text-amber-800 font-semibold">Special promotional deal: Free medicines included</span>
+                <span class="text-[10px] uppercase font-extrabold text-amber-900 tracking-wider block">Bonus Deal</span>
+                <span class="text-xs text-amber-800 font-semibold">Promotional deal: ${scheme} free with order</span>
               </div>
             </div>
             <span class="px-3.5 py-1.5 bg-amber-400 text-slate-950 font-black rounded-xl text-xs font-mono shadow-2xs">
-              ${med.freeScheme}
+              ${scheme}
             </span>
           </div>
-        ` : ''}
+        ` : '';
+        })()}
 
         <!-- Salt & Composition Card -->
         <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
@@ -4912,11 +4967,11 @@ class ACSApp {
                           <div class="price-pill-input inline-flex items-center gap-1.5 bg-amber-50/70 hover:bg-white focus-within:bg-white border border-amber-200 focus-within:border-amber-500 rounded-xl px-2.5 py-1.5 transition">
                             <input 
                               type="text" 
-                              value="${m.freeScheme || ''}" 
-                              placeholder="e.g. +1 Free" 
+                              value="${this.formatFreeScheme(m.freeScheme) || ''}" 
+                              placeholder="+1" 
                               onchange="window.acsApp.updateStockInline('${m.id}', 'freeScheme', this.value)"
-                              class="w-20 bg-transparent text-amber-950 font-bold text-xs text-center outline-none placeholder:text-slate-300"
-                              title="Direct edit Free Scheme (e.g. +1 Free, or leave blank for none)"
+                              class="w-16 bg-transparent text-amber-950 font-bold text-xs text-center outline-none placeholder:text-slate-300"
+                              title="Direct edit Free scheme bonus (e.g. +1, or leave blank for none)"
                             />
                           </div>
                         </td>
@@ -5035,10 +5090,10 @@ class ACSApp {
                         <span class="text-amber-800 font-bold flex items-center gap-1"><i class="fa fa-gift text-amber-600"></i> Free:</span>
                         <input 
                           type="text" 
-                          value="${m.freeScheme || ''}" 
-                          placeholder="e.g. +1 Free (or blank)" 
+                          value="${this.formatFreeScheme(m.freeScheme) || ''}" 
+                          placeholder="+1 (or blank)" 
                           onchange="window.acsApp.updateStockInline('${m.id}', 'freeScheme', this.value)"
-                          class="w-24 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded text-right font-bold text-amber-950 text-xs placeholder:text-slate-300 focus:bg-white"
+                          class="w-20 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded text-right font-bold text-amber-950 text-xs placeholder:text-slate-300 focus:bg-white"
                         />
                       </div>
                     </div>
@@ -5186,6 +5241,8 @@ class ACSApp {
       value = Math.max(0, parseFloat(rawValue) || 0);
     } else if (field === "unit") {
       value = rawValue.trim() || "Strips";
+    } else if (field === "freeScheme") {
+      value = this.formatFreeScheme(rawValue);
     } else if (typeof rawValue === "string") {
       value = rawValue.trim();
     }
@@ -5697,7 +5754,7 @@ class ACSApp {
       const unit = colMap.unit !== -1 && row[colMap.unit] ? String(row[colMap.unit]).trim() : "Strips";
       const sched = colMap.schedule !== -1 && row[colMap.schedule] ? String(row[colMap.schedule]).trim() : "Schedule H";
       const rack = colMap.rackLocation !== -1 && row[colMap.rackLocation] ? String(row[colMap.rackLocation]).trim() : "General Shelf";
-      const freeScheme = colMap.freeScheme !== undefined && colMap.freeScheme !== -1 && row[colMap.freeScheme] ? String(row[colMap.freeScheme]).trim() : "10 + 1 Free";
+      const freeScheme = colMap.freeScheme !== undefined && colMap.freeScheme !== -1 && row[colMap.freeScheme] ? this.formatFreeScheme(row[colMap.freeScheme]) : "";
 
       const existing = store.stocks.find(m => 
         m.name.toLowerCase() === name.toLowerCase() && 
@@ -5709,7 +5766,7 @@ class ACSApp {
         if (buyCost > 0) existing.purchaseRate = buyCost;
         if (mrp > 0) existing.mrp = mrp;
         if (rack && rack !== "General Shelf") existing.rackLocation = rack;
-        if (freeScheme && freeScheme !== "10 + 1 Free") existing.freeScheme = freeScheme;
+        if (freeScheme) existing.freeScheme = freeScheme;
         updatedCount++;
       } else {
         store.stocks.push({
@@ -6149,7 +6206,7 @@ class ACSApp {
       sched: "Statutory Schedule Category (H, H1, X, OTC)",
       buyCost: "Buying Cost (CP ₹) Wholesale Rate",
       sellMrp: "Selling Price (MRP ₹) Retail Rate",
-      freeScheme: "Free Scheme / Bonus (e.g. +1 Free)"
+      freeScheme: "Free Bonus Scheme (e.g. +1)"
     };
 
     title.innerHTML = `<i class="fa fa-columns text-[#135c7e]"></i> Customize Inventory Columns`;
@@ -8661,7 +8718,7 @@ class ACSApp {
           </div>
           <div>
             <label class="block font-semibold text-slate-700 mb-1">Free Scheme</label>
-            <input type="text" id="med-free" placeholder="e.g. +1 Free (or leave blank if none)" value="" class="w-full px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-900 bg-white" />
+            <input type="text" id="med-free" placeholder="e.g. +1 (or leave blank if none)" value="" class="w-full px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-900 bg-white" />
           </div>
         </div>
 
@@ -8690,7 +8747,7 @@ class ACSApp {
         unit: document.getElementById("med-unit").value || "Strips",
         mrp: parseFloat(document.getElementById("med-mrp").value) || 0,
         purchaseRate: parseFloat(document.getElementById("med-buy").value) || 0,
-        freeScheme: document.getElementById("med-free").value.trim() || "",
+        freeScheme: this.formatFreeScheme(document.getElementById("med-free").value) || "",
         minAlertThreshold: 20
       };
 
@@ -8776,7 +8833,7 @@ class ACSApp {
           </div>
           <div>
             <label class="block font-bold text-slate-700 mb-1">Free Scheme</label>
-            <input type="text" id="edit-med-free" value="${med.freeScheme || ''}" placeholder="e.g. +1 Free (or leave blank)" class="w-full px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-900 bg-white focus:ring-2 focus:ring-[#135c7e]" />
+            <input type="text" id="edit-med-free" value="${this.formatFreeScheme(med.freeScheme) || ''}" placeholder="e.g. +1 (or leave blank)" class="w-full px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-900 bg-white focus:ring-2 focus:ring-[#135c7e]" />
           </div>
         </div>
 
@@ -8802,7 +8859,7 @@ class ACSApp {
       med.unit = document.getElementById("edit-med-unit").value.trim() || "Strips";
       med.mrp = parseFloat(document.getElementById("edit-med-mrp").value) || 0;
       med.purchaseRate = parseFloat(document.getElementById("edit-med-buy").value) || 0;
-      med.freeScheme = document.getElementById("edit-med-free").value.trim() || "";
+      med.freeScheme = this.formatFreeScheme(document.getElementById("edit-med-free").value) || "";
 
       this.saveStores();
       this.closeModal();

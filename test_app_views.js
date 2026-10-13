@@ -314,7 +314,9 @@ try {
 
   // 10b. Test Free Scheme & Stock Columns across Customer Catalog & Owner Inventory
   console.log('--- Testing Stock & Free Scheme Suite ---');
-  if (!firstMed.freeScheme) throw new Error('freeScheme missing on initial stock');
+  if (firstMed.freeScheme !== '+1') {
+    throw new Error(`Expected firstMed.freeScheme to be '+1', got '${firstMed.freeScheme}'`);
+  }
   const ddhCatalog = app.getHostedMedicineCatalogHtml(currentStore);
   if (!ddhCatalog.includes('>Stock<')) {
     throw new Error('Stock header missing from customer catalog');
@@ -325,9 +327,14 @@ try {
   if (!ddhCatalog.includes('>Free<')) {
     throw new Error('Free header missing from customer catalog');
   }
-  if (!ddhCatalog.includes(firstMed.freeScheme)) {
-    throw new Error(`Customer catalog missing freeScheme badge for: ${firstMed.freeScheme}`);
+  // Verify clean bonus number "+1" is present, and redundant "+1 Free" is NOT present in customer catalog
+  if (!ddhCatalog.includes('>+1<') && !ddhCatalog.includes('+1')) {
+    throw new Error(`Customer catalog missing free bonus badge '+1'`);
   }
+  if (ddhCatalog.includes('+1 Free') || ddhCatalog.includes('10 + 1 Free')) {
+    throw new Error('Customer catalog still contains redundant "Free" word or legacy "10 + 1 Free" inside Free table column!');
+  }
+
   app.setStockHorizonFilter('ALL');
   const ownerStocksHtml = app.getStocksViewHtml(currentStore);
   if (!ownerStocksHtml.includes('>Stock<')) {
@@ -342,14 +349,29 @@ try {
   if (!ownerStocksHtml.includes(`updateStockInline('${firstMed.id}', 'unit', this.value)`)) {
     throw new Error('Inline editor for unit missing from owner stocks view');
   }
-  // Test updating freeScheme inline
+
+  // Test updating freeScheme inline: input with redundant '+2 Free' should sanitize to '+2'
   app.updateStockInline(firstMed.id, 'freeScheme', '+2 Free');
-  if (firstMed.freeScheme !== '+2 Free') throw new Error('updateStockInline failed to update freeScheme');
-  app.updateStockInline(firstMed.id, 'freeScheme', '+1 Free');
+  if (firstMed.freeScheme !== '+2') {
+    throw new Error(`updateStockInline failed to sanitize '+2 Free' to '+2', got: ${firstMed.freeScheme}`);
+  }
+
+  // Test legacy '10 + 1 Free' sanitization to '+1'
+  app.updateStockInline(firstMed.id, 'freeScheme', '10 + 1 Free');
+  if (firstMed.freeScheme !== '+1') {
+    throw new Error(`updateStockInline failed to sanitize '10 + 1 Free' to '+1', got: ${firstMed.freeScheme}`);
+  }
+
+  // Reset back to clean '+1'
+  app.updateStockInline(firstMed.id, 'freeScheme', '+1');
+  if (firstMed.freeScheme !== '+1') {
+    throw new Error(`updateStockInline failed to set '+1', got: ${firstMed.freeScheme}`);
+  }
+
   // Test updating unit inline
   app.updateStockInline(firstMed.id, 'unit', 'Strips (10 tabs)');
   if (firstMed.unit !== 'Strips (10 tabs)') throw new Error('updateStockInline failed to update unit');
-  console.log('Stock and Free Scheme verified across customer catalog and owner inline editor!');
+  console.log('Stock and Free Scheme verified: Clean bonus "+1", zero "Free" words in Free table column, live sanitization passed!');
 
   // 11. Verify Common Deployed Page for ALL 5 Stores (No edit buttons, 100% clean consumer UI)
   app.stores.forEach(s => {
