@@ -57,6 +57,7 @@ class ACSApp {
     this.setupEventListeners();
     this.renderHeaderBar();
     this.renderCurrentView();
+    this.initCloudSync();
 
     window.addEventListener("popstate", () => {
       this.checkUrlRouting();
@@ -221,8 +222,218 @@ class ACSApp {
     return str;
   }
 
-  saveStores() {
-    localStorage.setItem("ACS_STORES_DATA_V2", JSON.stringify(this.stores));
+  saveStores(syncToCloud = true) {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("ACS_STORES_DATA_V2", JSON.stringify(this.stores));
+    }
+
+    if (syncToCloud) {
+      this.debouncedPushToCloud();
+    }
+  }
+
+  // --- REAL-TIME MULTI-DEVICE CLOUD SYNCHRONIZATION ---
+  initCloudSync() {
+    this.cloudSyncConfig = {
+      blobId: "e7864462-7c2f-42f6-8ff1-297d7a98d912",
+      directBlobUrl: "https://superjsonblob.com/api/jsonBlob/e7864462-7c2f-42f6-8ff1-297d7a98d912",
+      apiProxyUrl: "/api/stores",
+      pollIntervalMs: 6000
+    };
+
+    if (typeof window === "undefined") return;
+
+    // 1. Initial Cloud Pull on page load to immediately load latest edits made from other devices
+    this.pullFromCloud(true);
+
+    // 2. If logged-in owner and cloud not yet synced from this device, push current local changes
+    if (this.currentUser && typeof localStorage !== "undefined" && !localStorage.getItem("ACS_CLOUD_LAST_MODIFIED")) {
+      setTimeout(() => this.pushToCloud(), 1000);
+    }
+
+    // 3. Background Polling every 6 seconds for active open devices
+    if (window.setInterval) {
+      if (this.cloudSyncInterval) clearInterval(this.cloudSyncInterval);
+      this.cloudSyncInterval = setInterval(() => {
+        if (typeof document !== "undefined" && !document.hidden) {
+          this.pullFromCloud(false);
+        }
+      }, this.cloudSyncConfig.pollIntervalMs);
+    }
+
+    // 4. Instant sync check when switching tabs or unlocking mobile screen
+    if (typeof document !== "undefined" && document.addEventListener) {
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) {
+          this.pullFromCloud(false);
+        }
+      });
+    }
+  }
+
+  async pullFromCloud(isInitial = false) {
+    if (typeof fetch === "undefined" || this.isPushingToCloud) return;
+    try {
+      let cloudPayload = null;
+
+      // Try local /api/stores endpoint first, then fallback to direct SuperJSONBlob
+      try {
+        const resp = await fetch(this.cloudSyncConfig.apiProxyUrl, {
+          method: "GET",
+          headers: { "Cache-Control": "no-cache" }
+        });
+        if (resp && resp.ok) {
+          cloudPayload = await resp.json();
+        }
+      } catch (_) {}
+
+      if (!cloudPayload) {
+        try {
+          const resp = await fetch(this.cloudSyncConfig.directBlobUrl, {
+            method: "GET",
+            headers: { "Cache-Control": "no-cache" }
+          });
+          if (resp && resp.ok) {
+            cloudPayload = await resp.json();
+          }
+        } catch (_) {}
+      }
+
+      if (!cloudPayload || !Array.isArray(cloudPayload.stores) || cloudPayload.stores.length === 0) {
+        return;
+      }
+
+      const cloudTimestamp = cloudPayload.lastModified ? new Date(cloudPayload.lastModified).getTime() : 0;
+      const localTimestamp = parseInt((typeof localStorage !== "undefined" && localStorage.getItem("ACS_CLOUD_LAST_MODIFIED")) || "0", 10);
+
+      const isCloudNewer = cloudTimestamp > localTimestamp;
+      const hasNeverSynced = typeof localStorage !== "undefined" && !localStorage.getItem("ACS_CLOUD_LAST_MODIFIED");
+
+      if (isCloudNewer || (isInitial && hasNeverSynced)) {
+        const currentJson = JSON.stringify(this.stores);
+        const newJson = JSON.stringify(cloudPayload.stores);
+
+        if (currentJson !== newJson) {
+          this.stores = cloudPayload.stores;
+          this.stores.forEach((s) => {
+            if (Array.isArray(s.stocks)) {
+              s.stocks.forEach((m) => {
+                if (m.freeScheme) m.freeScheme = this.formatFreeScheme(m.freeScheme);
+              });
+            }
+          });
+
+          if (typeof localStorage !== "undefined") {
+            localStorage.setItem("ACS_STORES_DATA_V2", JSON.stringify(this.stores));
+            localStorage.setItem("ACS_CLOUD_LAST_MODIFIED", String(cloudTimestamp || Date.now()));
+          }
+
+          // Re-render views reactively so this device immediately updates prices and stocks
+          this.renderCurrentView();
+          this.updateCloudSyncBadge("synced", "Synchronized across all devices");
+
+          if (!isInitial) {
+            this.showToast("Real-time Update: Live stock and price updates synchronized from cloud.", "info");
+          }
+        }
+      } else {
+        this.updateCloudSyncBadge("synced", "All devices in sync");
+      }
+    } catch (err) {
+      console.warn("Cloud pull notice:", err);
+      this.updateCloudSyncBadge("ready", "Cloud sync ready");
+    }
+  }
+
+  debouncedPushToCloud() {
+    this.updateCloudSyncBadge("syncing", "Syncing to other devices...");
+    if (this.cloudPushTimeout) clearTimeout(this.cloudPushTimeout);
+    this.cloudPushTimeout = setTimeout(() => {
+      this.pushToCloud();
+    }, 400);
+  }
+
+  async pushToCloud() {
+    if (typeof fetch === "undefined") return;
+    this.isPushingToCloud = true;
+    const nowTimestamp = Date.now();
+    const isoString = new Date(nowTimestamp).toISOString();
+
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("ACS_CLOUD_LAST_MODIFIED", String(nowTimestamp));
+    }
+
+    const payload = {
+      version: "2.0.0",
+      networkName: "ACS Uttar Pradesh Pharmacy Network",
+      lastModified: isoString,
+      modifiedBy: this.currentUser ? this.currentUser.name || this.currentUser.email : "authorized_pharmacist",
+      stores: this.stores
+    };
+
+    let pushSuccess = false;
+
+    // 1. Try pushing to /api/stores proxy
+    try {
+      const resp = await fetch(this.cloudSyncConfig.apiProxyUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (resp && resp.ok) {
+        pushSuccess = true;
+      }
+    } catch (_) {}
+
+    // 2. Direct push to SuperJSONBlob master database
+    try {
+      const directResp = await fetch(this.cloudSyncConfig.directBlobUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (directResp && directResp.ok) {
+        pushSuccess = true;
+      }
+    } catch (err) {
+      console.warn("Direct blob push notice:", err);
+    }
+
+    this.isPushingToCloud = false;
+
+    if (pushSuccess) {
+      this.updateCloudSyncBadge("synced", "Changes synced across all devices");
+    } else {
+      this.updateCloudSyncBadge("ready", "Saved locally (Will retry cloud sync)");
+    }
+  }
+
+  syncNow() {
+    this.showToast("Synchronizing live pharmacy data across all devices...", "info");
+    this.pushToCloud();
+    this.pullFromCloud(true);
+  }
+
+  updateCloudSyncBadge(status, message) {
+    if (typeof document === "undefined" || !document.querySelectorAll) return;
+    const badges = document.querySelectorAll(".cloud-sync-indicator");
+    badges.forEach((el) => {
+      if (status === "syncing") {
+        el.className = "cloud-sync-indicator inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs";
+        el.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 animate-spin"></span> Syncing to devices...`;
+        el.title = message;
+      } else if (status === "synced") {
+        el.className = "cloud-sync-indicator inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs cursor-pointer";
+        el.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Live Cloud Synced`;
+        el.title = message + " - Click to force refresh";
+        el.onclick = () => window.acsApp && window.acsApp.syncNow();
+      } else {
+        el.className = "cloud-sync-indicator inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs cursor-pointer";
+        el.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-400"></span> Cloud Ready`;
+        el.title = message;
+        el.onclick = () => window.acsApp && window.acsApp.syncNow();
+      }
+    });
   }
 
   loadUserSession() {
@@ -458,7 +669,10 @@ class ACSApp {
       // User is logged in as Akhileshwar Tripathi (Deoria Drug House)
       if (authContainer) {
         authContainer.innerHTML = `
-          <div class="flex items-center gap-2.5 sm:gap-3">
+          <div class="flex items-center gap-2 sm:gap-2.5">
+            <button onclick="window.acsApp.syncNow()" class="cloud-sync-indicator inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30 border border-emerald-400/40 shadow-xs cursor-pointer transition" title="Live multi-device cloud synchronization active. Tap to force instant sync.">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span> <span class="hidden sm:inline">Live Cloud</span> Synced
+            </button>
             <div class="bg-white/15 px-3 py-1.5 rounded-xl border border-white/20 text-xs text-right">
               <span class="text-[10px] uppercase font-black text-amber-300 block flex items-center justify-end gap-1">
                 <i class="fa fa-hospital-o"></i> Deoria Drug House
@@ -479,10 +693,13 @@ class ACSApp {
         this.updateNavButtonsVisibility();
       }
     } else {
-      // Guest / Not logged in: Show single Pharmacist Login button
+      // Guest / Not logged in: Show live status & single Pharmacist Login button
       if (authContainer) {
         authContainer.innerHTML = `
           <div class="flex items-center gap-2">
+            <button onclick="window.acsApp.syncNow()" class="cloud-sync-indicator inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-white/10 text-white hover:bg-white/20 border border-white/20 shadow-xs cursor-pointer transition" title="Live network sync. Tap to refresh">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Live Synced
+            </button>
             <button onclick="window.acsApp.openLoginModal()" class="bg-amber-400 hover:bg-amber-500 text-slate-950 px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-black shadow-md transition flex items-center gap-1.5">
               <i class="fa fa-lock"></i> Pharmacist Login
             </button>
@@ -4611,6 +4828,9 @@ class ACSApp {
             </button>
             <button onclick="window.acsApp.openBulkPriceModal()" class="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-2 rounded-xl text-xs font-black shadow-sm transition">
               <i class="fa fa-calculator"></i> Bulk Prices
+            </button>
+            <button onclick="window.acsApp.syncNow()" class="inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-3 py-2 rounded-xl text-xs font-bold shadow-2xs transition" title="Push & Pull live stock and price updates across all phones, tablets, and computers">
+              <i class="fa fa-refresh text-emerald-600"></i> Sync All Devices
             </button>
             <button id="btn-export-csv" class="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold transition">
               <i class="fa fa-download"></i> Export CSV

@@ -28,11 +28,49 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.path = f"/{filename}"
             return super().do_GET()
 
+        if path == "/api/stores":
+            import urllib.request
+            try:
+                with urllib.request.urlopen("https://superjsonblob.com/api/jsonBlob/e7864462-7c2f-42f6-8ff1-297d7a98d912") as response:
+                    data = response.read()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    self.wfile.write(data)
+                    return
+            except Exception as e:
+                self.send_response(500)
+                self.end_headers()
+                return
+
         # SPA URL Rewrite: Route /pharmacy/<slug> and /pharmacy/<slug>/audit directly to index.html
         if path.startswith("/pharmacy/") or path == "/pharmacy":
             self.path = "/index.html"
 
         return super().do_GET()
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        if parsed.path == "/api/stores":
+            length = int(self.headers.get("content-length", 0))
+            body = self.rfile.read(length)
+            import urllib.request
+            try:
+                req = urllib.request.Request("https://superjsonblob.com/api/jsonBlob/e7864462-7c2f-42f6-8ff1-297d7a98d912", data=body, headers={"Content-Type": "application/json"}, method="PUT")
+                with urllib.request.urlopen(req) as resp:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    self.wfile.write(b'{"success":true}')
+                    return
+            except Exception as e:
+                self.send_response(500)
+                self.end_headers()
+                return
+        self.send_response(404)
+        self.end_headers()
 
 def main():
     os.chdir(DIRECTORY)

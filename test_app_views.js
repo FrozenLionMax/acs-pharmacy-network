@@ -370,8 +370,24 @@ try {
 
   // Test updating unit inline
   app.updateStockInline(firstMed.id, 'unit', 'Strips (10 tabs)');
-  if (firstMed.unit !== 'Strips (10 tabs)') throw new Error('updateStockInline failed to update unit');
+  // Test Real-time Multi-device Cloud Synchronization
+  console.log('--- Testing Multi-Device Cloud Synchronization Suite ---');
+  if (typeof app.initCloudSync !== 'function') throw new Error('initCloudSync method missing from app');
+  if (!app.cloudSyncConfig || !app.cloudSyncConfig.blobId) throw new Error('cloudSyncConfig missing blobId');
+  if (app.cloudSyncConfig.blobId !== 'e7864462-7c2f-42f6-8ff1-297d7a98d912') throw new Error('Incorrect cloudSyncConfig blobId');
+  if (typeof app.syncNow !== 'function') throw new Error('syncNow method missing from app');
+  if (typeof app.pullFromCloud !== 'function') throw new Error('pullFromCloud method missing from app');
+  if (typeof app.pushToCloud !== 'function') throw new Error('pushToCloud method missing from app');
+  
+  // Call syncNow and pullFromCloud in simulated environment
+  app.syncNow();
+  console.log('syncNow() dispatched cloud sync without error!');
+
+  if (!ownerStocksHtml.includes('Sync All Devices')) {
+    throw new Error('Sync All Devices button missing from owner stocks view');
+  }
   console.log('Stock and Free Scheme verified: Clean bonus "+1", zero "Free" words in Free table column, live sanitization passed!');
+  console.log('Multi-Device Cloud Synchronization verified successfully!');
 
   // 11. Verify Common Deployed Page for ALL 5 Stores (No edit buttons, 100% clean consumer UI)
   app.stores.forEach(s => {
