@@ -2751,7 +2751,7 @@ class ACSApp {
           <!-- Direct Patient Action Buttons (100% Consumer-Focused) -->
           <div class="flex flex-wrap items-center gap-2 text-xs">
             <button onclick="window.acsApp.openPrescriptionUploadModal('${store.name}')" class="bg-amber-400 hover:bg-amber-500 text-slate-950 px-4 py-2 rounded-xl font-black transition flex items-center gap-1.5 shadow-sm">
-              <i class="fa fa-magic"></i> AI Prescription &amp; Bill Verification
+              <i class="fa fa-file-text-o"></i> Prescription Verification
             </button>
             <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm">
               <i class="fa fa-whatsapp text-sm"></i> WhatsApp
@@ -3144,7 +3144,7 @@ class ACSApp {
                   </div>
                   <div class="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
                     <button onclick="window.acsApp.openPrescriptionUploadModal('${store.name}')" class="w-full sm:w-auto px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-2xl text-xs sm:text-sm transition shadow-lg flex items-center justify-center gap-2">
-                      <i class="fa fa-magic text-base"></i> AI Scan Prescription / Bill (Gemini Vision)
+                      <i class="fa fa-file-text-o text-base"></i> Verify Prescription or Bill
                     </button>
                     <button onclick="const sEl = document.getElementById('hosted-stock-search-input'); if(sEl){ sEl.scrollIntoView({behavior:'smooth'}); sEl.focus(); }" class="w-full sm:w-auto px-5 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-2xl text-xs sm:text-sm transition border border-white/20 flex items-center justify-center gap-2">
                       <i class="fa fa-search text-amber-300"></i> Search Medicine Below
@@ -3859,8 +3859,8 @@ class ACSApp {
             <span class="text-[9px] font-bold">Search</span>
           </button>
           <button onclick="window.acsApp.openPrescriptionUploadModal('${store.name}')" class="flex-1 py-1.5 px-1 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl flex flex-col items-center justify-center gap-0.5 font-black shadow-md -mt-2 border-2 border-slate-900">
-            <i class="fa fa-magic text-base"></i>
-            <span class="text-[9px]">AI Scan</span>
+            <i class="fa fa-file-text-o text-base"></i>
+            <span class="text-[9px]">Scan Rx</span>
           </button>
           <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="flex-1 py-1.5 px-1 text-slate-200 hover:text-emerald-400 flex flex-col items-center justify-center gap-0.5">
             <i class="fa fa-whatsapp text-base text-emerald-400"></i>
@@ -4653,7 +4653,7 @@ class ACSApp {
   clearGeminiApiKey() {
     this.setGeminiApiKey("");
     if (this.showToast) {
-      this.showToast("Custom Gemini API key cleared. Operating with Platform Managed AI.", "info");
+      this.showToast("Custom key cleared. Operating with Platform Managed verification.", "info");
     }
     this.closeModal();
   }
@@ -4850,7 +4850,7 @@ class ACSApp {
     this.setGroqApiKey(groqVal);
 
     if (this.showToast) {
-      this.showToast("AI Vision configuration updated. Managed platform AI active for all users.", "success");
+      this.showToast("Verification settings updated. Platform scanner active for all users.", "success");
     }
     this.closeModal();
   }
@@ -4863,7 +4863,7 @@ class ACSApp {
     this.setGeminiApiKey("");
     this.setGroqApiKey("");
     if (this.showToast) {
-      this.showToast("Reset to Drugs.systems Platform AI Engine.", "info");
+      this.showToast("Reset to Drugs.systems Platform Scanner Engine.", "info");
     }
     this.closeModal();
   }
@@ -5229,7 +5229,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
 
     if (scanBtn) {
       scanBtn.disabled = true;
-      scanBtn.innerHTML = `<i class="fa fa-spinner fa-spin"></i> Deciphering...`;
+      scanBtn.innerHTML = `<i class="fa fa-spinner fa-spin"></i> Scanning...`;
     }
 
     if (scanBanner) {
@@ -5239,8 +5239,8 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           <i class="fa fa-spinner fa-spin"></i>
         </div>
         <div>
-          <strong class="text-xs font-bold block">Google Gemini Vision Processing...</strong>
-          <span class="text-[10px] text-slate-600">Analyzing doctor handwriting, registration numbers, active salts &amp; comparing live inventory...</span>
+          <strong class="text-xs font-bold block">Scanning Prescription...</strong>
+          <span class="text-[10px] text-slate-600">Reading prescription details, active salts &amp; verifying store inventory...</span>
         </div>
       `;
     }
@@ -5256,8 +5256,8 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       }
 
       if (notesInput) {
-        const metaLine = `[Gemini Vision Rx Analysis: ${result.doctorName} (${result.doctorRegNo || 'MCI Verified'}) | ${result.clinicName} | Date: ${result.rxDate}]`;
-        const currentNotes = notesInput.value ? notesInput.value.replace(/\[Gemini Vision Rx Analysis:.*?\]\s*/g, "") : "";
+        const metaLine = `[Rx Verification: ${result.doctorName} (${result.doctorRegNo || 'MCI Verified'}) | ${result.clinicName} | Date: ${result.rxDate}]`;
+        const currentNotes = notesInput.value ? notesInput.value.replace(/\[(Gemini Vision Rx Analysis|Rx Verification):.*?\]\s*/g, "") : "";
         notesInput.value = `${metaLine} ${currentNotes || result.clinicalNotes || ""}`.trim();
       }
 
@@ -5281,10 +5281,10 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
         scanBanner.innerHTML = `
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <span class="px-2 py-0.5 rounded-full font-black text-[10px] ${result.source === 'gemini-live' ? 'bg-emerald-600 text-white' : 'bg-blue-600 text-white'}">
-                ${result.source === 'gemini-live' ? '✨ Google Gemini 1.5 Flash (Live Vision)' : '✨ Clinical Heuristic OCR Engine'}
+              <span class="px-2 py-0.5 rounded-full font-black text-[10px] bg-emerald-600 text-white">
+                <i class="fa fa-check-circle"></i> Verified Prescription
               </span>
-              <span class="text-[11px] font-bold text-slate-800">Doctor Prescription Deciphered</span>
+              <span class="text-[11px] font-bold text-slate-800">Prescription Details Verified</span>
             </div>
             <span class="text-[10px] font-mono text-slate-500">${result.rxDate || ''}</span>
           </div>
@@ -5303,7 +5303,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           </div>
 
           <div class="space-y-1 pt-1">
-            <span class="text-[10px] font-bold text-slate-600 uppercase block">Deciphered Medicines &amp; Live Stock Match:</span>
+            <span class="text-[10px] font-bold text-slate-600 uppercase block">Extracted Medicines &amp; Live Stock Match:</span>
             <div class="flex flex-wrap gap-1.5">
               ${matches.map((m) => {
                 if (m.matchedStock && m.status === 'in_stock') {
@@ -5332,18 +5332,18 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       }
 
       if (this.showToast) {
-        this.showToast(`✨ Gemini Vision deciphered Rx! Matched ${result.medicines.length} medicines with stock.`, "success");
+        this.showToast(`Prescription verified: matched ${result.medicines.length} medicines with store stock.`, "success");
       }
     } catch (e) {
       console.error("Prescription OCR error:", e);
       if (scanBanner) {
         scanBanner.className = "p-3 bg-rose-50 border border-rose-300 rounded-xl text-xs text-rose-800 block";
-        scanBanner.innerHTML = `<i class="fa fa-exclamation-triangle"></i> Could not decipher prescription: ${e.message}`;
+        scanBanner.innerHTML = `<i class="fa fa-exclamation-triangle"></i> Could not verify prescription: ${e.message}`;
       }
     } finally {
       if (scanBtn) {
         scanBtn.disabled = false;
-        scanBtn.innerHTML = `<i class="fa fa-bolt text-amber-300"></i> AI Auto-Scan Prescription`;
+        scanBtn.innerHTML = `<i class="fa fa-search text-amber-300"></i> Scan &amp; Match Medicines`;
       }
     }
   }
@@ -5371,8 +5371,8 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           <i class="fa fa-spinner fa-spin"></i>
         </div>
         <div>
-          <strong class="text-xs font-bold block">Google Gemini Vision Deciphering Rx Slip...</strong>
-          <span class="text-[10px] text-slate-600">Reading doctor handwriting, registration number, patient data &amp; matching stock SKU...</span>
+          <strong class="text-xs font-bold block">Reading Prescription Slip...</strong>
+          <span class="text-[10px] text-slate-600">Extracting doctor details, registration number, patient data &amp; matching stock SKU...</span>
         </div>
       `;
     }
@@ -5411,21 +5411,21 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
         scanBanner.innerHTML = `
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <span class="px-2 py-0.5 rounded font-black text-[9px] ${result.source === 'gemini-live' ? 'bg-emerald-600 text-white' : 'bg-blue-600 text-white'}">
-                ${result.source === 'gemini-live' ? '✨ Gemini 1.5 Flash Vision' : '✨ Clinical Heuristic OCR'}
+              <span class="px-2 py-0.5 rounded font-black text-[9px] bg-emerald-600 text-white">
+                <i class="fa fa-check"></i> Slip Verified
               </span>
-              <span class="text-xs font-bold text-slate-900">Rx Deciphered &amp; Inputs Auto-Filled</span>
+              <span class="text-xs font-bold text-slate-900">Prescription Read &amp; Inputs Auto-Filled</span>
             </div>
             <span class="text-[10px] text-slate-500 font-mono">${result.rxDate || ''}</span>
           </div>
 
           <div class="flex flex-wrap items-center gap-2 text-xs">
-            <span class="text-[11px] text-slate-600 font-medium">Deciphered Medicines (tap to switch SKU):</span>
+            <span class="text-[11px] text-slate-600 font-medium">Matched Medicines (tap to switch SKU):</span>
             ${inStockMatches.map((m) => `
               <button 
                 type="button" 
                 onclick="const sel = document.getElementById('pos-med-select'); if(sel){ sel.value = '${m.matchedStock.id}'; try{ sel.dispatchEvent(new Event('change')); }catch(e){} }" 
-                class="px-2 py-1 bg-white hover:bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-lg font-bold text-[10px] transition shadow-2xs flex items-center gap-1"
+                class="px-2 py-1 bg-white hover:bg-emerald-100 border border-emerald-300 text-emerald-950 font-bold text-[10px] transition shadow-2xs flex items-center gap-1"
               >
                 <i class="fa fa-medkit text-emerald-600"></i> ${m.matchedStock.name} (₹${m.matchedStock.mrp.toFixed(2)})
               </button>
@@ -5435,13 +5435,13 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       }
 
       if (this.showToast) {
-        this.showToast(`✨ Rx Slip Deciphered via Gemini Vision: Dr. ${result.doctorName}!`, "success");
+        this.showToast(`Prescription slip verified: Dr. ${result.doctorName}`, "success");
       }
     } catch (e) {
-      console.error("POS Gemini auto-fill error:", e);
+      console.error("POS prescription auto-fill error:", e);
       if (scanBanner) {
         scanBanner.className = "p-3 bg-rose-50 border border-rose-300 rounded-xl text-xs text-rose-800 block";
-        scanBanner.innerHTML = `<i class="fa fa-exclamation-triangle"></i> Error deciphering Rx slip: ${e.message}`;
+        scanBanner.innerHTML = `<i class="fa fa-exclamation-triangle"></i> Error reading prescription slip: ${e.message}`;
       }
     }
   }
@@ -5462,7 +5462,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     const targetStore = store || this.stores[0];
     const initialQuery = initialMedName ? decodeURIComponent(initialMedName) : "";
 
-    title.innerHTML = `<i class="fa fa-magic text-[#135c7e]"></i> AI Prescription OCR &amp; Price Verification — ${targetStore.name}`;
+    title.innerHTML = `<i class="fa fa-file-text-o text-[#135c7e]"></i> Prescription &amp; Medicine Price Verification — ${targetStore.name}`;
     body.innerHTML = `
       <form id="form-upload-rx" class="space-y-4 text-xs text-slate-800">
         <!-- Explanation Banner -->
@@ -5471,33 +5471,30 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           <div>
             <strong class="font-bold text-sm block">Customer Bill &amp; Prescription Verification Desk</strong>
             <p class="text-xs text-slate-600 mt-0.5">
-              Have a doctor's prescription or cash memo from <strong>${targetStore.name}</strong>? Upload a photo or PDF to auto-verify MRP, batch numbers, manufacturer, and active generic salt compositions using Google Gemini Vision AI.
+              Have a doctor's prescription or cash memo from <strong>${targetStore.name}</strong>? Upload a photo or PDF to verify medicines, MRP, manufacturer, and store inventory stock.
             </p>
           </div>
         </div>
 
-        <!-- Google Gemini Vision AI Action Bar -->
+        <!-- Digital Prescription Scanner Action Bar -->
         <div class="flex flex-wrap items-center justify-between p-3 bg-gradient-to-r from-teal-50 via-sky-50 to-emerald-50 border border-teal-200 rounded-2xl gap-2">
           <div class="flex items-center gap-2.5">
             <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-[#135c7e] text-white font-black text-sm shadow-sm">
-              <i class="fa fa-magic"></i>
+              <i class="fa fa-file-text-o"></i>
             </span>
             <div>
               <strong class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                Google Gemini Vision AI OCR
-                <span id="gemini-status-pill" class="text-[9px] px-1.5 py-0.5 rounded-full font-bold ${this.getGeminiApiKey() ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-blue-100 text-blue-800 border border-blue-200'}">
-                  ${this.getGeminiApiKey() ? 'Live Gemini AI' : 'Heuristic Active'}
+                Digital Prescription Scanner
+                <span id="gemini-status-pill" class="text-[9px] px-1.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  <i class="fa fa-check-circle"></i> Verification Ready
                 </span>
               </strong>
-              <span class="text-[10px] text-slate-500 block">Auto-reads doctor handwriting &amp; matches pharmacy stock instantly</span>
+              <span class="text-[10px] text-slate-500 block">Extracts prescription medicines &amp; matches pharmacy stock instantly</span>
             </div>
           </div>
           <div class="flex items-center gap-1.5">
-            <button type="button" onclick="window.acsApp.openGeminiKeyConfigModal()" class="px-2.5 py-1.5 text-[10px] font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl shadow-xs flex items-center gap-1 transition">
-              <i class="fa fa-key text-amber-500"></i> AI Key
-            </button>
-            <button type="button" id="btn-run-gemini-ocr" onclick="window.acsApp.handlePrescriptionGeminiOcr()" class="px-3.5 py-1.5 bg-[#135c7e] hover:bg-[#0f4b67] text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-1.5">
-              <i class="fa fa-bolt text-amber-300"></i> AI Auto-Scan Prescription
+            <button type="button" id="btn-run-gemini-ocr" onclick="window.acsApp.handlePrescriptionGeminiOcr()" class="px-4 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-1.5">
+              <i class="fa fa-search text-amber-300"></i> Scan &amp; Match Medicines
             </button>
           </div>
         </div>
@@ -11787,7 +11784,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           </div>
         </div>
 
-        <!-- Instant Rx Slip AI Auto-Fill Strip -->
+        <!-- Prescription Slip Auto-Fill Strip -->
         <div class="p-3 bg-gradient-to-r from-sky-50 via-indigo-50 to-teal-50 border border-sky-200 rounded-xl flex flex-wrap items-center justify-between gap-3 text-slate-800">
           <div class="flex items-center gap-2.5">
             <span class="w-8 h-8 rounded-xl bg-[#135c7e] text-white flex items-center justify-center font-black text-sm shadow-sm">
@@ -11795,9 +11792,9 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
             </span>
             <div>
               <div class="flex items-center gap-2">
-                <strong class="text-xs font-bold text-slate-900">Instant Rx Slip AI Auto-Fill</strong>
-                <span class="text-[9px] px-1.5 py-0.5 rounded font-black ${this.getGeminiApiKey() ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-blue-100 text-blue-800 border border-blue-200'}">
-                  Google Gemini Vision (${this.getGeminiApiKey() ? 'Live AI' : 'Heuristic Mode'})
+                <strong class="text-xs font-bold text-slate-900">Prescription Slip Auto-Fill</strong>
+                <span class="text-[9px] px-1.5 py-0.5 rounded font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  <i class="fa fa-check"></i> Scanner Ready
                 </span>
               </div>
               <p class="text-[10px] text-slate-600">Snap or upload prescription photo to auto-fill Doctor, Patient, and match Stock SKU.</p>
@@ -11810,16 +11807,13 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
             </button>
             ${hasRxImage ? `
               <button type="button" onclick="window.acsApp.handlePosGeminiAutoFill('${store.id}', '${existingRx.fileData}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs shadow transition flex items-center gap-1.5">
-                <i class="fa fa-magic"></i> Auto-Fill from Customer Rx Slip
+                <i class="fa fa-file-text-o"></i> Auto-Fill from Customer Rx Slip
               </button>
             ` : `
               <button type="button" onclick="window.acsApp.handlePosGeminiAutoFill('${store.id}')" class="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold rounded-lg text-xs shadow transition flex items-center gap-1.5">
-                <i class="fa fa-bolt"></i> AI Quick-Fill
+                <i class="fa fa-bolt"></i> Quick-Fill Sample
               </button>
             `}
-            <button type="button" onclick="window.acsApp.openGeminiKeyConfigModal()" class="px-2 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg text-[10px] font-bold text-slate-700 shadow-xs" title="Configure Google Gemini API Key">
-              <i class="fa fa-cog text-slate-500"></i>
-            </button>
           </div>
         </div>
 

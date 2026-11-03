@@ -1,7 +1,7 @@
 {
   "name": "Drugs Systems • UP Pharmacy Network",
   "short_name": "Drugs Systems",
-  "description": "Uttar Pradesh Licensed Retail Pharmacy Network, Real-Time Medicine Stock Directory & AI Prescription Verification Portal.",
+  "description": "Uttar Pradesh Licensed Retail Pharmacy Network, Real-Time Medicine Stock Directory & Prescription Verification Portal.",
   "id": "/?source=pwa",
   "start_url": "/?source=pwa",
   "scope": "/",
@@ -19,9 +19,9 @@
       "icons": [{ "src": "/favicon-96x96.png", "sizes": "96x96" }]
     },
     {
-      "name": "AI Prescription Scanner",
-      "short_name": "AI Scan Rx",
-      "description": "Decipher doctor handwriting and auto-match stock with Google Gemini Vision",
+      "name": "Verify Prescription",
+      "short_name": "Verify Rx",
+      "description": "Upload prescription and check medicine availability and pricing",
       "url": "/pharmacy/deoria-drug-house?action=rx",
       "icons": [{ "src": "/favicon-96x96.png", "sizes": "96x96" }]
     },

@@ -747,11 +747,11 @@ try {
   }
   console.log(`matchPrescriptionMedicinesToStore() verified: Augmentin matched to SKU ${augmentinMatch.matchedStock.name} (Confidence: ${augmentinMatch.confidence}%, Status: ${augmentinMatch.status})!`);
 
-  // 5. Test Storefront Prescription Upload Modal with Gemini Vision
+  // 5. Test Storefront Prescription Upload Modal with Prescription Scanner
   app.openPrescriptionUploadModal(currentStore.name);
   const rxUploadModalBody = mockElements['modal-generic-body'].innerHTML;
-  if (!rxUploadModalBody.includes('Google Gemini Vision AI OCR') || !rxUploadModalBody.includes('btn-run-gemini-ocr')) {
-    throw new Error('openPrescriptionUploadModal missing Gemini Vision action bar or scan button!');
+  if (!rxUploadModalBody.includes('Digital Prescription Scanner') || !rxUploadModalBody.includes('btn-run-gemini-ocr')) {
+    throw new Error('openPrescriptionUploadModal missing Prescription Scanner action bar or scan button!');
   }
   await app.handlePrescriptionGeminiOcr(currentStore);
   if (!app.selectedRxMedicines || app.selectedRxMedicines.length === 0) {
@@ -759,11 +759,11 @@ try {
   }
   console.log(`handlePrescriptionGeminiOcr() executed and auto-populated ${app.selectedRxMedicines.length} in-stock medicines into customer verification list!`);
 
-  // 6. Test Pharmacist Counter Billing POS Modal with Gemini Vision
+  // 6. Test Pharmacist Counter Billing POS Modal with Prescription Slip Auto-Fill
   app.openPosDispensingModal(currentStore.id);
   const posModalBody = mockElements['modal-generic-body'].innerHTML;
-  if (!posModalBody.includes('Instant Rx Slip AI Auto-Fill') || !posModalBody.includes('Google Gemini Vision')) {
-    throw new Error('openPosDispensingModal missing Instant Rx Slip AI Auto-Fill strip!');
+  if (!posModalBody.includes('Prescription Slip Auto-Fill') || !posModalBody.includes('pos-rx-slip-file')) {
+    throw new Error('openPosDispensingModal missing Prescription Slip Auto-Fill strip!');
   }
   await app.handlePosGeminiAutoFill(currentStore.id, 'data:image/jpeg;base64,mockSlipImage');
   console.log('openPosDispensingModal() & handlePosGeminiAutoFill() verified: Rx Slip deciphered and POS inputs auto-filled!');
@@ -819,7 +819,7 @@ try {
   if (guestStorefrontHtml.includes('Verified Owner Mode') || guestStorefrontHtml.includes('Edit Store Profile')) {
     throw new Error('Guest view contains Owner Mode buttons!');
   }
-  if (!guestStorefrontHtml.includes('mobile-bottom-bar') || !guestStorefrontHtml.includes('AI Scan') || !guestStorefrontHtml.includes('Install')) {
+  if (!guestStorefrontHtml.includes('mobile-bottom-bar') || !guestStorefrontHtml.includes('Scan Rx') || !guestStorefrontHtml.includes('Install')) {
     throw new Error('Guest mobile bottom bar missing required action touch targets!');
   }
   console.log('Guest storefront mobile experience verified: 0 owner controls, 5 ergonomic touch targets present!');
