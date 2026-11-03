@@ -5,14 +5,19 @@ const payload = {
   key: "acsakhil2026indexnow",
   keyLocation: "https://www.drugs.systems/acsakhil2026indexnow.txt",
   urlList: [
-    "https://www.drugs.systems/pharmacy",
+    "https://www.drugs.systems/",
     "https://www.drugs.systems/pharmacy/deoria-drug-house",
-    "https://www.drugs.systems/pharmacy/akhil-deoria",
+    "https://www.drugs.systems/deoria-drug-house",
     "https://www.drugs.systems/pharmacy/maa-vindhyavasini-medicos-deoria",
+    "https://www.drugs.systems/maa-vindhyavasini-medicos-deoria",
     "https://www.drugs.systems/pharmacy/kushwaha-medical-store-deoria",
+    "https://www.drugs.systems/kushwaha-medical-store-deoria",
     "https://www.drugs.systems/pharmacy/raghav-chemist-deoria",
+    "https://www.drugs.systems/raghav-chemist-deoria",
     "https://www.drugs.systems/pharmacy/ganga-medical-hall-kanpur",
-    "https://www.drugs.systems/pharmacy/awadh-care-chemist-lucknow"
+    "https://www.drugs.systems/ganga-medical-hall-kanpur",
+    "https://www.drugs.systems/pharmacy/awadh-care-chemist-lucknow",
+    "https://www.drugs.systems/awadh-care-chemist-lucknow"
   ]
 };
 

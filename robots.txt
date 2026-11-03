@@ -8,5 +8,7 @@ Allow: /sitemap.xml
 Allow: /feed.xml
 
 # XML Sitemap & Live RSS Feed listing all hosted retail pharmacies in Uttar Pradesh
+Sitemap: https://www.drugs.systems/sitemap.xml
+Sitemap: https://www.drugs.systems/feed.xml
 Sitemap: https://acsakhil.com/sitemap.xml
 Sitemap: https://acsakhil.com/feed.xml

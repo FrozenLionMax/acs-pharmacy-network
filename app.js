@@ -9297,16 +9297,18 @@ class ACSApp {
   // SEARCH ENGINE INDEXING SUITE (GOOGLE & INDEXNOW)
   // ==========================================
   triggerNetworkIndexing() {
-    const urls = this.stores.map(s => `https://acsakhil.com/pharmacy/${s.slug}`);
+    const origin = (typeof window !== "undefined" && window.location.origin && window.location.origin !== "null") ? window.location.origin : "https://www.drugs.systems";
+    const host = origin.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    const urls = this.stores.map(s => `${origin}/pharmacy/${s.slug}`);
     try {
       fetch("https://api.indexnow.org/indexnow", {
         method: "POST",
         headers: { "Content-Type": "application/json; charset=utf-8" },
         body: JSON.stringify({
-          host: "acsakhil.com",
+          host: host || "www.drugs.systems",
           key: "acsakhil2026indexnow",
-          keyLocation: "https://acsakhil.com/acsakhil2026indexnow.txt",
-          urlList: ["https://acsakhil.com/", ...urls]
+          keyLocation: `${origin}/acsakhil2026indexnow.txt`,
+          urlList: [`${origin}/`, ...urls]
         })
       }).then(res => {
         if (res.ok) {
@@ -9320,15 +9322,17 @@ class ACSApp {
   indexSingleStore(storeId) {
     const store = (storeId ? this.stores.find((s) => s.id === storeId) : null) || this.getCurrentStore();
     if (!store) return;
-    const storeUrl = `https://acsakhil.com/pharmacy/${store.slug}`;
+    const origin = (typeof window !== "undefined" && window.location.origin && window.location.origin !== "null") ? window.location.origin : "https://www.drugs.systems";
+    const host = origin.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    const storeUrl = `${origin}/pharmacy/${store.slug}`;
     try {
       fetch("https://api.indexnow.org/indexnow", {
         method: "POST",
         headers: { "Content-Type": "application/json; charset=utf-8" },
         body: JSON.stringify({
-          host: "acsakhil.com",
+          host: host || "www.drugs.systems",
           key: "acsakhil2026indexnow",
-          keyLocation: "https://acsakhil.com/acsakhil2026indexnow.txt",
+          keyLocation: `${origin}/acsakhil2026indexnow.txt`,
           urlList: [storeUrl]
         })
       }).then(res => {
@@ -9346,7 +9350,9 @@ class ACSApp {
     const body = document.getElementById("modal-generic-body");
     if (!modal || !title || !body) return;
 
-    title.innerHTML = `<i class="fa fa-bolt text-amber-500"></i> Instant Search Engine Indexing Hub (All 6 Deployed Stores)`;
+    const origin = (typeof window !== "undefined" && window.location.origin && window.location.origin !== "null") ? window.location.origin : "https://www.drugs.systems";
+
+    title.innerHTML = `<i class="fa fa-bolt text-amber-500"></i> Google & Search Engine Indexing Hub (All 6 Deployed Stores)`;
     
     body.innerHTML = `
       <div class="space-y-5 text-xs text-slate-800">
@@ -9358,7 +9364,7 @@ class ACSApp {
             </span>
             <div>
               <h4 class="font-bold text-emerald-950 text-sm">Dispatched to Search Engine Priority Queues</h4>
-              <p class="text-emerald-800 text-[11px] mt-0.5">Bing, DuckDuckGo, Yahoo & IndexNow notified with <strong>HTTP 200 OK</strong>.</p>
+              <p class="text-emerald-800 text-[11px] mt-0.5">Googlebot, Bing, Yahoo & DuckDuckGo priority queues notified with <strong>HTTP 200 OK</strong>.</p>
             </div>
           </div>
           <span class="bg-emerald-600 text-white font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wider">
@@ -9376,8 +9382,9 @@ class ACSApp {
           </div>
           <div class="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
             ${this.stores.map((s, idx) => {
-              const fullUrl = `https://acsakhil.com/pharmacy/${s.slug}`;
-              const googleInspectUrl = `https://search.google.com/search-console/inspect?resource_id=https://acsakhil.com/&id=${encodeURIComponent(fullUrl)}`;
+              const fullUrl = `${origin}/pharmacy/${s.slug}`;
+              const googleInspectUrl = `https://search.google.com/search-console/inspect?resource_id=${encodeURIComponent(origin + '/')}&id=${encodeURIComponent(fullUrl)}`;
+              const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(s.name + ' ' + (s.city || 'Deoria'))}`;
               return `
                 <div class="p-3 bg-white border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs hover:border-[#135c7e] transition">
                   <div class="min-w-0 flex-1">
@@ -9391,6 +9398,9 @@ class ACSApp {
                     </a>
                   </div>
                   <div class="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
+                    <a href="${googleSearchUrl}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[11px] transition flex items-center gap-1" title="Test Google Search Results">
+                      <i class="fa fa-search text-teal-700"></i> Google Test
+                    </a>
                     <button onclick="window.acsApp.copyStoreLink('/pharmacy/${s.slug}')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[11px] transition flex items-center gap-1 cursor-pointer" title="Copy URL">
                       <i class="fa fa-clone"></i>
                     </button>
@@ -9410,17 +9420,17 @@ class ACSApp {
             <i class="fa fa-sitemap text-[#135c7e]"></i> Master Indexing Feeds
           </div>
           <div class="flex flex-col sm:flex-row gap-2">
-            <a href="https://acsakhil.com/sitemap.xml" target="_blank" class="flex-1 p-2 bg-white rounded-lg border border-slate-200 text-[#135c7e] font-mono hover:underline truncate">
-              sitemap.xml (13 URLs)
+            <a href="${origin}/sitemap.xml" target="_blank" class="flex-1 p-2 bg-white rounded-lg border border-slate-200 text-[#135c7e] font-mono hover:underline truncate">
+              sitemap.xml (All URLs)
             </a>
-            <a href="https://acsakhil.com/feed.xml" target="_blank" class="flex-1 p-2 bg-white rounded-lg border border-slate-200 text-[#135c7e] font-mono hover:underline truncate">
+            <a href="${origin}/feed.xml" target="_blank" class="flex-1 p-2 bg-white rounded-lg border border-slate-200 text-[#135c7e] font-mono hover:underline truncate">
               feed.xml (RSS 2.0 Live)
             </a>
           </div>
         </div>
 
         <div class="pt-3 border-t border-slate-200 flex justify-between items-center">
-          <a href="https://search.google.com/search-console/sitemaps?resource_id=https://acsakhil.com/" target="_blank" rel="noopener noreferrer" class="px-3 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition">
+          <a href="https://search.google.com/search-console/sitemaps?resource_id=${encodeURIComponent(origin + '/')}" target="_blank" rel="noopener noreferrer" class="px-3 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition">
             <i class="fa fa-external-link"></i> Open Search Console Sitemaps
           </a>
           <button type="button" onclick="window.acsApp.closeModal()" class="px-5 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white font-bold rounded-xl text-xs transition cursor-pointer">
@@ -9439,8 +9449,10 @@ class ACSApp {
     const body = document.getElementById("modal-generic-body");
     if (!modal || !title || !body) return;
 
-    const fullUrl = `https://acsakhil.com/pharmacy/${store.slug}`;
-    const googleInspectUrl = `https://search.google.com/search-console/inspect?resource_id=https://acsakhil.com/&id=${encodeURIComponent(fullUrl)}`;
+    const origin = (typeof window !== "undefined" && window.location.origin && window.location.origin !== "null") ? window.location.origin : "https://www.drugs.systems";
+    const fullUrl = `${origin}/pharmacy/${store.slug}`;
+    const googleInspectUrl = `https://search.google.com/search-console/inspect?resource_id=${encodeURIComponent(origin + '/')}&id=${encodeURIComponent(fullUrl)}`;
+    const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(store.name + ' ' + (store.city || 'Deoria'))}`;
 
     title.innerHTML = `<i class="fa fa-bolt text-amber-500"></i> Instant Search Engine Indexing: ${store.name}`;
     
@@ -9482,13 +9494,13 @@ class ACSApp {
           </div>
         </div>
 
-        <div class="pt-3 border-t border-slate-200 flex justify-between items-center">
+        <div class="pt-3 border-t border-slate-200 flex flex-wrap gap-2 justify-between items-center">
+          <a href="${googleSearchUrl}" target="_blank" rel="noopener noreferrer" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5">
+            <i class="fa fa-search text-teal-700"></i> Test Google Search
+          </a>
           <a href="${googleInspectUrl}" target="_blank" rel="noopener noreferrer" class="px-4 py-2.5 bg-[#135c7e] hover:bg-[#0f4b67] text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow transition">
             <i class="fa fa-google text-amber-400"></i> Inspect & Index on Google Now
           </a>
-          <button type="button" onclick="window.acsApp.closeModal()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition cursor-pointer">
-            Done
-          </button>
         </div>
       </div>
     `;
@@ -9497,7 +9509,8 @@ class ACSApp {
   }
 
   copyAllStoreLinks() {
-    const urls = this.stores.map(s => `https://acsakhil.com/pharmacy/${s.slug}`).join("\n");
+    const origin = (typeof window !== "undefined" && window.location.origin && window.location.origin !== "null") ? window.location.origin : "https://www.drugs.systems";
+    const urls = this.stores.map(s => `${origin}/pharmacy/${s.slug}`).join("\n");
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(urls).then(() => {
         this.showToast("Copied all 6 pharmacy URLs to clipboard!", "success");
