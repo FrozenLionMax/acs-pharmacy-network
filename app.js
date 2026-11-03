@@ -4146,14 +4146,32 @@ class ACSApp {
     const waBase = `https://wa.me/${cleanPhone.startsWith('91') ? cleanPhone : '91' + cleanPhone}`;
 
     if (filteredPublicStock.length === 0) {
+      const matchingStore = q ? this.stores.find(s => s.name.toLowerCase().includes(q) || s.slug.includes(q) || s.district.toLowerCase().includes(q) || (s.ownerName && s.ownerName.toLowerCase().includes(q))) : null;
       return `
         <div class="py-12 px-4 text-center bg-slate-50 border border-slate-200 rounded-2xl">
+          ${matchingStore ? `
+            <div class="mb-5 p-4 bg-amber-50 border border-amber-300 rounded-xl text-left max-w-lg mx-auto shadow-sm">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center text-lg font-bold flex-shrink-0">
+                  <i class="fa fa-hospital-o"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-amber-800 block">Looking for a Pharmacy Website?</span>
+                  <span class="font-black text-slate-900 text-sm block truncate">${matchingStore.name}</span>
+                  <span class="text-xs text-slate-600 block mt-0.5">${matchingStore.address} (${matchingStore.district}, UP)</span>
+                </div>
+                <a href="/pharmacy/${matchingStore.slug}" class="px-3 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-xl text-xs font-bold transition flex-shrink-0 shadow-xs">
+                  Visit Store &rarr;
+                </a>
+              </div>
+            </div>
+          ` : ''}
           <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-2xl mx-auto mb-3">
             <i class="fa fa-medkit"></i>
           </div>
           <h4 class="text-base font-bold text-slate-800">No medicines found matching "${this.hostedStockSearch || ''}"</h4>
           <p class="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-            The requested medicine might be available in offline buffer stock or requires custom formulation.
+            ${matchingStore ? `This search box searches in-stock medicines for ${store.name}. Click above to open ${matchingStore.name}'s dedicated website.` : `The requested medicine might be available in offline buffer stock or requires custom formulation.`}
           </p>
           <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
             <a href="tel:${cleanPhone}" class="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold shadow-xs">
