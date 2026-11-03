@@ -1242,15 +1242,24 @@ class ACSApp {
         "Civil Hospital Medical Store Lucknow",
         "अवध मेडिकल स्टोर लखनऊ"
       ],
-      "store-up-007": [
-        "Apoorva Medical Stores",
-        "अपूर्वा मेडिकल स्टोर्स",
-        "Apoorva Medical Store Deoria",
-        "Apoorva Srivastava Chemist",
-        "अपूर्वा श्रीवास्तव देवरिया",
-        "Civil Lines Chemist Deoria",
-        "Women Hospital Medical Store Deoria",
-        "अपूर्वा मेडिकल स्टोर देवरिया"
+      "apoorva-tripathi-medicos-deoria": [
+        "Apoorva Tripathi Medicos",
+        "अपूर्वा त्रिपाठी मेडिकोज",
+        "Apoorva Tripathi Medicos Deoria",
+        "Apoorva Tripathi Chemist",
+        "अपूर्वा त्रिपाठी देवरिया",
+        "अपूर्वा त्रिपाठी मेडिकल स्टोर",
+        "Kotwali Chemist Deoria",
+        "Station Road Chemist Deoria",
+        "Apoorva Medicos Deoria"
+      ],
+      "apoorva-tripathi-medicos": [
+        "Apoorva Tripathi Medicos",
+        "अपूर्वा त्रिपाठी मेडिकोज",
+        "Apoorva Tripathi Medicos Deoria",
+        "Apoorva Tripathi Chemist",
+        "अपूर्वा त्रिपाठी देवरिया",
+        "अपूर्वा त्रिपाठी मेडिकल स्टोर"
       ]
     };
 

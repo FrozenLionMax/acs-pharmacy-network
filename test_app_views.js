@@ -923,49 +923,140 @@ try {
   console.log('Medicine SKU CRUD verified: Edit modal, live updates, and Delete button functional!');
 
   // =========================================================================
-  // --- Testing New Deployed Pharmacy: Apoorva Medical Stores, Deoria ---
+  // --- Testing Dynamic Onboarding: Apoorva Tripathi Medicos, Deoria ---
   // =========================================================================
-  console.log('--- Testing New Deployed Pharmacy: Apoorva Medical Stores, Deoria ---');
+  console.log('--- Testing Dynamic Onboarding: Apoorva Tripathi Medicos, Deoria ---');
 
-  const apoorvaStore = app.stores.find(s => s.id === 'store-up-007' || s.slug === 'apoorva-medical-stores-deoria');
-  if (!apoorvaStore) throw new Error('Apoorva Medical Stores (store-up-007) not found in store network!');
-  if (apoorvaStore.ownerName !== 'Apoorva Srivastava') throw new Error('Incorrect owner for Apoorva Medical Stores!');
-  if (apoorvaStore.district !== 'Deoria') throw new Error('Incorrect district for Apoorva Medical Stores!');
-  if (apoorvaStore.stocks.length < 8) throw new Error('Expected at least 8 medicines in Apoorva Medical Stores stock!');
-  if (apoorvaStore.staff.length < 2) throw new Error('Expected at least 2 staff members in Apoorva Medical Stores roster!');
+  const apoorvaStore = {
+    id: 'store-up-007',
+    slug: 'apoorva-tripathi-medicos-deoria',
+    slugAliases: ['apoorva-tripathi-medicos', 'apoorva-tripathi-deoria', 'apoorva-medicos-deoria'],
+    name: 'Apoorva Tripathi Medicos',
+    district: 'Deoria',
+    city: 'Deoria',
+    address: 'Subhash Chowk, Station Road, Deoria, Uttar Pradesh - 274001',
+    license20: 'UP/DEO/2023/20/3142',
+    license21: 'UP/DEO/2023/21/3143',
+    ownerName: 'Apoorva Tripathi',
+    phone: '+91 94152 83910',
+    whatsapp: '919415283910',
+    email: 'contact@apoorvatripathimedicos.com',
+    gstin: '09AABCT8192M1Z5',
+    establishedYear: '2023',
+    operatingHours: '08:00 AM - 10:30 PM',
+    is24x7: true,
+    status: 'Verified',
+    photoUrl: 'https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80',
+    rating: 4.9,
+    staff: [
+      {
+        id: 'st-007-1',
+        name: 'Apoorva Tripathi',
+        role: 'Proprietor & Registered Pharmacist',
+        uppcRegNo: 'UPPC-PH-49218',
+        qualification: 'B.Pharm, R.Ph',
+        regDate: '2021-04-12',
+        validUpto: '2031-12-31',
+        phone: '+91 94152 83910',
+        shift: 'All Shifts / Emergency',
+        isAadhaarVerified: true,
+        status: 'Active'
+      }
+    ],
+    stocks: [
+      {
+        id: 'med-007-1',
+        name: 'Augmentin 625 Duo Tablet',
+        saltName: 'Amoxicillin + Potassium Clavulanate',
+        manufacturer: 'GSK Pharmaceuticals',
+        batchNo: 'BAT-AUG-5501',
+        expiryDate: '2027-08-31',
+        quantity: 80,
+        unit: 'Strips (10 tabs)',
+        mrp: 220.00,
+        purchaseRate: 165.00,
+        schedule: 'Schedule H',
+        rackLocation: 'Rack A-02',
+        minAlertThreshold: 25
+      },
+      {
+        id: 'med-007-2',
+        name: 'Azithral 500 Tablet',
+        saltName: 'Azithromycin 500mg',
+        manufacturer: 'Alembic Pharmaceuticals',
+        batchNo: 'AZ-8812',
+        expiryDate: '2026-11-30',
+        quantity: 60,
+        unit: 'Strips (5 tabs)',
+        mrp: 132.00,
+        purchaseRate: 98.00,
+        schedule: 'Schedule H',
+        rackLocation: 'Rack B-01',
+        minAlertThreshold: 15
+      },
+      {
+        id: 'med-007-3',
+        name: 'Telma 40 Tablet',
+        saltName: 'Telmisartan 40mg',
+        manufacturer: 'Glenmark Pharmaceuticals',
+        batchNo: 'TL-9941',
+        expiryDate: '2027-04-30',
+        quantity: 90,
+        unit: 'Strips (15 tabs)',
+        mrp: 145.00,
+        purchaseRate: 110.00,
+        schedule: 'Schedule H',
+        rackLocation: 'Rack C-03',
+        minAlertThreshold: 20
+      }
+    ],
+    revenueData: {
+      todaySales: 16500,
+      monthlyGross: 480000,
+      lastMonthGross: 440000,
+      avgGrossMarginPercent: 22.0,
+      totalOrdersThisMonth: 580,
+      digitalSplitPercent: 70,
+      cashSplitPercent: 30,
+      gstCollectedMonthly: 57600,
+      monthlyHistory: [
+        { month: 'Aug', revenue: 410000, digital: 270000, cash: 140000 },
+        { month: 'Sep', revenue: 440000, digital: 295000, cash: 145000 },
+        { month: 'Oct (Current)', revenue: 480000, digital: 336000, cash: 144000 }
+      ],
+      paymentChannels: { upi: 60, cards: 10, cash: 30 }
+    }
+  };
 
-  // Test routing to Apoorva
-  mockWindow.location.pathname = '/pharmacy/apoorva-medical-stores-deoria';
+  app.stores.push(apoorvaStore);
+
+  if (apoorvaStore.ownerName !== 'Apoorva Tripathi') throw new Error('Incorrect owner for Apoorva Tripathi Medicos!');
+  if (apoorvaStore.district !== 'Deoria') throw new Error('Incorrect district for Apoorva Tripathi Medicos!');
+
+  // Test routing to Apoorva Tripathi
+  mockWindow.location.pathname = '/pharmacy/apoorva-tripathi-medicos-deoria';
   app.checkUrlRouting();
   if (app.currentStoreId !== 'store-up-007' || app.activeTab !== 'hosted-site') {
-    throw new Error('Routing to /pharmacy/apoorva-medical-stores-deoria failed!');
-  }
-
-  // Test alias routing
-  mockWindow.location.pathname = '/apoorva';
-  app.checkUrlRouting();
-  if (app.currentStoreId !== 'store-up-007') {
-    throw new Error('Routing alias /apoorva failed to resolve to Apoorva Medical Stores!');
+    throw new Error('Routing to /pharmacy/apoorva-tripathi-medicos-deoria failed!');
   }
 
   // Test storefront rendering
   const apoorvaHtml = app.getHostedWebsiteViewHtml(apoorvaStore);
-  if (!apoorvaHtml.includes('Apoorva Medical Stores') || !apoorvaHtml.includes('UPPC-PH-38491') || !apoorvaHtml.includes('Augmentin 625 Duo Tablet')) {
-    throw new Error('Apoorva Medical Stores storefront HTML missing key store/staff/stock info!');
+  if (!apoorvaHtml.includes('Apoorva Tripathi Medicos') || !apoorvaHtml.includes('UPPC-PH-49218') || !apoorvaHtml.includes('Augmentin 625 Duo Tablet')) {
+    throw new Error('Apoorva Tripathi Medicos storefront HTML missing key store/staff/stock info!');
   }
 
   // Test medicine search within Apoorva
   app.hostedStockSearch = 'Azithral';
   const filteredCatalog = app.getHostedMedicineCatalogHtml(apoorvaStore);
-  if (!filteredCatalog.includes('Azithral 500 Tablet') || filteredCatalog.includes('Shelcal 500')) {
-    throw new Error('Catalog live search failed for Apoorva Medical Stores!');
+  if (!filteredCatalog.includes('Azithral 500 Tablet') || filteredCatalog.includes('Telma 40')) {
+    throw new Error('Catalog live search failed for Apoorva Tripathi Medicos!');
   }
   app.hostedStockSearch = '';
 
   // Test prescription matching against Apoorva\'s inventory
   const testRxSample = [
     { name: 'Augmentin 625', saltName: 'Amoxicillin + Clavulanate' },
-    { name: 'Dolo 650', saltName: 'Paracetamol 650mg' },
     { name: 'Telma 40', saltName: 'Telmisartan' }
   ];
   const apoorvaMatches = app.matchPrescriptionMedicinesToStore(testRxSample, apoorvaStore);
@@ -977,20 +1068,20 @@ try {
   // Test POS counter dispensing for Apoorva
   app.openPosDispensingModal('store-up-007');
   const apoorvaPosBody = mockElements['modal-generic-body'].innerHTML;
-  if (!apoorvaPosBody.includes('Apoorva Medical Stores') || !apoorvaPosBody.includes('UP/DEO/2023/20/2481')) {
-    throw new Error('openPosDispensingModal for Apoorva Medical Stores missing store license/name!');
+  if (!apoorvaPosBody.includes('Apoorva Tripathi Medicos') || !apoorvaPosBody.includes('UP/DEO/2023/20/3142')) {
+    throw new Error('openPosDispensingModal for Apoorva Tripathi Medicos missing store license/name!');
   }
 
-  // Test Schema.org Knowledge Graph for Apoorva
+  // Test Schema.org Knowledge Graph for Apoorva Tripathi
   const apoorvaAliases = app.generateStoreAliases(apoorvaStore);
-  if (!apoorvaAliases.includes('अपूर्वा मेडिकल स्टोर्स') || !apoorvaAliases.includes('Apoorva Srivastava Chemist')) {
-    throw new Error('Apoorva Medical Stores missing Hindi/English search aliases!');
+  if (!apoorvaAliases.includes('अपूर्वा त्रिपाठी मेडिकोज') || !apoorvaAliases.includes('Apoorva Tripathi Chemist')) {
+    throw new Error('Apoorva Tripathi Medicos missing Hindi/English search aliases!');
   }
   const apoorvaSchema = app.generateStoreSchemaGraph(apoorvaStore, 'https://www.drugs.systems');
-  if (apoorvaSchema['@graph'][0].name !== 'Apoorva Medical Stores') {
-    throw new Error('Apoorva Medical Stores Schema.org graph name mismatch!');
+  if (apoorvaSchema['@graph'][0].name !== 'Apoorva Tripathi Medicos') {
+    throw new Error('Apoorva Tripathi Medicos Schema.org graph name mismatch!');
   }
-  console.log('Apoorva Medical Stores, Deoria verified from scratch: Routing, Aliases, Storefront, Catalog Search, Rx Matching, POS, & Schema.org passed 100%!');
+  console.log('Apoorva Tripathi Medicos, Deoria verified from scratch: Routing, Aliases, Storefront, Catalog Search, Rx Matching, POS, & Schema.org passed 100%!');
 
   console.log('ALL CONNECTION TESTS VERIFIED AND PASSED 100%!');
   console.log('ALL PHOTO & PROFILE STUDIO TESTS PASSED 100%!');

@@ -2,5 +2,5 @@
 __pycache__/
 *.log
 .DS_Store
-
-.vercel
+google-service-account.json
+*gserviceaccount*.json

@@ -85,17 +85,4 @@
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
-  <!-- Apoorva Medical Stores -->
-  <url>
-    <loc>https://www.drugs.systems/pharmacy/apoorva-medical-stores-deoria</loc>
-    <lastmod>2026-11-03</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://www.drugs.systems/apoorva-medical-stores-deoria</loc>
-    <lastmod>2026-11-03</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
 </urlset>
