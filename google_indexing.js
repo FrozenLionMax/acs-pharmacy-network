@@ -15,7 +15,7 @@ const crypto = require('crypto');
 
 const baseDir = __dirname;
 const KEY_FILE = path.join(baseDir, 'google-service-account.json');
-const BASE_ORIGIN = 'https://acsakhil.com';
+const BASE_ORIGIN = process.env.INDEXING_BASE_ORIGIN || 'https://www.drugs.systems';
 
 function base64UrlEncode(str) {
   return Buffer.from(str)
@@ -168,7 +168,8 @@ async function notifyGoogleIndexing(urlsToPublish = null) {
       const slugs = storesMatch ? storesMatch.map(s => s.replace(/slug:\s*["']/, '').replace(/["']/, '')) : [];
       targetUrls = [
         BASE_ORIGIN,
-        ...slugs.map(slug => `${BASE_ORIGIN}/pharmacy/${slug}`)
+        ...slugs.map(slug => `${BASE_ORIGIN}/pharmacy/${slug}`),
+        ...slugs.map(slug => `${BASE_ORIGIN}/${slug}`)
       ];
     }
 

@@ -78,64 +78,10 @@ stores.forEach((store) => {
   const ownerLabel = store.ownerName ? ` (${store.ownerName})` : "";
   const pageTitle = `${store.name}${ownerLabel} - Licensed Retail Pharmacy | ${store.address.split(',')[0]}, ${store.district}, UP`;
   const pageDesc = `${store.name} located at ${store.address}. Licensed under Form 20/21 (${store.license20}). UPPC registered pharmacist ${store.ownerName || 'Qualified Pharmacist'} on duty. Phone ${store.phone}. Browse live stock, verified retail MRP & statutory medicine catalog.`;
-  const aliasesMap = {
-    "store-up-001": [
-      "Deoria Drug House",
-      "देवरिया ड्रग हाउस",
-      "Deoria Drug House Akhil",
-      "Akhileshwar Tripathi",
-      "अखिलेश्वर त्रिपाठी देवरिया",
-      "Akhil Chemist Deoria",
-      "Station Road Chemist Deoria",
-      "Subhash Chowk Medical Store",
-      "Deoria Medical Store",
-      "Deoria Drug House UPPC",
-      "Akhileshwar Tripathi Medical Store"
-    ],
-    "store-up-002": [
-      "Maa Vindhyavasini Medicos & Healthcare",
-      "मां विंध्यवासिनी मेडिकोज",
-      "Maa Vindhyavasini Medical Store",
-      "Dr S K Mishra Chemist Deoria",
-      "Raghav Nagar Chemist Deoria",
-      "CC Road Medical Store Deoria"
-    ],
-    "store-up-003": [
-      "Kushwaha Medical Store & Surgical",
-      "कुशवाहा मेडिकल स्टोर",
-      "M P Kushwaha Chemist",
-      "Civil Lines Medical Store Deoria",
-      "Sadar Hospital Chemist Deoria",
-      "Devraha Baba Medical College Chemist"
-    ],
-    "store-up-004": [
-      "Raghav Chemist & Druggists",
-      "राघव केमिस्ट देवरिया",
-      "Ramesh Chandra Verma Chemist",
-      "Malviya Road Chemist Deoria",
-      "Ram Gulam Tola Medical Store"
-    ],
-    "store-up-005": [
-      "Ganga Medical Hall & Healthcare",
-      "गंगा मेडिकल हॉल कानपुर",
-      "Alok Kumar Gupta Chemist",
-      "Mall Road Chemist Kanpur",
-      "Phoolbagh Medical Store Kanpur"
-    ],
-    "store-up-006": [
-      "Awadh Care Chemist & Surgical",
-      "अवध केयर केमिस्ट लखनऊ",
-      "Syed Mohammad Rizvi Chemist",
-      "Hazratganj Chemist Lucknow",
-      "Civil Hospital Medical Store Lucknow"
-    ]
-  };
 
-  const alternateNames = aliasesMap[store.id] || [
-    store.name,
-    `${store.name} ${store.district}`,
-    store.ownerName ? `${store.ownerName} Medical Store` : ""
-  ];
+  // Use Universal Generator from ACSApp
+  const alternateNames = app.generateStoreAliases(store);
+  const storeSchema = app.generateStoreSchemaGraph(store, baseOrigin);
 
   const pageKeywords = [
     store.name,
@@ -155,144 +101,6 @@ stores.forEach((store) => {
   app.currentStoreId = store.id;
   app.hostedSubTab = 'storefront';
   const preRenderedBodyHtml = app.getHostedWebsiteViewHtml(store);
-
-  // Generate Store Schema.org JSON-LD with Rich Results Graph (Pharmacy + Breadcrumbs + FAQs + Medicine Catalog)
-  const storeSchema = {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": ["Pharmacy", "LocalBusiness", "MedicalBusiness"],
-        "@id": `${storeUrl}#pharmacy`,
-        "name": store.name,
-        "alternateName": alternateNames,
-        "legalName": `${store.name} (Prop. ${store.ownerName})`,
-        "url": storeUrl,
-        "telephone": store.phone,
-        "email": store.email,
-        "image": [
-          store.photoUrl,
-          ...(store.galleryPhotos ? store.galleryPhotos.map(p => p.url) : [])
-        ].filter(Boolean),
-        "priceRange": "₹₹",
-        "currenciesAccepted": "INR",
-        "paymentAccepted": "Cash, UPI, Credit Card, Debit Card, Net Banking",
-        "openingHours": "Mo-Su 08:00-22:30",
-        "hasMap": store.mapsUrl,
-        "address": {
-          "@type": "PostalAddress",
-          "streetAddress": store.address,
-          "addressLocality": store.city,
-          "addressRegion": "Uttar Pradesh",
-          "postalCode": "274001",
-          "addressCountry": "IN"
-        },
-        "geo": {
-          "@type": "GeoCoordinates",
-          "latitude": store.city === 'Kanpur Nagar' ? 26.4670 : store.city === 'Lucknow' ? 26.8467 : 26.5024,
-          "longitude": store.city === 'Kanpur Nagar' ? 80.3500 : store.city === 'Lucknow' ? 80.9462 : 83.7791
-        },
-        "founder": {
-          "@type": "Person",
-          "name": store.ownerName,
-          "jobTitle": "Chief Pharmacist & Store Owner"
-        },
-        "employee": {
-          "@type": "Person",
-          "name": store.ownerName,
-          "jobTitle": "Registered Dispensing Pharmacist",
-          "identifier": (store.staff && store.staff[0] && store.staff[0].uppcRegNo) ? store.staff[0].uppcRegNo : "UPPC Verified"
-        },
-        "hasOfferCatalog": {
-          "@type": "OfferCatalog",
-          "name": `${store.name} Verified Medicine Catalog`,
-          "itemListElement": (store.stocks || []).map(med => ({
-            "@type": "Offer",
-            "itemOffered": {
-              "@type": "Drug",
-              "name": med.name,
-              "activeIngredient": med.saltName,
-              "dosageForm": med.unit,
-              "manufacturer": {
-                "@type": "Organization",
-                "name": med.manufacturer
-              }
-            },
-            "price": med.mrp,
-            "priceCurrency": "INR",
-            "availability": med.quantity > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
-          }))
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "@id": `${storeUrl}#breadcrumb`,
-        "itemListElement": [
-          {
-            "@type": "ListItem",
-            "position": 1,
-            "name": "ACS Network",
-            "item": "https://www.drugs.systems/"
-          },
-          {
-            "@type": "ListItem",
-            "position": 2,
-            "name": "Uttar Pradesh",
-            "item": "https://www.drugs.systems/"
-          },
-          {
-            "@type": "ListItem",
-            "position": 3,
-            "name": store.district,
-            "item": "https://www.drugs.systems/"
-          },
-          {
-            "@type": "ListItem",
-            "position": 4,
-            "name": store.name,
-            "item": storeUrl
-          }
-        ]
-      },
-      {
-        "@type": "FAQPage",
-        "@id": `${storeUrl}#faq`,
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": `Is ${store.name} a government-licensed pharmacy in ${store.district}?`,
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": `Yes. ${store.name} is licensed by the Food Safety and Drug Administration (FSDA) Uttar Pradesh under Form 20 (${store.license20}) and Form 21 (${store.license21}) for retail dispensation of genuine ethical medicines.`
-            }
-          },
-          {
-            "@type": "Question",
-            "name": `Who is the registered pharmacist at ${store.name}?`,
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": `${store.ownerName} is the registered pharmacist on duty, verified under Section 42 of the Pharmacy Act 1948 with the Uttar Pradesh Pharmacy Council (UPPC).`
-            }
-          },
-          {
-            "@type": "Question",
-            "name": `What is the address and contact number of ${store.name}?`,
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": `${store.name} is located at ${store.address}. Phone: ${store.phone}. Open daily ${store.operatingHours}.`
-            }
-          },
-          {
-            "@type": "Question",
-            "name": `Can I check live medicine stock at ${store.name}?`,
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": `Yes. You can verify available medicine stocks, verified retail MRPs, active generic salts, and batch details live on the official portal at ${storeUrl}.`
-            }
-          }
-        ]
-      }
-    ]
-  };
 
   // Inject into indexTemplate
   let html = indexTemplate;
@@ -387,9 +195,9 @@ stores.forEach((store) => {
 
   // Write indexnow.json
   const indexNowPayload = {
-    host: "acsakhil.com",
+    host: "www.drugs.systems",
     key: "acsakhil2026indexnow",
-    keyLocation: "https://acsakhil.com/acsakhil2026indexnow.txt",
+    keyLocation: "https://www.drugs.systems/acsakhil2026indexnow.txt",
     urlList: allIndexedUrls
   };
   fs.writeFileSync(path.join(baseDir, 'indexnow.json'), JSON.stringify(indexNowPayload, null, 2), 'utf8');
