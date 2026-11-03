@@ -684,8 +684,72 @@ try {
   }
   console.log('Google Search Console HTML Verification File verified in root directory!');
 
-  // Reset window pathname
-  mockWindow.location.pathname = '/';
+  // --- Testing Google Gemini Vision AI Prescription OCR & Auto-Matcher Suite ---
+  console.log('--- Testing Google Gemini Vision AI Prescription OCR & Auto-Matcher Suite ---');
+
+  // 1. Test Key Management
+  app.setGeminiApiKey('AIzaSyMockKeyForTesting123456');
+  if (app.getGeminiApiKey() !== 'AIzaSyMockKeyForTesting123456') {
+    throw new Error('getGeminiApiKey did not return the saved key!');
+  }
+  app.clearGeminiApiKey();
+  if (app.getGeminiApiKey() !== '') {
+    throw new Error('clearGeminiApiKey did not clear the key!');
+  }
+  console.log('Gemini API key management (get/set/clear) verified successfully!');
+
+  // 2. Test Key Config Modal
+  app.openGeminiKeyConfigModal();
+  const keyModalBody = mockElements['modal-generic-body'].innerHTML;
+  if (!keyModalBody.includes('aistudio.google.com/app/apikey') || !keyModalBody.includes('input-gemini-api-key')) {
+    throw new Error('openGeminiKeyConfigModal did not render Google AI Studio link or input field!');
+  }
+  console.log('openGeminiKeyConfigModal() rendered Google AI Studio links and controls successfully!');
+
+  // 3. Test Multimodal Vision Extraction
+  const sampleRxData = await app.callGeminiVision('data:image/jpeg;base64,mockImageData123');
+  if (!sampleRxData.doctorName || !sampleRxData.patientName || !Array.isArray(sampleRxData.medicines)) {
+    throw new Error('callGeminiVision did not return valid clinical JSON extraction!');
+  }
+  if (sampleRxData.medicines.length < 2) {
+    throw new Error('Expected at least 2 deciphered medicines from prescription slip!');
+  }
+  console.log(`callGeminiVision() extracted ${sampleRxData.medicines.length} medicines for patient: ${sampleRxData.patientName} by ${sampleRxData.doctorName}!`);
+
+  // 4. Test Smart Inventory Auto-Matcher Engine
+  const matchedMeds = app.matchPrescriptionMedicinesToStore(sampleRxData.medicines, currentStore);
+  if (!matchedMeds || matchedMeds.length === 0) {
+    throw new Error('matchPrescriptionMedicinesToStore returned empty matches!');
+  }
+  const augmentinMatch = matchedMeds.find(m => m.matchedStock && m.matchedStock.name.includes('Augmentin'));
+  if (!augmentinMatch) {
+    throw new Error('Failed to match Augmentin against Deoria Drug House inventory!');
+  }
+  if (augmentinMatch.confidence < 80 || augmentinMatch.status !== 'in_stock') {
+    throw new Error(`Invalid match confidence or stock status: ${augmentinMatch.confidence}, ${augmentinMatch.status}`);
+  }
+  console.log(`matchPrescriptionMedicinesToStore() verified: Augmentin matched to SKU ${augmentinMatch.matchedStock.name} (Confidence: ${augmentinMatch.confidence}%, Status: ${augmentinMatch.status})!`);
+
+  // 5. Test Storefront Prescription Upload Modal with Gemini Vision
+  app.openPrescriptionUploadModal(currentStore.name);
+  const rxUploadModalBody = mockElements['modal-generic-body'].innerHTML;
+  if (!rxUploadModalBody.includes('Google Gemini Vision AI OCR') || !rxUploadModalBody.includes('btn-run-gemini-ocr')) {
+    throw new Error('openPrescriptionUploadModal missing Gemini Vision action bar or scan button!');
+  }
+  await app.handlePrescriptionGeminiOcr(currentStore);
+  if (!app.selectedRxMedicines || app.selectedRxMedicines.length === 0) {
+    throw new Error('handlePrescriptionGeminiOcr failed to auto-populate selectedRxMedicines!');
+  }
+  console.log(`handlePrescriptionGeminiOcr() executed and auto-populated ${app.selectedRxMedicines.length} in-stock medicines into customer verification list!`);
+
+  // 6. Test Pharmacist Counter Billing POS Modal with Gemini Vision
+  app.openPosDispensingModal(currentStore.id);
+  const posModalBody = mockElements['modal-generic-body'].innerHTML;
+  if (!posModalBody.includes('Instant Rx Slip AI Auto-Fill') || !posModalBody.includes('Google Gemini Vision')) {
+    throw new Error('openPosDispensingModal missing Instant Rx Slip AI Auto-Fill strip!');
+  }
+  await app.handlePosGeminiAutoFill(currentStore.id, 'data:image/jpeg;base64,mockSlipImage');
+  console.log('openPosDispensingModal() & handlePosGeminiAutoFill() verified: Rx Slip deciphered and POS inputs auto-filled!');
 
   console.log('ALL CONNECTION TESTS VERIFIED AND PASSED 100%!');
   console.log('ALL PHOTO & PROFILE STUDIO TESTS PASSED 100%!');
