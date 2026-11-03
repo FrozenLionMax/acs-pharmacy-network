@@ -700,15 +700,28 @@ try {
   if (app.getGeminiApiKey() !== '') {
     throw new Error('clearGeminiApiKey did not clear the key!');
   }
-  console.log('Gemini API key management (get/set/clear) verified successfully!');
+  // Verify Platform managed system key fallback
+  if (!app.getEffectiveGeminiKey() || !app.getEffectiveGeminiKey().includes('Platform_Managed')) {
+    throw new Error('getEffectiveGeminiKey failed to fall back to Platform Managed Key!');
+  }
+  // Verify Groq key management
+  app.setGroqApiKey('gsk_MockGroqKeyTest123');
+  if (app.getGroqApiKey() !== 'gsk_MockGroqKeyTest123') {
+    throw new Error('getGroqApiKey did not return saved Groq key!');
+  }
+  app.clearGroqApiKey();
+  if (app.getGroqApiKey() !== '') {
+    throw new Error('clearGroqApiKey did not clear Groq key!');
+  }
+  console.log('Gemini & Groq API key management and Platform Managed Key fallback verified successfully!');
 
   // 2. Test Key Config Modal
   app.openGeminiKeyConfigModal();
   const keyModalBody = mockElements['modal-generic-body'].innerHTML;
-  if (!keyModalBody.includes('aistudio.google.com/app/apikey') || !keyModalBody.includes('input-gemini-api-key')) {
-    throw new Error('openGeminiKeyConfigModal did not render Google AI Studio link or input field!');
+  if (!keyModalBody.includes('aistudio.google.com/app/apikey') || !keyModalBody.includes('input-gemini-api-key') || !keyModalBody.includes('input-groq-api-key')) {
+    throw new Error('openGeminiKeyConfigModal did not render Google AI Studio link, Gemini input, or Groq input!');
   }
-  console.log('openGeminiKeyConfigModal() rendered Google AI Studio links and controls successfully!');
+  console.log('openGeminiKeyConfigModal() rendered Dual-Engine controls (Gemini + Groq) successfully!');
 
   // 3. Test Multimodal Vision Extraction
   const sampleRxData = await app.callGeminiVision('data:image/jpeg;base64,mockImageData123');

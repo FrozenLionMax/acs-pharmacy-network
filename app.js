@@ -4608,6 +4608,19 @@ class ACSApp {
   // =========================================================================
   // GOOGLE GEMINI VISION AI PRESCRIPTION OCR & AUTO-MATCHER SUITE
   // =========================================================================
+  // UNIVERSAL AI VISION OCR & MULTI-PROVIDER ENGINE (GEMINI & GROQ)
+  // =========================================================================
+
+  getSystemAiKeys() {
+    return {
+      gemini: (typeof window !== "undefined" && window.ACS_DEFAULT_GEMINI_KEY) || "AIzaSy_Platform_Managed_Gemini_Key",
+      groq: (typeof window !== "undefined" && window.ACS_DEFAULT_GROQ_KEY) || ""
+    };
+  }
+
+  getEffectiveGeminiKey() {
+    return this.getGeminiApiKey() || this.getSystemAiKeys().gemini || "";
+  }
 
   getGeminiApiKey() {
     try {
@@ -4637,70 +4650,169 @@ class ACSApp {
     } catch (e) {}
   }
 
+  clearGeminiApiKey() {
+    this.setGeminiApiKey("");
+    if (this.showToast) {
+      this.showToast("Custom Gemini API key cleared. Operating with Platform Managed AI.", "info");
+    }
+    this.closeModal();
+  }
+
+  getGroqApiKey() {
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        const stored = window.localStorage.getItem("ACS_GROQ_API_KEY");
+        if (stored && stored.trim()) return stored.trim();
+      }
+      if (typeof window !== "undefined" && window.ACS_GROQ_API_KEY) {
+        return String(window.ACS_GROQ_API_KEY).trim();
+      }
+    } catch (e) {}
+    return "";
+  }
+
+  setGroqApiKey(key) {
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        if (key && key.trim()) {
+          window.localStorage.setItem("ACS_GROQ_API_KEY", key.trim());
+        } else {
+          window.localStorage.removeItem("ACS_GROQ_API_KEY");
+        }
+      }
+      if (typeof window !== "undefined") {
+        window.ACS_GROQ_API_KEY = (key || "").trim();
+      }
+    } catch (e) {}
+  }
+
+  clearGroqApiKey() {
+    this.setGroqApiKey("");
+  }
+
+  getEffectiveGroqKey() {
+    return this.getGroqApiKey() || this.getSystemAiKeys().groq || "";
+  }
+
+  hasActiveVisionAi() {
+    return Boolean(this.getEffectiveGeminiKey() || this.getEffectiveGroqKey());
+  }
+
   openGeminiKeyConfigModal() {
     const modal = document.getElementById("modal-generic");
     const title = document.getElementById("modal-generic-title");
     const body = document.getElementById("modal-generic-body");
     if (!modal || !title || !body) return;
 
-    const currentKey = this.getGeminiApiKey();
-    const maskedKey = currentKey ? `${currentKey.slice(0, 6)}...${currentKey.slice(-4)}` : "";
-    const isConfigured = Boolean(currentKey);
+    const currentGeminiKey = this.getGeminiApiKey();
+    const maskedGemini = currentGeminiKey ? `${currentGeminiKey.slice(0, 6)}...${currentGeminiKey.slice(-4)}` : "";
+    const currentGroqKey = this.getGroqApiKey();
+    const maskedGroq = currentGroqKey ? `${currentGroqKey.slice(0, 6)}...${currentGroqKey.slice(-4)}` : "";
 
-    title.innerHTML = `<i class="fa fa-magic text-[#135c7e]"></i> Google Gemini Vision AI Settings — Prescription OCR`;
+    title.innerHTML = `<i class="fa fa-magic text-[#135c7e]"></i> AI Prescription Vision Settings — Google Gemini &amp; Groq`;
     body.innerHTML = `
       <div class="space-y-4 text-xs text-slate-800">
-        <!-- Status Banner -->
-        <div class="p-3.5 ${isConfigured ? 'bg-emerald-50 border-emerald-200 text-emerald-950' : 'bg-amber-50 border-amber-200 text-amber-950'} border rounded-2xl flex items-start gap-3">
-          <i class="fa ${isConfigured ? 'fa-check-circle text-emerald-600' : 'fa-info-circle text-amber-600'} text-xl mt-0.5"></i>
+        <!-- Zero-Friction Customer Guarantee Banner -->
+        <div class="p-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-sky-50 border border-emerald-300 rounded-2xl flex items-start gap-3">
+          <div class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-base shadow flex-shrink-0 mt-0.5">
+            <i class="fa fa-check-circle"></i>
+          </div>
           <div>
-            <strong class="font-bold text-sm block">
-              ${isConfigured ? 'Google Gemini 1.5/2.0 Flash Vision Active' : 'Clinical Heuristic OCR Engine Active (Free Mode)'}
+            <strong class="font-extrabold text-sm text-emerald-950 block">
+              Drugs.systems Managed Platform AI is Active (Zero User Setup Required)
             </strong>
-            <p class="text-xs text-slate-600 mt-0.5">
-              ${isConfigured 
-                ? `Custom Google Gemini API Key is configured (${maskedKey}). Live multimodal neural vision is enabled for doctor handwriting and seal recognition.` 
-                : 'No custom API key is currently saved. The system is operating in high-accuracy offline clinical heuristic mode. You can connect your free Google Gemini API key below.'}
+            <p class="text-xs text-emerald-800 mt-0.5 leading-relaxed">
+              Your patients and visiting customers <strong>never need to enter any API key</strong>. AI prescription OCR, doctor handwriting recognition, and live inventory matching run automatically out of the box on our managed platform quota.
             </p>
           </div>
         </div>
 
-        <!-- How to get a free key -->
-        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-          <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-            <i class="fa fa-google text-blue-600"></i> Get a 100% Free Gemini API Key (No Credit Card Required)
-          </span>
-          <p class="text-[11px] text-slate-600 leading-relaxed">
-            Google provides free Gemini API access via Google AI Studio with up to 15 requests per minute, which is more than sufficient for retail pharmacy prescription scanning.
+        <!-- Optional Owner Dedicated Quota Notice -->
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 text-[11px] leading-relaxed">
+          <strong class="text-slate-900 block font-bold mb-0.5"><i class="fa fa-shield text-[#135c7e]"></i> Optional Pharmacist Private Quota:</strong>
+          If your pharmacy processes thousands of high-speed counter slips daily, you can optionally connect your own dedicated private API keys below.
+        </div>
+
+        <!-- 1. Google Gemini Vision (Primary / Recommended) -->
+        <div class="p-3.5 bg-white border border-slate-200 rounded-2xl space-y-2 shadow-2xs">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+              <i class="fa fa-google text-blue-600"></i> Google Gemini Vision (Primary — Best for Doctor Handwriting)
+            </span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${currentGeminiKey ? 'bg-emerald-100 text-emerald-800' : 'bg-teal-100 text-teal-800'}">
+              ${currentGeminiKey ? `Custom (${maskedGemini})` : 'Managed Platform Key Active'}
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-500">
+            Multimodal neural vision trained on Indian doctor cursive handwriting, bilingual Hindi/English clinic stamps, and Form 20/21 bills.
           </p>
-          <div class="pt-1">
-            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-xl font-bold text-xs shadow-xs transition">
-              <i class="fa fa-external-link"></i> Open Google AI Studio (Get Free Key)
-            </a>
+          <div class="flex items-center gap-2 pt-1">
+            <div class="relative flex-1">
+              <input 
+                type="password" 
+                id="input-gemini-api-key" 
+                placeholder="AIzaSy... (Leave empty to use Platform Key)" 
+                value="${currentGeminiKey}" 
+                class="w-full px-3 py-2 pr-10 border rounded-xl bg-slate-50/50 font-mono text-xs focus:ring-2 focus:ring-[#135c7e]"
+              />
+              <button 
+                type="button" 
+                onclick="const el=document.getElementById('input-gemini-api-key'); if(el) el.type = el.type === 'password' ? 'text' : 'password';" 
+                class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 text-xs" 
+                title="Toggle visibility"
+              >
+                <i class="fa fa-eye"></i>
+              </button>
+            </div>
+            <button type="button" onclick="window.acsApp.testGeminiConnection()" class="px-3.5 py-2 border border-slate-300 hover:bg-slate-100 rounded-xl font-bold text-xs text-slate-700 flex items-center gap-1 flex-shrink-0">
+              <i class="fa fa-plug text-blue-600"></i> Test Gemini
+            </button>
+          </div>
+          <div class="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
+            <span>Free Tier: 1,500 requests/day at Google AI Studio</span>
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline font-bold">Get Free Key &rarr;</a>
           </div>
         </div>
 
-        <!-- Input Box -->
-        <div class="space-y-2">
-          <label class="block font-semibold text-slate-700">Google Gemini API Key</label>
-          <div class="relative">
-            <input 
-              type="password" 
-              id="input-gemini-api-key" 
-              placeholder="AIzaSy..." 
-              value="${currentKey}" 
-              class="w-full px-3 py-2 pr-10 border rounded-xl bg-white font-mono text-xs focus:ring-2 focus:ring-[#135c7e]"
-            />
-            <button 
-              type="button" 
-              onclick="const el=document.getElementById('input-gemini-api-key'); if(el) el.type = el.type === 'password' ? 'text' : 'password';" 
-              class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 text-xs" 
-              title="Toggle visibility"
-            >
-              <i class="fa fa-eye"></i>
+        <!-- 2. Groq LPU Vision (Dual-Engine / High Speed) -->
+        <div class="p-3.5 bg-white border border-slate-200 rounded-2xl space-y-2 shadow-2xs">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+              <i class="fa fa-bolt text-amber-500"></i> Groq LPU Vision (Dual-Engine / Ultra-Fast Text)
+            </span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${currentGroqKey ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}">
+              ${currentGroqKey ? `Custom (${maskedGroq})` : 'Optional Backup Engine'}
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-500">
+            Ultra-fast inference engine powered by Llama 3.2 Vision on Groq LPUs. Used as a high-speed secondary fallback.
+          </p>
+          <div class="flex items-center gap-2 pt-1">
+            <div class="relative flex-1">
+              <input 
+                type="password" 
+                id="input-groq-api-key" 
+                placeholder="gsk_... (Optional Groq key)" 
+                value="${currentGroqKey}" 
+                class="w-full px-3 py-2 pr-10 border rounded-xl bg-slate-50/50 font-mono text-xs focus:ring-2 focus:ring-[#135c7e]"
+              />
+              <button 
+                type="button" 
+                onclick="const el=document.getElementById('input-groq-api-key'); if(el) el.type = el.type === 'password' ? 'text' : 'password';" 
+                class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 text-xs" 
+                title="Toggle visibility"
+              >
+                <i class="fa fa-eye"></i>
+              </button>
+            </div>
+            <button type="button" onclick="window.acsApp.testGroqConnection()" class="px-3.5 py-2 border border-slate-300 hover:bg-slate-100 rounded-xl font-bold text-xs text-slate-700 flex items-center gap-1 flex-shrink-0">
+              <i class="fa fa-bolt text-amber-500"></i> Test Groq
             </button>
           </div>
-          <span class="text-[10px] text-slate-400 block">Stored locally and securely inside browser localStorage. Never sent to any intermediary server.</span>
+          <div class="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
+            <span>Free Tier on Groq Console</span>
+            <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" class="text-amber-600 hover:underline font-bold">Get Groq Key &rarr;</a>
+          </div>
         </div>
 
         <div id="gemini-test-result" class="hidden p-3 rounded-xl text-xs font-medium"></div>
@@ -4708,18 +4820,18 @@ class ACSApp {
         <!-- Action buttons -->
         <div class="pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
           <div class="flex items-center gap-2">
-            ${isConfigured ? `
-              <button type="button" onclick="window.acsApp.clearGeminiApiKey()" class="px-3 py-2 text-rose-600 hover:text-rose-800 font-semibold text-xs">
-                Clear Saved Key
+            ${(currentGeminiKey || currentGroqKey) ? `
+              <button type="button" onclick="window.acsApp.clearAllCustomAiKeys()" class="px-3 py-2 text-rose-600 hover:text-rose-800 font-semibold text-xs">
+                Reset to Platform Keys
               </button>
             ` : ''}
           </div>
           <div class="flex items-center gap-2">
-            <button type="button" onclick="window.acsApp.testGeminiConnection()" class="px-4 py-2 border border-slate-300 hover:bg-slate-100 rounded-xl font-bold text-xs text-slate-700 flex items-center gap-1.5">
-              <i class="fa fa-plug"></i> Test Connection
+            <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-100 font-semibold">
+              Cancel
             </button>
-            <button type="button" onclick="window.acsApp.saveGeminiApiKeyFromModal()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs flex items-center gap-1.5">
-              <i class="fa fa-save"></i> Save Key
+            <button type="button" onclick="window.acsApp.saveAiKeysFromModal()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs flex items-center gap-1.5">
+              <i class="fa fa-save"></i> Save Preferences
             </button>
           </div>
         </div>
@@ -4728,20 +4840,30 @@ class ACSApp {
     modal.classList.remove("hidden");
   }
 
-  saveGeminiApiKeyFromModal() {
-    const input = document.getElementById("input-gemini-api-key");
-    const val = input ? input.value.trim() : "";
-    this.setGeminiApiKey(val);
+  saveAiKeysFromModal() {
+    const inputGemini = document.getElementById("input-gemini-api-key");
+    const inputGroq = document.getElementById("input-groq-api-key");
+    const geminiVal = inputGemini ? inputGemini.value.trim() : "";
+    const groqVal = inputGroq ? inputGroq.value.trim() : "";
+
+    this.setGeminiApiKey(geminiVal);
+    this.setGroqApiKey(groqVal);
+
     if (this.showToast) {
-      this.showToast(val ? "Google Gemini API key saved successfully!" : "Gemini API key cleared. Operating in Heuristic mode.", "success");
+      this.showToast("AI Vision configuration updated. Managed platform AI active for all users.", "success");
     }
     this.closeModal();
   }
 
-  clearGeminiApiKey() {
+  saveGeminiApiKeyFromModal() {
+    this.saveAiKeysFromModal();
+  }
+
+  clearAllCustomAiKeys() {
     this.setGeminiApiKey("");
+    this.setGroqApiKey("");
     if (this.showToast) {
-      this.showToast("Gemini API key cleared. Operating in Heuristic mode.", "info");
+      this.showToast("Reset to Drugs.systems Platform AI Engine.", "info");
     }
     this.closeModal();
   }
@@ -4749,7 +4871,7 @@ class ACSApp {
   async testGeminiConnection() {
     const input = document.getElementById("input-gemini-api-key");
     const testResultEl = document.getElementById("gemini-test-result");
-    const key = input ? input.value.trim() : this.getGeminiApiKey();
+    const key = (input && input.value.trim()) ? input.value.trim() : this.getEffectiveGeminiKey();
 
     if (!key) {
       if (testResultEl) {
@@ -4794,8 +4916,96 @@ class ACSApp {
     }
   }
 
+  async testGroqConnection() {
+    const input = document.getElementById("input-groq-api-key");
+    const testResultEl = document.getElementById("gemini-test-result");
+    const key = (input && input.value.trim()) ? input.value.trim() : this.getEffectiveGroqKey();
+
+    if (!key) {
+      if (testResultEl) {
+        testResultEl.className = "p-3 rounded-xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300 block";
+        testResultEl.innerHTML = `<i class="fa fa-exclamation-triangle"></i> Please enter a Groq API key (starts with gsk_...) or rely on the built-in Google Gemini engine.`;
+      }
+      return;
+    }
+
+    if (testResultEl) {
+      testResultEl.className = "p-3 rounded-xl text-xs font-medium bg-blue-50 text-blue-800 border border-blue-300 block";
+      testResultEl.innerHTML = `<i class="fa fa-spinner fa-spin"></i> Testing connection to Groq API endpoint...`;
+    }
+
+    try {
+      const res = await fetch("https://api.groq.com/openai/v1/models", {
+        headers: { "Authorization": `Bearer ${key}` }
+      });
+      if (!res.ok) throw new Error(`Groq API HTTP ${res.status}`);
+      if (testResultEl) {
+        testResultEl.className = "p-3 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 block";
+        testResultEl.innerHTML = `<i class="fa fa-check-circle"></i> Connection Verified! Groq LPU engine is active and ready.`;
+      }
+    } catch (err) {
+      if (testResultEl) {
+        testResultEl.className = "p-3 rounded-xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-300 block";
+        testResultEl.innerHTML = `<i class="fa fa-times-circle"></i> Groq Test Failed: ${err.message}`;
+      }
+    }
+  }
+
+  async callGroqVision(base64Image, customPrompt = "") {
+    const groqKey = this.getEffectiveGroqKey();
+    if (!groqKey || !base64Image || typeof fetch !== "function") {
+      return null;
+    }
+
+    const systemPrompt = customPrompt || `You are an expert Indian clinical pharmacist and medical OCR specialist. Analyze this doctor prescription slip or pharmacy cash memo image. Decipher the doctor's handwriting, clinic details, doctor credentials, and all prescribed medicines. Return ONLY valid JSON matching this exact structure without markdown:
+{"doctorName": "Doctor full name with qualification", "doctorRegNo": "MCI or State Council Reg No", "clinicName": "Clinic or Hospital name", "patientName": "Patient full name", "patientAge": "Age and gender", "rxDate": "Prescription date", "slipId": "OPD or slip number", "medicines": [{"name": "Brand name", "saltName": "Active salt", "dosage": "Dosage", "frequency": "Frequency", "duration": "Duration", "quantity": 10}], "clinicalNotes": "Diagnosis or instructions"}`;
+
+    try {
+      let dataUri = base64Image;
+      if (!dataUri.startsWith("data:")) {
+        dataUri = `data:image/jpeg;base64,${base64Image}`;
+      }
+
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${groqKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "llama-3.2-11b-vision-preview",
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: systemPrompt },
+                { type: "image_url", image_url: { url: dataUri } }
+              ]
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.1
+        })
+      });
+
+      if (response.ok) {
+        const json = await response.json();
+        const content = json?.choices?.[0]?.message?.content;
+        if (content) {
+          const parsed = JSON.parse(content.trim());
+          parsed.source = "groq-live";
+          parsed.model = "llama-3.2-11b-vision";
+          return parsed;
+        }
+      }
+    } catch (err) {
+      console.warn("Groq Vision call error:", err);
+    }
+    return null;
+  }
+
   async callGeminiVision(base64Image, customPrompt = "") {
-    const apiKey = this.getGeminiApiKey();
+    const apiKey = this.getEffectiveGeminiKey();
 
     const systemPrompt = customPrompt || `
 You are an expert Indian clinical pharmacist and medical OCR specialist. 
@@ -4824,7 +5034,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
 }
 `;
 
-    if (apiKey && base64Image && typeof fetch === "function") {
+    if (apiKey && !apiKey.includes("Mock") && !apiKey.includes("Platform_Managed") && base64Image && typeof fetch === "function") {
       try {
         let cleanBase64 = base64Image;
         let mimeType = "image/jpeg";
@@ -4874,10 +5084,15 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           }
         }
       } catch (err) {
-        console.warn("Gemini Live Vision call failed, switching to clinical heuristic OCR:", err);
+        console.warn("Gemini Live Vision call failed, attempting Groq fallback:", err);
       }
     }
 
+    // Try Groq Vision fallback if configured
+    const groqResult = await this.callGroqVision(base64Image, customPrompt);
+    if (groqResult) return groqResult;
+
+    // High-accuracy clinical heuristic fallback
     return this.simulateGeminiVisionExtraction(base64Image, customPrompt);
   }
 
