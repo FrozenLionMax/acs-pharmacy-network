@@ -70,14 +70,14 @@ sandbox.window.acsApp = app;
 const stores = sandbox.INITIAL_STORES_DATA;
 console.log(`Building Static SEO pre-rendered pages for ${stores.length} pharmacies...`);
 
-const baseOrigin = "https://acsakhil.com";
+const baseOrigin = "https://www.drugs.systems";
 const currentDate = new Date().toISOString().split('T')[0];
 
 stores.forEach((store) => {
   const storeUrl = `${baseOrigin}/pharmacy/${store.slug}`;
   const ownerLabel = store.ownerName ? ` (${store.ownerName})` : "";
   const pageTitle = `${store.name}${ownerLabel} - Licensed Retail Pharmacy | ${store.address.split(',')[0]}, ${store.district}, UP`;
-  const pageDesc = `${store.name} located at ${store.address}. Licensed under Form 20/21 (${store.license20}). UPPC registered pharmacist ${store.ownerName || 'Qualified Pharmacist'} on duty. Phone ${store.phone}. Browse live stock, retail MRP & bulk free schemes.`;
+  const pageDesc = `${store.name} located at ${store.address}. Licensed under Form 20/21 (${store.license20}). UPPC registered pharmacist ${store.ownerName || 'Qualified Pharmacist'} on duty. Phone ${store.phone}. Browse live stock, verified retail MRP & statutory medicine catalog.`;
   const pageKeywords = `${store.name}, ${store.name} deoria, ${store.name} akhil, ${store.ownerName || ''}, chemist in ${store.district}, medical store ${store.city}, station road deoria chemist, subhash chowk chemist, UPPC registered pharmacist, Form 20 ${store.license20}, medicine stock availability`;
 
   // Render the full customer-facing hosted website HTML

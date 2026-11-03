@@ -387,16 +387,20 @@ try {
   if (ddhCatalog.includes('>Availability<')) {
     throw new Error('Old Availability header still present in customer catalog');
   }
-  if (!ddhCatalog.includes('>Free<')) {
-    throw new Error('Free header missing from customer catalog');
+  if (ddhCatalog.includes('>Free<')) {
+    throw new Error('Free header should be removed from public customer catalog');
   }
-  // Verify clean bonus number "+1" is present, and redundant "+1 Free" is NOT present in customer catalog
-  if (!ddhCatalog.includes('>+1<') && !ddhCatalog.includes('+1')) {
-    throw new Error(`Customer catalog missing free bonus badge '+1'`);
+  if (ddhCatalog.includes('Inquire') || ddhCatalog.includes('inquire')) {
+    throw new Error('Inquire option should be removed from public customer catalog');
   }
-  if (ddhCatalog.includes('+1 Free') || ddhCatalog.includes('10 + 1 Free')) {
-    throw new Error('Customer catalog still contains redundant "Free" word or legacy "10 + 1 Free" inside Free table column!');
+
+  // Verify that Free is kept for the pharmacist when logged in
+  app.currentUser = { role: 'pharmacy_owner', storeId: currentStore.id, name: currentStore.ownerName };
+  const pharmacistCatalog = app.getHostedMedicineCatalogHtml(currentStore);
+  if (!pharmacistCatalog.includes('>Free<')) {
+    throw new Error('Free header should be present in catalog for logged-in pharmacist');
   }
+  app.currentUser = null;
 
   app.setStockHorizonFilter('ALL');
   const ownerStocksHtml = app.getStocksViewHtml(currentStore);

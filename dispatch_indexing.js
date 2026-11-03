@@ -1,23 +1,18 @@
 const https = require('https');
 
 const payload = {
-  host: "acsakhil.com",
+  host: "www.drugs.systems",
   key: "acsakhil2026indexnow",
-  keyLocation: "https://acsakhil.com/acsakhil2026indexnow.txt",
+  keyLocation: "https://www.drugs.systems/acsakhil2026indexnow.txt",
   urlList: [
-    "https://acsakhil.com/",
-    "https://acsakhil.com/pharmacy/deoria-drug-house",
-    "https://acsakhil.com/deoria-drug-house",
-    "https://acsakhil.com/pharmacy/maa-vindhyavasini-medicos-deoria",
-    "https://acsakhil.com/maa-vindhyavasini-medicos-deoria",
-    "https://acsakhil.com/pharmacy/kushwaha-medical-store-deoria",
-    "https://acsakhil.com/kushwaha-medical-store-deoria",
-    "https://acsakhil.com/pharmacy/raghav-chemist-deoria",
-    "https://acsakhil.com/raghav-chemist-deoria",
-    "https://acsakhil.com/pharmacy/ganga-medical-hall-kanpur",
-    "https://acsakhil.com/ganga-medical-hall-kanpur",
-    "https://acsakhil.com/pharmacy/awadh-care-chemist-lucknow",
-    "https://acsakhil.com/awadh-care-chemist-lucknow"
+    "https://www.drugs.systems/pharmacy",
+    "https://www.drugs.systems/pharmacy/deoria-drug-house",
+    "https://www.drugs.systems/pharmacy/akhil-deoria",
+    "https://www.drugs.systems/pharmacy/maa-vindhyavasini-medicos-deoria",
+    "https://www.drugs.systems/pharmacy/kushwaha-medical-store-deoria",
+    "https://www.drugs.systems/pharmacy/raghav-chemist-deoria",
+    "https://www.drugs.systems/pharmacy/ganga-medical-hall-kanpur",
+    "https://www.drugs.systems/pharmacy/awadh-care-chemist-lucknow"
   ]
 };
 

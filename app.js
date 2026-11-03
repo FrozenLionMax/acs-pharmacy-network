@@ -3238,6 +3238,7 @@ class ACSApp {
   }
 
   getHostedMedicineCatalogHtml(store) {
+    const isPharmacist = !!(this.currentUser && (this.currentUser.storeId === store.id || this.currentUser.role === 'admin' || this.currentUser.role === 'pharmacy_owner'));
     const categoryFilter = this.hostedCategoryFilter || "ALL";
     const q = (this.hostedStockSearch || "").toLowerCase().trim();
     const viewMode = this.hostedCatalogViewMode || "table";
@@ -3278,7 +3279,7 @@ class ACSApp {
               <i class="fa fa-phone"></i> Call Store Pharmacist
             </a>
             <button onclick="window.acsApp.openPrescriptionUploadModal('${store.name}', '${encodeURIComponent(this.hostedStockSearch || '')}')" class="px-4 py-2 bg-amber-400 text-slate-950 font-black rounded-xl text-xs shadow-xs">
-              <i class="fa fa-upload"></i> Upload Bill / Rx to Inquire
+              <i class="fa fa-upload"></i> Upload Bill / Rx
             </button>
           </div>
         </div>
@@ -3287,15 +3288,15 @@ class ACSApp {
 
     // DESKTOP & TABLET MASTER TABLE (Similar to Pharmacy Owner's View, but strictly sanitized & uneditable)
     const tableHtml = `
-      <!-- Verified Pharmacy Stock & Schemes Notice -->
+      <!-- Verified Pharmacy Stock Notice -->
       <div class="mb-4 p-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-wrap items-center justify-between gap-2 shadow-2xs">
         <div class="flex items-center gap-2.5">
           <div class="w-7 h-7 rounded-lg bg-teal-500/10 text-[#135c7e] flex items-center justify-center text-xs font-bold flex-shrink-0">
             <i class="fa fa-list-alt"></i>
           </div>
           <div>
-            <span class="text-xs font-bold text-slate-900 block">Verified Pharmacy Stock &amp; Free Scheme Register</span>
-            <span class="text-[11px] text-slate-500">Live inventory with exact measured stock, packaging, MRP, and eligible manufacturer free schemes.</span>
+            <span class="text-xs font-bold text-slate-900 block">${isPharmacist ? 'Verified Pharmacy Stock &amp; Free Scheme Register' : 'Verified Pharmacy Stock Register'}</span>
+            <span class="text-[11px] text-slate-500">${isPharmacist ? 'Live inventory with exact measured stock, packaging, MRP, and eligible manufacturer free schemes.' : 'Live inventory with exact measured stock, packaging, and verified retail MRP.'}</span>
           </div>
         </div>
         <span class="px-2.5 py-1 bg-white text-slate-700 font-bold rounded-lg text-[10px] uppercase tracking-wider border border-slate-200">
@@ -3315,8 +3316,8 @@ class ACSApp {
               <th class="py-3.5 px-3 min-w-[130px] text-center">Stock</th>
               <th class="py-3.5 px-3 min-w-[130px] text-right">Cost Price (CP)</th>
               <th class="py-3.5 px-4 min-w-[150px] text-right">Retail Price (MRP)</th>
-              <th class="py-3.5 px-3 min-w-[110px] text-center">Free</th>
-              <th class="py-3.5 px-4 text-center min-w-[180px]">Actions</th>
+              ${isPharmacist ? `<th class="py-3.5 px-3 min-w-[110px] text-center">Free</th>` : ''}
+              <th class="py-3.5 px-4 text-center min-w-[140px]">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
@@ -3383,37 +3384,30 @@ class ACSApp {
                     <span class="text-[9px] text-slate-500 font-medium block">Per ${m.unit}</span>
                     ${unitDoseBadge}
                   </td>
-                  <td class="py-3.5 px-3 text-center">
-                    ${(() => {
-                      const scheme = this.formatFreeScheme(m.freeScheme);
-                      return (scheme && scheme !== '-') ? `
-                        <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-950 border border-amber-300 rounded-md font-bold text-xs shadow-2xs">
-                          ${scheme}
-                        </span>
-                      ` : `
-                        <span class="text-slate-400 font-mono text-xs">-</span>
-                      `;
-                    })()}
-                  </td>
+                  ${isPharmacist ? `
+                    <td class="py-3.5 px-3 text-center">
+                      ${(() => {
+                        const scheme = this.formatFreeScheme(m.freeScheme);
+                        return (scheme && scheme !== '-') ? `
+                          <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-950 border border-amber-300 rounded-md font-bold text-xs shadow-2xs">
+                            ${scheme}
+                          </span>
+                        ` : `
+                          <span class="text-slate-400 font-mono text-xs">-</span>
+                        `;
+                      })()}
+                    </td>
+                  ` : ''}
                   <td class="py-3.5 px-4 text-center">
                     <div class="inline-flex items-center gap-1.5">
                       <button 
                         type="button" 
                         onclick="window.acsApp.openMedicineDetailModal('${m.id}', '${store.id}')" 
-                        class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-[11px] transition inline-flex items-center gap-1 shadow-2xs"
+                        class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-[11px] transition inline-flex items-center gap-1 shadow-2xs"
                         title="View Formulation & Storage Details"
                       >
                         <i class="fa fa-info-circle text-[#135c7e]"></i> Details
                       </button>
-                      <a 
-                        href="${waUrl}" 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-[11px] transition inline-flex items-center gap-1 shadow-2xs"
-                        title="Inquire via WhatsApp"
-                      >
-                        <i class="fa fa-whatsapp"></i> Inquire
-                      </a>
                     </div>
                   </td>
                 </tr>
@@ -3486,6 +3480,7 @@ class ACSApp {
                 </div>
 
                 ${(() => {
+                  if (!isPharmacist) return '';
                   const scheme = this.formatFreeScheme(m.freeScheme);
                   return (scheme && scheme !== '-') ? `
                     <div class="py-1 px-2.5 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between text-xs text-amber-950">
@@ -3495,22 +3490,14 @@ class ACSApp {
                   ` : '';
                 })()}
 
-                <div class="grid grid-cols-2 gap-2">
+                <div>
                   <button 
                     type="button" 
                     onclick="window.acsApp.openMedicineDetailModal('${m.id}', '${store.id}')" 
-                    class="w-full py-2 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition text-center flex items-center justify-center gap-1"
+                    class="w-full py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition text-center flex items-center justify-center gap-1.5 shadow-2xs"
                   >
                     <i class="fa fa-info-circle text-[#135c7e]"></i> View Details
                   </button>
-                  <a 
-                    href="${waUrl}" 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    class="w-full py-2 px-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition text-center shadow-xs flex items-center justify-center gap-1"
-                  >
-                    <i class="fa fa-whatsapp"></i> Inquire
-                  </a>
                 </div>
               </div>
             </div>
@@ -3601,6 +3588,7 @@ class ACSApp {
     const body = document.getElementById("modal-generic-body");
     if (!modal || !title || !body) return;
 
+    const isPharmacist = !!(this.currentUser && (this.currentUser.storeId === store.id || this.currentUser.role === 'admin' || this.currentUser.role === 'pharmacy_owner'));
     const inStock = med.quantity > 0;
     const isScheduleH = med.schedule && med.schedule.includes("H");
     const cleanPhone = store.phone.replace(/[^0-9]/g, "");
@@ -3642,9 +3630,10 @@ class ACSApp {
         </div>
 
         ${(() => {
+          if (!isPharmacist) return '';
           const scheme = this.formatFreeScheme(med.freeScheme);
           return (scheme && scheme !== '-') ? `
-          <!-- Free Medicine Scheme Box -->
+          <!-- Free Medicine Scheme Box (Pharmacist View) -->
           <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-2xs">
             <div class="flex items-center gap-3">
               <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center text-base font-bold flex-shrink-0">
@@ -3730,12 +3719,9 @@ class ACSApp {
             Back to Catalog
           </button>
           <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
-            <button type="button" onclick="window.acsApp.closeModal(); window.acsApp.openPrescriptionUploadModal('${store.name}', '${encodeURIComponent(med.name)}');" class="flex-1 sm:flex-none px-4 py-2 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5">
+            <button type="button" onclick="window.acsApp.closeModal(); window.acsApp.openPrescriptionUploadModal('${store.name}', '${encodeURIComponent(med.name)}');" class="w-full sm:w-auto px-5 py-2 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5">
               <i class="fa fa-upload"></i> Upload Prescription for This
             </button>
-            <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="flex-1 sm:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5">
-              <i class="fa fa-whatsapp"></i> Inquire on WhatsApp
-            </a>
           </div>
         </div>
       </div>
