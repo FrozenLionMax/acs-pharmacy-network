@@ -2021,11 +2021,11 @@ class ACSApp {
 
           <div class="flex items-center gap-2 flex-wrap self-start sm:self-auto">
             <button onclick="window.acsApp.triggerNetworkIndexing()" class="bg-[#135c7e] hover:bg-[#0f4b67] text-white text-xs font-bold px-3.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-xs transition cursor-pointer">
-              <i class="fa fa-bolt text-amber-400"></i> Instant Google/SEO Index (All 6 Stores)
+              <i class="fa fa-bolt text-amber-400"></i> Instant Google/SEO Index (All ${this.stores.length} Stores)
             </button>
             <div class="flex items-center gap-2 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-full">
               <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-              <span>All 6 Stores Live &amp; Indexed</span>
+              <span>All ${this.stores.length} Stores Live &amp; Indexed</span>
             </div>
           </div>
         </div>
@@ -2290,7 +2290,7 @@ class ACSApp {
               onclick="window.acsApp.setLandingSubTab('showcase')" 
               class="bg-white/80 hover:bg-white text-slate-950 text-xs font-bold px-3 py-2.5 rounded-xl transition flex items-center gap-1.5"
             >
-              <span>All 6 Pharmacies</span>
+              <span>All ${this.stores.length} Pharmacies</span>
               <i class="fa fa-arrow-right"></i>
             </button>
           </div>
@@ -3883,6 +3883,36 @@ class ACSApp {
               <div><span class="text-slate-500 block text-[10px] uppercase font-bold">GSTIN:</span> <span class="font-mono">${store.gstin}</span></div>
               <div><span class="text-slate-500 block text-[10px] uppercase font-bold">FSDA Form 20:</span> <span class="font-mono">${store.license20}</span></div>
               <div><span class="text-slate-500 block text-[10px] uppercase font-bold">FSDA Form 21:</span> <span class="font-mono">${store.license21}</span></div>
+            </div>
+          </div>
+
+          <!-- Uttar Pradesh Licensed Pharmacy Network Directory for Search Engines & Visitors -->
+          <div class="max-w-7xl mx-auto mt-8 pt-6 border-t border-slate-900">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <h5 class="text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2">
+                <i class="fa fa-sitemap text-amber-400"></i> Partner Licensed Pharmacies • Uttar Pradesh Network (${this.stores.length} Live Chemist Stores)
+              </h5>
+              <a href="/" onclick="event.preventDefault(); window.acsApp.switchTab('landing'); window.acsApp.setLandingSubTab('showcase');" class="text-amber-400 hover:text-amber-300 text-[11px] font-semibold underline">
+                Browse Full State Directory &rarr;
+              </a>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 text-[11px]">
+              ${this.stores.map((s) => `
+                <a 
+                  href="/pharmacy/${s.slug}" 
+                  class="p-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 border ${s.id === store.id ? 'border-amber-400/50 text-amber-300 font-bold' : 'border-slate-800 text-slate-300 hover:text-white'} transition block"
+                  title="${s.name} - ${s.district}, UP"
+                >
+                  <div class="truncate font-semibold flex items-center gap-1.5">
+                    <i class="fa fa-hospital-o text-teal-400 text-[10px] flex-shrink-0"></i>
+                    <span class="truncate">${s.name}</span>
+                  </div>
+                  <div class="text-[10px] text-slate-500 mt-0.5 flex items-center justify-between">
+                    <span>${s.district}, UP</span>
+                    <span class="font-mono text-slate-400 font-normal">${s.license20}</span>
+                  </div>
+                </a>
+              `).join("")}
             </div>
           </div>
 

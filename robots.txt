@@ -1,9 +1,17 @@
-# Robots.txt for ACS Uttar Pradesh Pharmacy Network (acsakhil.com)
+# Robots.txt for ACS Uttar Pradesh Pharmacy Network (acsakhil.com / drugs.systems)
 # Allows Googlebot and all search engine crawlers to index individual pharmacy storefronts
 User-agent: *
 Allow: /
 Allow: /pharmacy/*
 Allow: /deoria-drug-house
+Allow: /awadh-care-chemist-lucknow
+Allow: /awadh-care-chemist
+Allow: /ganga-medical-hall-kanpur
+Allow: /apoorva-medical-stores-deoria
+Allow: /apoorva
+Allow: /maa-vindhyavasini-medicos-deoria
+Allow: /kushwaha-medical-store-deoria
+Allow: /raghav-chemist-deoria
 Allow: /sitemap.xml
 Allow: /feed.xml
 Allow: /googleUiTlffmr24BU04f8q64XuJHuhhUCEmyrToKIJo74JFU.html

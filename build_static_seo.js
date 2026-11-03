@@ -129,7 +129,7 @@ stores.forEach((store) => {
 
   // Pre-render the full store body inside #main-view-container!
   html = html.replace(
-    /<div id="main-view-container">\s*<!-- Dynamically filled by app\.js router -->\s*<\/div>/,
+    /<div id="main-view-container">[\s\S]*?<\/div>(?=\s*<\/main>)/,
     `<div id="main-view-container">\n${preRenderedBodyHtml}\n</div>`
   );
 
@@ -248,7 +248,16 @@ stores.forEach((store) => {
   });
   rssXml += `</channel>\n</rss>\n`;
   fs.writeFileSync(path.join(baseDir, 'feed.xml'), rssXml, 'utf8');
-  console.log(`Generated live RSS Feed: feed.xml with ${stores.length} items!`);
+  // Pre-render root index.html with live directory for immediate Googlebot crawlability
+  app.activeTab = 'landing';
+  app.landingSubTab = 'gateway';
+  const preRenderedLandingHtml = app.getLandingPageViewHtml();
+  let preRenderedIndex = indexTemplate.replace(
+    /<div id="main-view-container">[\s\S]*?<\/div>(?=\s*<\/main>)/,
+    `<div id="main-view-container">\n${preRenderedLandingHtml}\n</div>`
+  );
+  fs.writeFileSync(path.join(baseDir, 'index.html'), preRenderedIndex, 'utf8');
+  console.log(`Pre-rendered root index.html with ${stores.length} pharmacies (${preRenderedIndex.length} bytes)!`);
 
   // Call Google Indexing API automation
   try {
