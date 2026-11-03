@@ -59,12 +59,50 @@ class ACSApp {
     this.renderCurrentView();
     this.initCloudSync();
     this.initPwaInstallation();
+    this.handleUrlActionParams();
 
     window.addEventListener("popstate", () => {
       this.checkUrlRouting();
       this.renderHeaderBar();
       this.renderCurrentView();
+      this.handleUrlActionParams();
     });
+  }
+
+  handleUrlActionParams() {
+    if (typeof window === "undefined" || !window.location || !window.location.search) return;
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const action = urlParams.get("action");
+      const portal = urlParams.get("portal");
+
+      if (action === "rx") {
+        const store = this.getCurrentStore() || this.stores[0];
+        setTimeout(() => {
+          this.openPrescriptionUploadModal(store ? store.name : "");
+        }, 300);
+      } else if (action === "stock") {
+        setTimeout(() => {
+          const searchEl = document.getElementById("hosted-stock-search-input") || 
+                           document.getElementById("search-public-medicines") || 
+                           document.getElementById("search-medicines");
+          if (searchEl) {
+            searchEl.scrollIntoView({ behavior: "smooth" });
+            searchEl.focus();
+          }
+        }, 350);
+      } else if (portal === "true") {
+        if (this.currentUser) {
+          this.switchTab("store-detail");
+        } else {
+          setTimeout(() => {
+            this.openLoginModal();
+          }, 300);
+        }
+      }
+    } catch (e) {
+      console.warn("handleUrlActionParams notice:", e);
+    }
   }
 
   /* ========================================================================= */
@@ -2650,7 +2688,7 @@ class ACSApp {
     const isAudit = this.hostedSubTab === "audit-dossier";
     const cleanPhone = store.phone.replace(/[^0-9]/g, "");
     const waUrl = `https://wa.me/${cleanPhone.startsWith('91') ? cleanPhone : '91' + cleanPhone}?text=Hello%20${encodeURIComponent(store.name)},%20I%20am%20inquiring%20about%20medicine%20availability.`;
-    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.name + ' ' + store.address)}`;
+    const mapsUrl = store.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.name + ' ' + store.address)}`;
 
     // Pharmacist on Duty summary (prioritizes currently clocked-in duty pharmacist)
     const chiefPharmacist = store.staff.find((st) => st.isOnDuty && st.uppcRegNo && st.uppcRegNo.startsWith("UPPC")) ||
@@ -4465,11 +4503,13 @@ class ACSApp {
           </div>
 
           <div class="bg-white px-4 py-3 rounded-2xl border border-slate-200 shadow-xs self-start sm:self-auto flex items-center gap-4">
-            <div class="text-left pr-4 border-r border-slate-200">
-              <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Cost Price (CP)</span>
-              <span class="text-lg font-bold text-slate-700 font-mono">₹ ${(typeof med.purchaseRate === 'number' && med.purchaseRate > 0) ? med.purchaseRate.toFixed(2) : 'N/A'}</span>
-              <span class="text-[9px] text-slate-400 block mt-0.5">Wholesale / Trade</span>
-            </div>
+            ${isPharmacist ? `
+              <div class="text-left pr-4 border-r border-slate-200">
+                <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Cost Price (CP)</span>
+                <span class="text-lg font-bold text-slate-700 font-mono">₹ ${(typeof med.purchaseRate === 'number' && med.purchaseRate > 0) ? med.purchaseRate.toFixed(2) : 'N/A'}</span>
+                <span class="text-[9px] text-slate-400 block mt-0.5">Wholesale / Trade</span>
+              </div>
+            ` : ''}
             <div class="text-right">
               <span class="text-[10px] uppercase font-bold text-emerald-800 block tracking-wider">Retail Price (MRP)</span>
               <span class="text-2xl font-black text-emerald-700 font-mono">₹ ${med.mrp.toFixed(2)}</span>
@@ -4568,8 +4608,11 @@ class ACSApp {
             Back to Catalog
           </button>
           <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5">
+              <i class="fa fa-whatsapp text-sm"></i> WhatsApp
+            </a>
             <button type="button" onclick="window.acsApp.closeModal(); window.acsApp.openPrescriptionUploadModal('${store.name}', '${encodeURIComponent(med.name)}');" class="w-full sm:w-auto px-5 py-2 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5">
-              <i class="fa fa-upload"></i> Upload Prescription for This
+              <i class="fa fa-file-text-o"></i> Verify / Upload Rx
             </button>
           </div>
         </div>
