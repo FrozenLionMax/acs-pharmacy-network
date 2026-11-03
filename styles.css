@@ -291,7 +291,7 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
-/* Mobile Quick Action Sticky Bar */
+/* Mobile Quick Action Sticky Bar & PWA Touch Ergonomics */
 @media (max-width: 768px) {
   .mobile-bottom-bar {
     position: fixed;
@@ -299,20 +299,34 @@ body {
     left: 0;
     right: 0;
     z-index: 45;
-    background: rgba(15, 23, 42, 0.95);
-    backdrop-filter: blur(10px);
-    border-top: 1px solid rgba(255, 255, 255, 0.15);
-    padding: 0.65rem 1rem;
+    background: rgba(15, 23, 42, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 0.5rem 0.75rem;
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
     display: flex;
     align-items: center;
     justify-content: space-around;
-    gap: 0.5rem;
-    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.2);
+    gap: 0.35rem;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+  }
+
+  /* Prevent bottom fixed bar from overlapping footer or last elements on mobile */
+  body.hosted-mode main,
+  body.hosted-mode #main-view-container,
+  #main-view-container {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .table-responsive-touch {
     -webkit-overflow-scrolling: touch;
     overflow-x: auto;
+  }
+
+  /* Smooth touch tap feedback */
+  button, a {
+    -webkit-tap-highlight-color: transparent;
   }
 }
 

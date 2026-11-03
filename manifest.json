@@ -1,21 +1,57 @@
 {
-  "name": "ACS Pharmacy Network - Uttar Pradesh",
-  "short_name": "ACS Pharmacy",
-  "description": "Uttar Pradesh Retail Pharmacy Compliance & Medicine Availability Network",
-  "start_url": "/",
+  "name": "Drugs Systems • UP Pharmacy Network",
+  "short_name": "Drugs Systems",
+  "description": "Uttar Pradesh Licensed Retail Pharmacy Network, Real-Time Medicine Stock Directory & AI Prescription Verification Portal.",
+  "id": "/?source=pwa",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
   "theme_color": "#135c7e",
+  "categories": ["medical", "health", "shopping", "business"],
+  "shortcuts": [
+    {
+      "name": "Deoria Drug House Storefront",
+      "short_name": "Deoria Drug",
+      "description": "Open Deoria Drug House live medicine stock and verified pricing",
+      "url": "/pharmacy/deoria-drug-house",
+      "icons": [{ "src": "/favicon-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "AI Prescription Scanner",
+      "short_name": "AI Scan Rx",
+      "description": "Decipher doctor handwriting and auto-match stock with Google Gemini Vision",
+      "url": "/pharmacy/deoria-drug-house?action=rx",
+      "icons": [{ "src": "/favicon-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Search Medicine Catalog",
+      "short_name": "Medicine Stock",
+      "description": "Real-time UP pharmacy stock and MRP lookup",
+      "url": "/pharmacy/deoria-drug-house?action=stock",
+      "icons": [{ "src": "/favicon-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Pharmacist Owner Portal",
+      "short_name": "Portal",
+      "description": "Counter POS billing, Schedule H register, and stock management",
+      "url": "/?portal=true",
+      "icons": [{ "src": "/favicon-96x96.png", "sizes": "96x96" }]
+    }
+  ],
   "icons": [
     {
       "src": "/favicon-48x48.png",
       "sizes": "48x48",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/favicon-96x96.png",
       "sizes": "96x96",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/icon-192.png",

@@ -15,6 +15,11 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#135c7e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Drugs Systems" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="application-name" content="Drugs Systems" />
 
   <!-- Google Search Console Verification -->
   <meta name="google-site-verification" content="UiTlffmr24BU04f8q64XuJHuhhUCEmyrToKIJo74JFU" />
@@ -483,6 +488,9 @@
             <a href="https://www.google.com/search?q=Kushwaha%20Medical%20Store%20%26%20Surgical%20Deoria%20Ramesh%20Chandra%20Kushwaha" target="_blank" rel="noopener noreferrer" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 px-3 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs hidden lg:inline-flex" title="Search pharmacy on Google">
               <i class="fa fa-search text-teal-700"></i> Google Test
             </a>
+            <button onclick="window.acsApp.triggerPwaInstall()" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-3 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer" title="Install App on Phone / Desktop">
+              <i class="fa fa-download text-amber-700"></i> <span class="hidden sm:inline">Install</span> App
+            </button>
             
               <button onclick="window.acsApp.openLoginModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs" title="Pharmacist Login to edit store, stock and photos">
                 <i class="fa fa-lock text-amber-600"></i> Pharmacist Login
@@ -490,6 +498,8 @@
             
           </div>
         </header>
+
+        
 
         <!-- Main Content Area -->
         <main class="flex-1 w-full">
@@ -963,6 +973,7 @@
                   <!-- Medicine Results Container -->
                   <div id="hosted-medicine-results-container" class="space-y-4">
                     
+        
         <div class="hidden md:block">
           
       <!-- Verified Pharmacy Stock Notice -->
@@ -1046,6 +1057,7 @@
                       >
                         <i class="fa fa-info-circle text-[#135c7e]"></i> Details
                       </button>
+                      
                     </div>
                   </td>
                 </tr>
@@ -1097,6 +1109,7 @@
                       >
                         <i class="fa fa-info-circle text-[#135c7e]"></i> Details
                       </button>
+                      
                     </div>
                   </td>
                 </tr>
@@ -1148,6 +1161,7 @@
                       >
                         <i class="fa fa-info-circle text-[#135c7e]"></i> Details
                       </button>
+                      
                     </div>
                   </td>
                 </tr>
@@ -1203,14 +1217,15 @@
 
                 
 
-                <div>
+                <div class="flex items-center gap-2">
                   <button 
                     type="button" 
                     onclick="window.acsApp.openMedicineDetailModal('med-kms-01', 'store-up-003')" 
-                    class="w-full py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition text-center flex items-center justify-center gap-1.5 shadow-2xs"
+                    class="flex-1 py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition text-center flex items-center justify-center gap-1.5 shadow-2xs"
                   >
                     <i class="fa fa-info-circle text-[#135c7e]"></i> View Details
                   </button>
+                  
                 </div>
               </div>
             </div>
@@ -1257,14 +1272,15 @@
 
                 
 
-                <div>
+                <div class="flex items-center gap-2">
                   <button 
                     type="button" 
                     onclick="window.acsApp.openMedicineDetailModal('med-kms-02', 'store-up-003')" 
-                    class="w-full py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition text-center flex items-center justify-center gap-1.5 shadow-2xs"
+                    class="flex-1 py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition text-center flex items-center justify-center gap-1.5 shadow-2xs"
                   >
                     <i class="fa fa-info-circle text-[#135c7e]"></i> View Details
                   </button>
+                  
                 </div>
               </div>
             </div>
@@ -1311,14 +1327,15 @@
 
                 
 
-                <div>
+                <div class="flex items-center gap-2">
                   <button 
                     type="button" 
                     onclick="window.acsApp.openMedicineDetailModal('med-kms-03', 'store-up-003')" 
-                    class="w-full py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition text-center flex items-center justify-center gap-1.5 shadow-2xs"
+                    class="flex-1 py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition text-center flex items-center justify-center gap-1.5 shadow-2xs"
                   >
                     <i class="fa fa-info-circle text-[#135c7e]"></i> View Details
                   </button>
+                  
                 </div>
               </div>
             </div>
@@ -1382,18 +1399,28 @@
 
         <!-- Mobile Ergonomic Sticky Bottom Quick Action Bar (Screens <= 768px) -->
         <div class="mobile-bottom-bar md:hidden">
-          <a href="tel:919839120455" class="flex-1 py-2 px-1 bg-slate-800 text-white rounded-xl text-center text-xs font-bold flex flex-col items-center justify-center gap-0.5">
-            <i class="fa fa-phone text-amber-400 text-sm"></i>
-            <span class="text-[10px]">Call Store</span>
-          </a>
-          <a href="https://wa.me/919839120455?text=Hello%20Kushwaha%20Medical%20Store%20%26%20Surgical,%20I%20am%20inquiring%20about%20medicine%20availability." target="_blank" class="flex-1 py-2 px-1 bg-emerald-600 text-white rounded-xl text-center text-xs font-bold flex flex-col items-center justify-center gap-0.5 shadow">
-            <i class="fa fa-whatsapp text-white text-sm"></i>
-            <span class="text-[10px]">WhatsApp</span>
-          </a>
-          <button onclick="window.acsApp.openPrescriptionUploadModal('Kushwaha Medical Store & Surgical')" class="flex-1 py-2 px-1 bg-amber-400 text-slate-950 rounded-xl text-center text-xs font-black flex flex-col items-center justify-center gap-0.5 shadow">
-            <i class="fa fa-file-text-o text-slate-950 text-sm"></i>
-            <span class="text-[10px]">Verify Bill</span>
+          <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="flex-1 py-1.5 px-1 text-slate-200 hover:text-white flex flex-col items-center justify-center gap-0.5">
+            <i class="fa fa-home text-base text-teal-300"></i>
+            <span class="text-[9px] font-bold">Home</span>
           </button>
+          <button onclick="const el = document.getElementById('search-public-medicines'); if (el) { el.focus(); el.scrollIntoView({behavior: 'smooth'}); }" class="flex-1 py-1.5 px-1 text-slate-200 hover:text-white flex flex-col items-center justify-center gap-0.5">
+            <i class="fa fa-search text-base text-amber-300"></i>
+            <span class="text-[9px] font-bold">Search</span>
+          </button>
+          <button onclick="window.acsApp.openPrescriptionUploadModal('Kushwaha Medical Store & Surgical')" class="flex-1 py-1.5 px-1 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl flex flex-col items-center justify-center gap-0.5 font-black shadow-md -mt-2 border-2 border-slate-900">
+            <i class="fa fa-magic text-base"></i>
+            <span class="text-[9px]">AI Scan</span>
+          </button>
+          <a href="https://wa.me/919839120455?text=Hello%20Kushwaha%20Medical%20Store%20%26%20Surgical,%20I%20am%20inquiring%20about%20medicine%20availability." target="_blank" rel="noopener noreferrer" class="flex-1 py-1.5 px-1 text-slate-200 hover:text-emerald-400 flex flex-col items-center justify-center gap-0.5">
+            <i class="fa fa-whatsapp text-base text-emerald-400"></i>
+            <span class="text-[9px] font-bold">WhatsApp</span>
+          </a>
+          
+            <button onclick="window.acsApp.triggerPwaInstall()" class="flex-1 py-1.5 px-1 text-slate-200 hover:text-white flex flex-col items-center justify-center gap-0.5">
+              <i class="fa fa-download text-base text-teal-300"></i>
+              <span class="text-[9px] font-bold">Install</span>
+            </button>
+          
         </div>
       </div>
     
@@ -1492,5 +1519,16 @@
   <!-- Application Scripts -->
   <script src="/data.js"></script>
   <script src="/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then((reg) => {
+          console.log('Drugs Systems PWA ServiceWorker active with scope:', reg.scope);
+        }).catch((err) => {
+          console.warn('PWA ServiceWorker registration notice:', err);
+        });
+      });
+    }
+  </script>
 </body>
 </html>

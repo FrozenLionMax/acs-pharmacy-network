@@ -58,6 +58,7 @@ class ACSApp {
     this.renderHeaderBar();
     this.renderCurrentView();
     this.initCloudSync();
+    this.initPwaInstallation();
 
     window.addEventListener("popstate", () => {
       this.checkUrlRouting();
@@ -65,6 +66,174 @@ class ACSApp {
       this.renderCurrentView();
     });
   }
+
+  /* ========================================================================= */
+  /* PROGRESSIVE WEB APP (PWA) 1-TAP HOME SCREEN INSTALLATION ENGINE          */
+  /* ========================================================================= */
+
+  initPwaInstallation() {
+    if (typeof window === "undefined") return;
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      this.deferredPwaPrompt = e;
+      console.log("PWA beforeinstallprompt captured.");
+      const installBtns = document.querySelectorAll("#header-pwa-install-btn, .pwa-install-trigger");
+      installBtns.forEach((b) => {
+        if (b && b.classList) b.classList.remove("hidden");
+      });
+    });
+
+    window.addEventListener("appinstalled", () => {
+      this.deferredPwaPrompt = null;
+      this.showToast("Drugs Systems PWA installed successfully to your Home Screen!", "success");
+    });
+  }
+
+  async triggerPwaInstall() {
+    if (this.deferredPwaPrompt) {
+      try {
+        this.deferredPwaPrompt.prompt();
+        const choice = await this.deferredPwaPrompt.userChoice;
+        if (choice && choice.outcome === "accepted") {
+          this.showToast("Thank you for installing Drugs Systems!", "success");
+          this.deferredPwaPrompt = null;
+        } else {
+          this.showToast("Installation postponed. You can install anytime via the top bar.", "info");
+        }
+      } catch (err) {
+        console.warn("PWA install error:", err);
+        this.openPwaInstallGuideModal();
+      }
+    } else {
+      const isIos = typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent || "");
+      if (isIos) {
+        this.openPwaIosInstallModal();
+      } else {
+        this.openPwaInstallGuideModal();
+      }
+    }
+  }
+
+  openPwaIosInstallModal() {
+    const modal = document.getElementById("modal-generic");
+    const title = document.getElementById("modal-generic-title");
+    const body = document.getElementById("modal-generic-body");
+    if (!modal || !title || !body) return;
+
+    title.innerHTML = `<i class="fa fa-apple text-slate-900"></i> Install Drugs Systems on iPhone / iPad`;
+    body.innerHTML = `
+      <div class="space-y-4 text-xs text-slate-800">
+        <div class="p-4 bg-teal-50 border border-teal-200 rounded-2xl flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-teal-800 text-white flex items-center justify-center text-xl font-black shadow flex-shrink-0">
+            <i class="fa fa-plus-square"></i>
+          </div>
+          <div>
+            <h4 class="font-bold text-slate-900 text-sm">Add to Home Screen (iOS Safari)</h4>
+            <p class="text-teal-800 text-[11px] mt-0.5 leading-relaxed">
+              Install Drugs Systems on your Apple device for 1-tap instant launching, offline access, and full-screen camera scanning.
+            </p>
+          </div>
+        </div>
+
+        <div class="space-y-3 p-2">
+          <div class="flex items-start gap-3">
+            <span class="w-6 h-6 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center flex-shrink-0">1</span>
+            <div>
+              <p class="font-bold text-slate-900 text-xs">Tap the Share Icon in Safari</p>
+              <p class="text-slate-500 text-[11px]">Tap the square icon with an upward arrow <i class="fa fa-share-square-o text-blue-600 font-bold"></i> at the bottom toolbar of your Safari browser.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <span class="w-6 h-6 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center flex-shrink-0">2</span>
+            <div>
+              <p class="font-bold text-slate-900 text-xs">Select "Add to Home Screen"</p>
+              <p class="text-slate-500 text-[11px]">Scroll down the share sheet and tap <span class="font-semibold text-slate-800">"Add to Home Screen" <i class="fa fa-plus-square-o text-slate-700"></i></span>.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <span class="w-6 h-6 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center flex-shrink-0">3</span>
+            <div>
+              <p class="font-bold text-slate-900 text-xs">Confirm &amp; Launch</p>
+              <p class="text-slate-500 text-[11px]">Tap <strong class="text-teal-900">Add</strong> at top right. The Drugs Systems app icon will now appear on your iPhone home screen!</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex justify-end">
+          <button type="button" onclick="window.acsApp.closeModal()" class="px-5 py-2 bg-[#135c7e] text-white font-bold rounded-xl text-xs shadow-xs">
+            Got it, Close
+          </button>
+        </div>
+      </div>
+    `;
+    modal.classList.remove("hidden");
+  }
+
+  openPwaInstallGuideModal() {
+    const modal = document.getElementById("modal-generic");
+    const title = document.getElementById("modal-generic-title");
+    const body = document.getElementById("modal-generic-body");
+    if (!modal || !title || !body) return;
+
+    title.innerHTML = `<i class="fa fa-download text-teal-700"></i> Install Progressive Web App (PWA)`;
+    body.innerHTML = `
+      <div class="space-y-4 text-xs text-slate-800">
+        <div class="p-4 bg-gradient-to-r from-teal-900 to-[#135c7e] text-white rounded-2xl flex items-center gap-3 shadow-md">
+          <div class="w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center text-xl font-black shadow flex-shrink-0">
+            <i class="fa fa-mobile"></i>
+          </div>
+          <div>
+            <h4 class="font-extrabold text-white text-sm">1-Tap Fast Mobile &amp; Desktop Installation</h4>
+            <p class="text-teal-100 text-[11px] mt-0.5 leading-relaxed">
+              Enjoy offline inventory queries, instant camera OCR scanning, and native app speeds with zero app-store download needed.
+            </p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+            <div class="flex items-center gap-2">
+              <i class="fa fa-android text-emerald-600 text-lg"></i>
+              <strong class="text-slate-900 text-xs">Android (Chrome / Brave / Edge)</strong>
+            </div>
+            <ol class="list-decimal list-inside text-[11px] text-slate-600 space-y-1">
+              <li>Tap the three vertical dots (<strong>⋮</strong>) in the top-right corner.</li>
+              <li>Tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.</li>
+              <li>Tap <strong>Install</strong> to confirm.</li>
+            </ol>
+          </div>
+
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+            <div class="flex items-center gap-2">
+              <i class="fa fa-desktop text-blue-600 text-lg"></i>
+              <strong class="text-slate-900 text-xs">Windows / Mac PC (Chrome / Edge)</strong>
+            </div>
+            <ol class="list-decimal list-inside text-[11px] text-slate-600 space-y-1">
+              <li>Look at the address bar URL at the top right.</li>
+              <li>Click the <strong>Install (🖥️ / ⬇️)</strong> icon.</li>
+              <li>Click <strong>Install</strong> to create a dedicated desktop window.</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2.5 text-amber-900 text-[11px]">
+          <i class="fa fa-bolt text-amber-600 text-base flex-shrink-0"></i>
+          <span><strong>Offline Ready:</strong> Cached with Service Worker. You can inspect medicine stock, UPPC registrations, and counter billing even when your internet is intermittent.</span>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex justify-end">
+          <button type="button" onclick="window.acsApp.closeModal()" class="px-5 py-2 bg-[#135c7e] text-white font-bold rounded-xl text-xs shadow-xs">
+            Close Guide
+          </button>
+        </div>
+      </div>
+    `;
+    modal.classList.remove("hidden");
+  }
+
 
   checkUrlRouting() {
     // Check for QR mobile device synchronization hash (#sync=...)
@@ -787,6 +956,9 @@ class ACSApp {
       if (authContainer) {
         authContainer.innerHTML = `
           <div class="flex items-center gap-2 sm:gap-2.5">
+            <button id="header-pwa-install-btn" onclick="window.acsApp.triggerPwaInstall()" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20 shadow-xs cursor-pointer transition" title="Install Progressive Web App on Phone / Desktop">
+              <i class="fa fa-download text-amber-300"></i> <span class="hidden sm:inline">Install</span> App
+            </button>
             <button onclick="window.acsApp.syncNow()" class="cloud-sync-indicator inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30 border border-emerald-400/40 shadow-xs cursor-pointer transition" title="Live multi-device cloud synchronization active. Tap to force instant sync.">
               <span class="w-2 h-2 rounded-full bg-emerald-400"></span> <span class="hidden sm:inline">Live Cloud</span> Synced
             </button>
@@ -814,6 +986,9 @@ class ACSApp {
       if (authContainer) {
         authContainer.innerHTML = `
           <div class="flex items-center gap-2">
+            <button id="header-pwa-install-btn" onclick="window.acsApp.triggerPwaInstall()" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20 shadow-xs cursor-pointer transition" title="Install Progressive Web App on Phone / Desktop">
+              <i class="fa fa-download text-amber-300"></i> <span class="hidden sm:inline">Install</span> App
+            </button>
             <button onclick="window.acsApp.syncNow()" class="cloud-sync-indicator inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-white/10 text-white hover:bg-white/20 border border-white/20 shadow-xs cursor-pointer transition" title="Live network sync. Tap to refresh">
               <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Live Synced
             </button>
@@ -2599,6 +2774,9 @@ class ACSApp {
             <a href="https://www.google.com/search?q=${encodeURIComponent(store.name + ' ' + (store.district || '') + ' ' + (store.ownerName || ''))}" target="_blank" rel="noopener noreferrer" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 px-3 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs hidden lg:inline-flex" title="Search pharmacy on Google">
               <i class="fa fa-search text-teal-700"></i> Google Test
             </a>
+            <button onclick="window.acsApp.triggerPwaInstall()" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-3 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer" title="Install App on Phone / Desktop">
+              <i class="fa fa-download text-amber-700"></i> <span class="hidden sm:inline">Install</span> App
+            </button>
             ${this.currentUser && this.currentUser.storeId === store.id ? `
               <button onclick="window.acsApp.switchTab('store-detail')" class="bg-slate-900 hover:bg-black text-white px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm">
                 <i class="fa fa-dashboard text-amber-400"></i> Owner Portal
@@ -2610,6 +2788,32 @@ class ACSApp {
             `}
           </div>
         </header>
+
+        ${this.currentUser && this.currentUser.storeId === store.id ? `
+          <!-- Authenticated Pharmacist Owner Control Strip -->
+          <div class="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 text-white px-4 sm:px-10 py-2.5 border-b border-teal-800/60 flex flex-wrap items-center justify-between gap-2.5 text-xs shadow-inner">
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-full font-black text-[11px] uppercase tracking-wider">
+                <i class="fa fa-shield"></i> Verified Owner Mode
+              </span>
+              <span class="text-teal-200 hidden md:inline">Logged in as Akhileshwar Tripathi — you have full editing access over this deployed website.</span>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button onclick="window.acsApp.openEditStoreModal('${store.id}')" class="bg-teal-700 hover:bg-teal-600 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition">
+                <i class="fa fa-pencil"></i> Edit Store Profile
+              </button>
+              <button onclick="window.acsApp.openManageStorePhotosModal('${store.id}')" class="bg-teal-800 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition">
+                <i class="fa fa-picture-o text-teal-300"></i> Photos &amp; Gallery (${galleryPhotos.length})
+              </button>
+              <button onclick="window.acsApp.openAddMedicineModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition">
+                <i class="fa fa-plus-circle"></i> Add Medicine SKU
+              </button>
+              <button onclick="window.acsApp.switchTab('store-detail')" class="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition">
+                <i class="fa fa-dashboard"></i> Back to Portal
+              </button>
+            </div>
+          </div>
+        ` : ''}
 
         <!-- Main Content Area -->
         <main class="flex-1 w-full">
@@ -3416,9 +3620,14 @@ class ACSApp {
                           <button onclick="window.acsApp.openStaffProfilePhotoModal('${st.id}')" class="text-teal-700 hover:text-teal-900 hover:bg-teal-50 px-2 py-1 rounded text-xs font-bold transition inline-flex items-center gap-1" title="Crop & adjust profile photo look">
                             <i class="fa fa-camera text-teal-600"></i> Edit Photo / Crop
                           </button>
-                          <button onclick="window.acsApp.deleteStaff('${st.id}')" class="text-rose-600 hover:bg-rose-50 px-2 py-1 rounded text-xs transition" title="Remove staff">
-                            <i class="fa fa-trash"></i> Remove
-                          </button>
+                          <div class="flex items-center gap-1">
+                            <button onclick="window.acsApp.openEditStaffModal('${st.id}')" class="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-xs font-bold transition inline-flex items-center gap-1" title="Edit Staff Details">
+                              <i class="fa fa-pencil"></i> Edit
+                            </button>
+                            <button onclick="window.acsApp.deleteStaff('${st.id}')" class="text-rose-600 hover:bg-rose-50 px-2 py-1 rounded text-xs transition" title="Remove staff">
+                              <i class="fa fa-trash"></i> Remove
+                            </button>
+                          </div>
                         </div>
                       </div>
                     `;
@@ -3641,18 +3850,33 @@ class ACSApp {
 
         <!-- Mobile Ergonomic Sticky Bottom Quick Action Bar (Screens <= 768px) -->
         <div class="mobile-bottom-bar md:hidden">
-          <a href="tel:${cleanPhone}" class="flex-1 py-2 px-1 bg-slate-800 text-white rounded-xl text-center text-xs font-bold flex flex-col items-center justify-center gap-0.5">
-            <i class="fa fa-phone text-amber-400 text-sm"></i>
-            <span class="text-[10px]">Call Store</span>
-          </a>
-          <a href="${waUrl}" target="_blank" class="flex-1 py-2 px-1 bg-emerald-600 text-white rounded-xl text-center text-xs font-bold flex flex-col items-center justify-center gap-0.5 shadow">
-            <i class="fa fa-whatsapp text-white text-sm"></i>
-            <span class="text-[10px]">WhatsApp</span>
-          </a>
-          <button onclick="window.acsApp.openPrescriptionUploadModal('${store.name}')" class="flex-1 py-2 px-1 bg-amber-400 text-slate-950 rounded-xl text-center text-xs font-black flex flex-col items-center justify-center gap-0.5 shadow">
-            <i class="fa fa-file-text-o text-slate-950 text-sm"></i>
-            <span class="text-[10px]">Verify Bill</span>
+          <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="flex-1 py-1.5 px-1 text-slate-200 hover:text-white flex flex-col items-center justify-center gap-0.5">
+            <i class="fa fa-home text-base text-teal-300"></i>
+            <span class="text-[9px] font-bold">Home</span>
           </button>
+          <button onclick="const el = document.getElementById('search-public-medicines'); if (el) { el.focus(); el.scrollIntoView({behavior: 'smooth'}); }" class="flex-1 py-1.5 px-1 text-slate-200 hover:text-white flex flex-col items-center justify-center gap-0.5">
+            <i class="fa fa-search text-base text-amber-300"></i>
+            <span class="text-[9px] font-bold">Search</span>
+          </button>
+          <button onclick="window.acsApp.openPrescriptionUploadModal('${store.name}')" class="flex-1 py-1.5 px-1 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl flex flex-col items-center justify-center gap-0.5 font-black shadow-md -mt-2 border-2 border-slate-900">
+            <i class="fa fa-magic text-base"></i>
+            <span class="text-[9px]">AI Scan</span>
+          </button>
+          <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="flex-1 py-1.5 px-1 text-slate-200 hover:text-emerald-400 flex flex-col items-center justify-center gap-0.5">
+            <i class="fa fa-whatsapp text-base text-emerald-400"></i>
+            <span class="text-[9px] font-bold">WhatsApp</span>
+          </a>
+          ${this.currentUser && this.currentUser.storeId === store.id ? `
+            <button onclick="window.acsApp.switchTab('store-detail')" class="flex-1 py-1.5 px-1 text-amber-300 hover:text-white flex flex-col items-center justify-center gap-0.5">
+              <i class="fa fa-dashboard text-base"></i>
+              <span class="text-[9px] font-bold">Portal</span>
+            </button>
+          ` : `
+            <button onclick="window.acsApp.triggerPwaInstall()" class="flex-1 py-1.5 px-1 text-slate-200 hover:text-white flex flex-col items-center justify-center gap-0.5">
+              <i class="fa fa-download text-base text-teal-300"></i>
+              <span class="text-[9px] font-bold">Install</span>
+            </button>
+          `}
         </div>
       </div>
     `;
@@ -3976,6 +4200,24 @@ class ACSApp {
                       >
                         <i class="fa fa-info-circle text-[#135c7e]"></i> Details
                       </button>
+                      ${isPharmacist ? `
+                        <button 
+                          type="button" 
+                          onclick="window.acsApp.openEditMedicineModal('${m.id}')" 
+                          class="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold transition" 
+                          title="Edit Medicine Details"
+                        >
+                          <i class="fa fa-pencil"></i>
+                        </button>
+                        <button 
+                          type="button" 
+                          onclick="window.acsApp.deleteMedicine('${m.id}')" 
+                          class="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition" 
+                          title="Delete Medicine"
+                        >
+                          <i class="fa fa-trash"></i>
+                        </button>
+                      ` : ''}
                     </div>
                   </td>
                 </tr>
@@ -4058,14 +4300,32 @@ class ACSApp {
                   ` : '';
                 })()}
 
-                <div>
+                <div class="flex items-center gap-2">
                   <button 
                     type="button" 
                     onclick="window.acsApp.openMedicineDetailModal('${m.id}', '${store.id}')" 
-                    class="w-full py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition text-center flex items-center justify-center gap-1.5 shadow-2xs"
+                    class="flex-1 py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition text-center flex items-center justify-center gap-1.5 shadow-2xs"
                   >
                     <i class="fa fa-info-circle text-[#135c7e]"></i> View Details
                   </button>
+                  ${isPharmacist ? `
+                    <button 
+                      type="button" 
+                      onclick="window.acsApp.openEditMedicineModal('${m.id}')" 
+                      class="py-2 px-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-xl text-xs transition flex items-center justify-center gap-1"
+                      title="Edit Medicine"
+                    >
+                      <i class="fa fa-pencil"></i> Edit
+                    </button>
+                    <button 
+                      type="button" 
+                      onclick="window.acsApp.deleteMedicine('${m.id}')" 
+                      class="py-2 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl text-xs transition flex items-center justify-center gap-1"
+                      title="Delete Medicine"
+                    >
+                      <i class="fa fa-trash"></i>
+                    </button>
+                  ` : ''}
                 </div>
               </div>
             </div>
@@ -4074,9 +4334,27 @@ class ACSApp {
       </div>
     `;
 
+    const ownerBannerHtml = isPharmacist ? `
+      <div class="mb-4 p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-wrap items-center justify-between gap-2.5 shadow-xs">
+        <div class="flex items-center gap-2">
+          <span class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-sm font-bold shadow-xs">
+            <i class="fa fa-shield"></i>
+          </span>
+          <div>
+            <span class="text-xs font-black text-emerald-950 block">Pharmacist Live Inventory Management</span>
+            <span class="text-[11px] text-emerald-800">Directly add medicines, update batches/MRPs, or delete discontinued SKUs on your live website.</span>
+          </div>
+        </div>
+        <button onclick="window.acsApp.openAddMedicineModal()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs shadow-sm transition flex items-center gap-1.5">
+          <i class="fa fa-plus-circle"></i> Add New Medicine SKU
+        </button>
+      </div>
+    ` : '';
+
     if (viewMode === "table") {
       // In table mode: on desktop show master table, on mobile (md:hidden) show cards so phone screens never have horizontal overflow!
       return `
+        ${ownerBannerHtml}
         <div class="hidden md:block">
           ${tableHtml}
         </div>
@@ -4085,7 +4363,10 @@ class ACSApp {
         </div>
       `;
     } else {
-      return cardsHtml;
+      return `
+        ${ownerBannerHtml}
+        ${cardsHtml}
+      `;
     }
   }
 
@@ -6768,6 +7049,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     if (confirm(`Are you sure you want to delete ${item.name} from inventory?`)) {
       store.stocks = store.stocks.filter((m) => m.id !== medicineId);
       this.saveStores();
+      this.closeModal();
       this.renderCurrentView();
       this.showToast(`Deleted ${item.name} from stock records`, "danger");
     }
@@ -7919,6 +8201,9 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
                         Verify ID
                       </button>
                     ` : ''}
+                    <button onclick="window.acsApp.openEditStaffModal('${st.id}')" class="text-xs text-blue-600 hover:bg-blue-50 px-2 py-1 rounded font-semibold flex items-center gap-1" title="Edit Staff Member">
+                      <i class="fa fa-pencil"></i> Edit
+                    </button>
                     <button onclick="window.acsApp.deleteStaff('${st.id}')" class="text-xs text-rose-600 hover:bg-rose-50 px-2 py-1 rounded" title="Remove staff">
                       <i class="fa fa-trash"></i>
                     </button>
@@ -8781,7 +9066,8 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
   openEditStoreModal(storeId) {
     const store = this.stores.find((s) => s.id === storeId);
     if (!store) return;
-    if (store.isViewOnly) {
+    const isOwner = this.currentUser && (this.currentUser.storeId === store.id || this.currentUser.role === 'admin' || this.currentUser.role === 'pharmacy_owner');
+    if (store.isViewOnly && !isOwner) {
       this.showToast("This pharmacy is deployed for public view only. Editing is disabled.", "warning");
       return;
     }
@@ -9116,7 +9402,8 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
   openManageStorePhotosModal(storeId) {
     const store = this.stores.find((s) => s.id === storeId) || this.getCurrentStore();
     if (!store) return;
-    if (store.isViewOnly) {
+    const isOwner = this.currentUser && (this.currentUser.storeId === store.id || this.currentUser.role === 'admin' || this.currentUser.role === 'pharmacy_owner');
+    if (store.isViewOnly && !isOwner) {
       this.showToast("This pharmacy is deployed for public view only. Photo management is disabled.", "warning");
       return;
     }
@@ -10346,9 +10633,14 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           </div>
         </div>
 
-        <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
-          <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-xl font-bold shadow-sm transition">Save Changes & Update Live Site</button>
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+          <button type="button" onclick="window.acsApp.deleteMedicine('${med.id}')" class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-bold flex items-center gap-1.5 transition">
+            <i class="fa fa-trash"></i> Delete Medicine SKU
+          </button>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50">Cancel</button>
+            <button type="submit" class="px-5 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-xl font-bold shadow-sm transition">Save Changes & Update Live Site</button>
+          </div>
         </div>
       </form>
     `;
@@ -10469,6 +10761,111 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       this.showToast(`Enrolled ${newStaff.name} to store staff roster & synced to database.`, "success");
     };
   }
+
+  openEditStaffModal(staffId) {
+    const store = this.getCurrentStore();
+    const st = store.staff.find((s) => s.id === staffId);
+    if (!st) return;
+
+    const modal = document.getElementById("modal-generic");
+    const title = document.getElementById("modal-generic-title");
+    const body = document.getElementById("modal-generic-body");
+    if (!modal || !title || !body) return;
+
+    title.innerHTML = `<i class="fa fa-pencil-square-o text-teal-700"></i> Edit Staff / Pharmacist: ${st.name}`;
+    body.innerHTML = `
+      <form id="form-edit-staff" class="space-y-4 text-xs">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Staff Full Name *</label>
+            <input type="text" id="edit-staff-name" required value="${st.name}" class="w-full px-3 py-2 border rounded-lg" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Role / Designation *</label>
+            <select id="edit-staff-role" class="w-full px-3 py-2 border rounded-lg">
+              <option value="Chief Pharmacist" ${st.role === 'Chief Pharmacist' ? 'selected' : ''}>Chief Pharmacist</option>
+              <option value="Registered Pharmacist" ${st.role === 'Registered Pharmacist' ? 'selected' : ''}>Registered Pharmacist</option>
+              <option value="Assistant Pharmacist" ${st.role === 'Assistant Pharmacist' ? 'selected' : ''}>Assistant Pharmacist</option>
+              <option value="Billing & Inventory Desk" ${st.role === 'Billing & Inventory Desk' ? 'selected' : ''}>Billing & Inventory Desk</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">UPPC Reg Number</label>
+            <input type="text" id="edit-staff-uppc" value="${st.uppcRegNo || ''}" class="w-full px-3 py-2 border rounded-lg font-mono uppercase" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Qualification</label>
+            <input type="text" id="edit-staff-qual" value="${st.qualification || ''}" class="w-full px-3 py-2 border rounded-lg" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Phone Number *</label>
+            <input type="tel" id="edit-staff-phone" required value="${st.phone || ''}" class="w-full px-3 py-2 border rounded-lg" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Assigned Shift</label>
+            <input type="text" id="edit-staff-shift" value="${st.shift || ''}" class="w-full px-3 py-2 border rounded-lg" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Status</label>
+            <select id="edit-staff-status" class="w-full px-3 py-2 border rounded-lg">
+              <option value="Active" ${st.status === 'Active' ? 'selected' : ''}>Active</option>
+              <option value="On Leave" ${st.status === 'On Leave' ? 'selected' : ''}>On Leave</option>
+              <option value="Inactive" ${st.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
+            </select>
+          </div>
+          <div class="pt-5">
+            <label class="inline-flex items-center gap-2 text-slate-700">
+              <input type="checkbox" id="edit-staff-aadhaar" ${st.isAadhaarVerified ? 'checked' : ''} class="rounded text-[#135c7e]" />
+              <span>Aadhaar &amp; Identity Verified</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+          <button type="button" onclick="window.acsApp.deleteStaff('${st.id}')" class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg font-bold flex items-center gap-1.5 transition">
+            <i class="fa fa-trash"></i> Remove Staff
+          </button>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-lg text-slate-600">Cancel</button>
+            <button type="submit" class="px-5 py-2 bg-[#135c7e] text-white rounded-lg font-semibold">Save Staff Changes</button>
+          </div>
+        </div>
+      </form>
+    `;
+
+    modal.classList.remove("hidden");
+
+    document.getElementById("form-edit-staff").onsubmit = (e) => {
+      e.preventDefault();
+      st.name = document.getElementById("edit-staff-name").value.trim();
+      st.role = document.getElementById("edit-staff-role").value;
+      st.uppcRegNo = document.getElementById("edit-staff-uppc").value.trim() || "N/A";
+      st.qualification = document.getElementById("edit-staff-qual").value.trim() || "N/A";
+      st.phone = document.getElementById("edit-staff-phone").value.trim();
+      st.shift = document.getElementById("edit-staff-shift").value.trim();
+      st.status = document.getElementById("edit-staff-status").value;
+      st.isAadhaarVerified = document.getElementById("edit-staff-aadhaar").checked;
+
+      this.saveStores(true);
+      this.closeModal();
+      this.renderCurrentView();
+      this.showToast(`Updated staff details for "${st.name}" successfully.`, "success");
+    };
+  }
+
+  openEditStoreProfileModal(storeId) {
+    this.openEditStoreModal(storeId);
+  }
+
 
   openAddSalesModal() {
     const modal = document.getElementById("modal-generic");

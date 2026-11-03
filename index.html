@@ -15,6 +15,11 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#135c7e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Drugs Systems" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="application-name" content="Drugs Systems" />
 
   <!-- Google Search Console Verification -->
   <meta name="google-site-verification" content="UiTlffmr24BU04f8q64XuJHuhhUCEmyrToKIJo74JFU" />
@@ -369,5 +374,16 @@
   <!-- Application Scripts -->
   <script src="/data.js"></script>
   <script src="/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then((reg) => {
+          console.log('Drugs Systems PWA ServiceWorker active with scope:', reg.scope);
+        }).catch((err) => {
+          console.warn('PWA ServiceWorker registration notice:', err);
+        });
+      });
+    }
+  </script>
 </body>
 </html>

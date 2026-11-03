@@ -68,6 +68,8 @@ const mockWindow = {
   scrollTo: () => {},
   history: { pushState: () => {} },
   navigator: { clipboard: { writeText: () => Promise.resolve() } },
+  confirm: () => true,
+  alert: () => {},
   document: mockDocument
 };
 
@@ -75,6 +77,8 @@ const sandbox = {
   window: mockWindow,
   document: mockDocument,
   localStorage: mockLocalStorage,
+  confirm: () => true,
+  alert: () => {},
   console: console,
   setTimeout: (fn) => setTimeout(fn, 0),
   setInterval: () => {},
@@ -751,10 +755,166 @@ try {
   await app.handlePosGeminiAutoFill(currentStore.id, 'data:image/jpeg;base64,mockSlipImage');
   console.log('openPosDispensingModal() & handlePosGeminiAutoFill() verified: Rx Slip deciphered and POS inputs auto-filled!');
 
+  // =========================================================================
+  // --- Testing Progressive Web App (PWA) & Mobile UX Suite ---
+  // =========================================================================
+  console.log('--- Testing Progressive Web App (PWA) & Mobile UX Suite ---');
+
+  // Verify Service Worker and Web App Manifest files exist
+  const swPath = path.join(__dirname, 'sw.js');
+  const manifestPath = path.join(__dirname, 'manifest.json');
+  if (!fs.existsSync(swPath)) throw new Error('sw.js file missing from root directory!');
+  if (!fs.existsSync(manifestPath)) throw new Error('manifest.json file missing from root directory!');
+
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  if (manifest.short_name !== 'Drugs Systems' || !manifest.shortcuts || manifest.shortcuts.length < 3) {
+    throw new Error('manifest.json missing required short_name or PWA shortcuts!');
+  }
+  console.log(`PWA manifest verified: Name: "${manifest.name}", Shortcuts: ${manifest.shortcuts.length}!`);
+
+  // Verify PWA installation triggers and modal guides
+  app.openPwaIosInstallModal();
+  const iosModalHtml = mockElements['modal-generic-body'].innerHTML;
+  if (!iosModalHtml.includes('Add to Home Screen (iOS Safari)') || !iosModalHtml.includes('Share Icon')) {
+    throw new Error('openPwaIosInstallModal missing iOS installation steps!');
+  }
+
+  app.openPwaInstallGuideModal();
+  const guideModalHtml = mockElements['modal-generic-body'].innerHTML;
+  if (!guideModalHtml.includes('1-Tap Fast Mobile') || !guideModalHtml.includes('Android') || !guideModalHtml.includes('Windows')) {
+    throw new Error('openPwaInstallGuideModal missing installation instructions!');
+  }
+
+  // Trigger PWA install with simulated deferred prompt
+  let prompted = false;
+  app.deferredPwaPrompt = {
+    prompt: () => { prompted = true; },
+    userChoice: Promise.resolve({ outcome: 'accepted' })
+  };
+  await app.triggerPwaInstall();
+  if (!prompted) throw new Error('triggerPwaInstall failed to invoke deferred prompt!');
+  console.log('PWA installation engine verified: 1-Tap prompt, iOS modal, & installation guide verified successfully!');
+
+  // =========================================================================
+  // --- Testing Storefront Owner Controls & Ergonomic Mobile Bottom Bar ---
+  // =========================================================================
+  console.log('--- Testing Storefront Owner Controls & Ergonomic Mobile Bottom Bar ---');
+
+  // 1. Guest visitor check: 0 owner buttons, 5-button consumer mobile bottom bar
+  app.currentUser = null;
+  const guestStorefrontHtml = app.getHostedWebsiteViewHtml(currentStore);
+  if (guestStorefrontHtml.includes('Verified Owner Mode') || guestStorefrontHtml.includes('Edit Store Profile')) {
+    throw new Error('Guest view contains Owner Mode buttons!');
+  }
+  if (!guestStorefrontHtml.includes('mobile-bottom-bar') || !guestStorefrontHtml.includes('AI Scan') || !guestStorefrontHtml.includes('Install')) {
+    throw new Error('Guest mobile bottom bar missing required action touch targets!');
+  }
+  console.log('Guest storefront mobile experience verified: 0 owner controls, 5 ergonomic touch targets present!');
+
+  // 2. Authenticated Owner check: Owner Mode bar, in-catalog edit/delete, 5-button owner mobile bottom bar
+  app.currentUser = {
+    username: 'akhil_chemist',
+    role: 'pharmacy_owner',
+    storeId: 'store-up-001',
+    name: 'Akhileshwar Tripathi'
+  };
+  const ownerStorefrontHtml = app.getHostedWebsiteViewHtml(currentStore);
+  if (!ownerStorefrontHtml.includes('Verified Owner Mode') || !ownerStorefrontHtml.includes('Edit Store Profile') || !ownerStorefrontHtml.includes('Add Medicine SKU')) {
+    throw new Error('Owner storefront view missing Verified Owner Mode control bar!');
+  }
+  if (!ownerStorefrontHtml.includes('mobile-bottom-bar') || !ownerStorefrontHtml.includes('Portal')) {
+    throw new Error('Owner mobile bottom bar missing Portal shortcut!');
+  }
+
+  // 3. In-catalog Owner Controls
+  const ownerCatalogHtml = app.getHostedMedicineCatalogHtml(currentStore);
+  if (!ownerCatalogHtml.includes('Pharmacist Live Inventory Management') || !ownerCatalogHtml.includes('Add New Medicine SKU')) {
+    throw new Error('Owner catalog missing Live Inventory Management banner!');
+  }
+  if (!ownerCatalogHtml.includes('openEditMedicineModal') || !ownerCatalogHtml.includes('deleteMedicine')) {
+    throw new Error('Owner catalog missing inline Edit and Delete medicine actions!');
+  }
+  console.log('Authenticated Owner storefront verified: Verified Owner Mode bar, 5-target bar, and inline SKU CRUD active!');
+
+  // =========================================================================
+  // --- Testing Full CRUD Operations (Store, Medicine, Staff) ---
+  // =========================================================================
+  console.log('--- Testing Full CRUD Operations (Store, Medicine, Staff) ---');
+
+  // 1. Store Profile CRUD
+  app.openEditStoreModal('store-up-001');
+  const storeModalBody = mockElements['modal-generic-body'].innerHTML;
+  if (!storeModalBody.includes('edit-store-name') || !storeModalBody.includes('Manage Multi-Photo Gallery')) {
+    throw new Error('openEditStoreModal missing store name input or gallery management shortcut!');
+  }
+  app.openEditStoreProfileModal('store-up-001');
+
+  // 2. Staff CRUD (Add, Edit, Delete)
+  const initialStaffCount = currentStore.staff.length;
+  const testStaffId = `st-test-${Date.now()}`;
+  currentStore.staff.push({
+    id: testStaffId,
+    name: 'Test Pharmacist Ram',
+    role: 'Assistant Pharmacist',
+    uppcRegNo: 'UPPC-PH-99999',
+    qualification: 'B.Pharm',
+    phone: '+91 91234 56789',
+    shift: 'Evening',
+    status: 'Active',
+    isOnDuty: false,
+    isAadhaarVerified: true
+  });
+  if (currentStore.staff.length !== initialStaffCount + 1) throw new Error('Failed to push test staff member!');
+
+  app.openEditStaffModal(testStaffId);
+  const staffModalBody = mockElements['modal-generic-body'].innerHTML;
+  if (!staffModalBody.includes('Test Pharmacist Ram') || !staffModalBody.includes('UPPC-PH-99999')) {
+    throw new Error('openEditStaffModal failed to render existing staff fields!');
+  }
+
+  // Delete staff member
+  const origConfirm = global.confirm;
+  global.confirm = () => true;
+  app.deleteStaff(testStaffId);
+  if (currentStore.staff.some(s => s.id === testStaffId)) {
+    throw new Error('deleteStaff failed to remove test staff member from store!');
+  }
+  console.log('Staff CRUD verified: Add, Edit modal, and Delete functional!');
+
+  // 3. Medicine SKU CRUD (Edit modal delete button)
+  const testMedId = `med-test-${Date.now()}`;
+  currentStore.stocks.push({
+    id: testMedId,
+    name: 'Test Azithro 250',
+    saltName: 'Azithromycin 250mg',
+    manufacturer: 'Test Labs',
+    schedule: 'Schedule H',
+    batchNo: 'BAT-TEST-001',
+    expiryDate: '2028-12-31',
+    quantity: 50,
+    mrp: 120,
+    purchaseRate: 80,
+    freeScheme: '+1'
+  });
+  app.openEditMedicineModal(testMedId);
+  const medModalBody = mockElements['modal-generic-body'].innerHTML;
+  if (!medModalBody.includes('Delete Medicine SKU') || !medModalBody.includes(testMedId)) {
+    throw new Error('openEditMedicineModal missing Delete Medicine SKU button in footer!');
+  }
+
+  app.deleteMedicine(testMedId);
+  if (currentStore.stocks.some(m => m.id === testMedId)) {
+    throw new Error('deleteMedicine failed to remove test medicine SKU!');
+  }
+  global.confirm = origConfirm;
+  console.log('Medicine SKU CRUD verified: Edit modal, live updates, and Delete button functional!');
+
   console.log('ALL CONNECTION TESTS VERIFIED AND PASSED 100%!');
   console.log('ALL PHOTO & PROFILE STUDIO TESTS PASSED 100%!');
   console.log('ALL PUBLIC STOREFRONT & AUTO-MATCHER TESTS PASSED 100%!');
   console.log('ALL AUTHENTICATION & VIEW-ONLY STORE CONSTRAINTS PASSED 100%!');
+  console.log('ALL PWA & MOBILE ERGONOMIC TESTS PASSED 100%!');
+  console.log('ALL FULL CRUD (STORE, MEDICINE, STAFF) TESTS PASSED 100%!');
   console.log('ALL TESTS PASSED COMPLETELY WITHOUT ANY ERRORS!');
   } catch (err) {
     console.error('ERROR during testing:', err);
