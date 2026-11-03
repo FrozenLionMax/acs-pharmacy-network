@@ -922,6 +922,76 @@ try {
   global.confirm = origConfirm;
   console.log('Medicine SKU CRUD verified: Edit modal, live updates, and Delete button functional!');
 
+  // =========================================================================
+  // --- Testing New Deployed Pharmacy: Apoorva Medical Stores, Deoria ---
+  // =========================================================================
+  console.log('--- Testing New Deployed Pharmacy: Apoorva Medical Stores, Deoria ---');
+
+  const apoorvaStore = app.stores.find(s => s.id === 'store-up-007' || s.slug === 'apoorva-medical-stores-deoria');
+  if (!apoorvaStore) throw new Error('Apoorva Medical Stores (store-up-007) not found in store network!');
+  if (apoorvaStore.ownerName !== 'Apoorva Srivastava') throw new Error('Incorrect owner for Apoorva Medical Stores!');
+  if (apoorvaStore.district !== 'Deoria') throw new Error('Incorrect district for Apoorva Medical Stores!');
+  if (apoorvaStore.stocks.length < 8) throw new Error('Expected at least 8 medicines in Apoorva Medical Stores stock!');
+  if (apoorvaStore.staff.length < 2) throw new Error('Expected at least 2 staff members in Apoorva Medical Stores roster!');
+
+  // Test routing to Apoorva
+  mockWindow.location.pathname = '/pharmacy/apoorva-medical-stores-deoria';
+  app.checkUrlRouting();
+  if (app.currentStoreId !== 'store-up-007' || app.activeTab !== 'hosted-site') {
+    throw new Error('Routing to /pharmacy/apoorva-medical-stores-deoria failed!');
+  }
+
+  // Test alias routing
+  mockWindow.location.pathname = '/apoorva';
+  app.checkUrlRouting();
+  if (app.currentStoreId !== 'store-up-007') {
+    throw new Error('Routing alias /apoorva failed to resolve to Apoorva Medical Stores!');
+  }
+
+  // Test storefront rendering
+  const apoorvaHtml = app.getHostedWebsiteViewHtml(apoorvaStore);
+  if (!apoorvaHtml.includes('Apoorva Medical Stores') || !apoorvaHtml.includes('UPPC-PH-38491') || !apoorvaHtml.includes('Augmentin 625 Duo Tablet')) {
+    throw new Error('Apoorva Medical Stores storefront HTML missing key store/staff/stock info!');
+  }
+
+  // Test medicine search within Apoorva
+  app.hostedStockSearch = 'Azithral';
+  const filteredCatalog = app.getHostedMedicineCatalogHtml(apoorvaStore);
+  if (!filteredCatalog.includes('Azithral 500 Tablet') || filteredCatalog.includes('Shelcal 500')) {
+    throw new Error('Catalog live search failed for Apoorva Medical Stores!');
+  }
+  app.hostedStockSearch = '';
+
+  // Test prescription matching against Apoorva\'s inventory
+  const testRxSample = [
+    { name: 'Augmentin 625', saltName: 'Amoxicillin + Clavulanate' },
+    { name: 'Dolo 650', saltName: 'Paracetamol 650mg' },
+    { name: 'Telma 40', saltName: 'Telmisartan' }
+  ];
+  const apoorvaMatches = app.matchPrescriptionMedicinesToStore(testRxSample, apoorvaStore);
+  const matchedAugmentin = apoorvaMatches.find(m => m.matchedStock && m.matchedStock.name.includes('Augmentin'));
+  const matchedTelma = apoorvaMatches.find(m => m.matchedStock && m.matchedStock.name.includes('Telma'));
+  if (!matchedAugmentin || matchedAugmentin.status !== 'in_stock') throw new Error('Failed to match Augmentin against Apoorva stock!');
+  if (!matchedTelma || matchedTelma.status !== 'in_stock') throw new Error('Failed to match Telma against Apoorva stock!');
+
+  // Test POS counter dispensing for Apoorva
+  app.openPosDispensingModal('store-up-007');
+  const apoorvaPosBody = mockElements['modal-generic-body'].innerHTML;
+  if (!apoorvaPosBody.includes('Apoorva Medical Stores') || !apoorvaPosBody.includes('UP/DEO/2023/20/2481')) {
+    throw new Error('openPosDispensingModal for Apoorva Medical Stores missing store license/name!');
+  }
+
+  // Test Schema.org Knowledge Graph for Apoorva
+  const apoorvaAliases = app.generateStoreAliases(apoorvaStore);
+  if (!apoorvaAliases.includes('अपूर्वा मेडिकल स्टोर्स') || !apoorvaAliases.includes('Apoorva Srivastava Chemist')) {
+    throw new Error('Apoorva Medical Stores missing Hindi/English search aliases!');
+  }
+  const apoorvaSchema = app.generateStoreSchemaGraph(apoorvaStore, 'https://www.drugs.systems');
+  if (apoorvaSchema['@graph'][0].name !== 'Apoorva Medical Stores') {
+    throw new Error('Apoorva Medical Stores Schema.org graph name mismatch!');
+  }
+  console.log('Apoorva Medical Stores, Deoria verified from scratch: Routing, Aliases, Storefront, Catalog Search, Rx Matching, POS, & Schema.org passed 100%!');
+
   console.log('ALL CONNECTION TESTS VERIFIED AND PASSED 100%!');
   console.log('ALL PHOTO & PROFILE STUDIO TESTS PASSED 100%!');
   console.log('ALL PUBLIC STOREFRONT & AUTO-MATCHER TESTS PASSED 100%!');

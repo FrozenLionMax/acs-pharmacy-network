@@ -370,8 +370,19 @@ class ACSApp {
       this.saveStores();
     }
 
-    // Guarantee data completeness and arrays across all stores
     let dataModified = false;
+
+    // Auto-merge newly added stores from INITIAL_STORES_DATA if not present in existing localStorage
+    if (typeof INITIAL_STORES_DATA !== "undefined" && Array.isArray(INITIAL_STORES_DATA)) {
+      INITIAL_STORES_DATA.forEach((initStore) => {
+        if (!this.stores.some((s) => s.id === initStore.id || s.slug === initStore.slug)) {
+          this.stores.push(JSON.parse(JSON.stringify(initStore)));
+          dataModified = true;
+        }
+      });
+    }
+
+    // Guarantee data completeness and arrays across all stores
     this.stores.forEach((s) => {
       s.slugAliases = s.slugAliases || (s.slug ? [s.slug] : []);
       s.prescriptions = s.prescriptions || [];
@@ -1230,6 +1241,16 @@ class ACSApp {
         "Hazratganj Chemist Lucknow",
         "Civil Hospital Medical Store Lucknow",
         "अवध मेडिकल स्टोर लखनऊ"
+      ],
+      "store-up-007": [
+        "Apoorva Medical Stores",
+        "अपूर्वा मेडिकल स्टोर्स",
+        "Apoorva Medical Store Deoria",
+        "Apoorva Srivastava Chemist",
+        "अपूर्वा श्रीवास्तव देवरिया",
+        "Civil Lines Chemist Deoria",
+        "Women Hospital Medical Store Deoria",
+        "अपूर्वा मेडिकल स्टोर देवरिया"
       ]
     };
 
