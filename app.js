@@ -2013,19 +2013,16 @@ class ACSApp {
               onclick="window.acsApp.setLandingSubTab('showcase')" 
               class="px-4 py-2 rounded-xl transition flex items-center gap-2 ${isShowcase ? 'bg-[#135c7e] text-white shadow font-black' : 'text-slate-600 hover:text-slate-900'}"
             >
-              <i class="fa fa-globe"></i>
-              <span>Live Deployed Pharmacies Directory</span>
-              <span class="bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full text-[10px] font-black">${this.stores.length} LIVE</span>
+              <i class="fa fa-hospital-o"></i>
+              <span>Public UP Pharmacy Directory</span>
+              <span class="bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full text-[10px] font-black">${this.stores.length} VERIFIED</span>
             </button>
           </div>
 
           <div class="flex items-center gap-2 flex-wrap self-start sm:self-auto">
-            <button onclick="window.acsApp.triggerNetworkIndexing()" class="bg-[#135c7e] hover:bg-[#0f4b67] text-white text-xs font-bold px-3.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-xs transition cursor-pointer">
-              <i class="fa fa-bolt text-amber-400"></i> Instant Google/SEO Index (All ${this.stores.length} Stores)
-            </button>
             <div class="flex items-center gap-2 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-full">
               <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-              <span>All ${this.stores.length} Stores Live &amp; Indexed</span>
+              <span>${this.stores.length} Licensed UP Pharmacies Online</span>
             </div>
           </div>
         </div>
@@ -2067,16 +2064,16 @@ class ACSApp {
                 <i class="fa fa-shield text-amber-500"></i> Uttar Pradesh Public Pharmacy Network
               </div>
               <h2 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                Directory of Live Deployed Pharmacy Websites
+                Licensed Retail Pharmacy Directory &amp; Verification Registry
               </h2>
               <p class="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl leading-relaxed">
-                Official public storefront websites hosted under ACS Central Registry with statutory UP FSDA Form 20/21 compliance, active UPPC registered pharmacists, and real-time medicine availability.
+                Official public registry of Uttar Pradesh retail pharmacies. Verify UP FSDA Form 20/21 drug licenses, check on-duty UPPC registered pharmacists, and browse live verified medicine availability across all UP districts.
               </p>
             </div>
 
             <div class="flex items-center gap-3">
               <button onclick="window.acsApp.openAddStoreModal()" class="bg-[#135c7e] hover:bg-[#0f4b67] text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm">
-                <i class="fa fa-plus-circle"></i> Host a New Pharmacy
+                <i class="fa fa-plus-circle"></i> Register Licensed Pharmacy
               </button>
             </div>
           </div>
@@ -2130,12 +2127,12 @@ class ACSApp {
 
                     <div class="absolute top-3 left-3 flex items-center gap-1.5 flex-wrap">
                       ${s.isViewOnly ? `
-                        <span class="bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow">
-                          <i class="fa fa-eye"></i> Deployed • View Only
+                        <span class="bg-emerald-700 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow">
+                          <i class="fa fa-shield"></i> UPPC Licensed &amp; Verified
                         </span>
                       ` : `
-                        <span class="bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow">
-                          <i class="fa fa-check-circle"></i> Managed Store
+                        <span class="bg-teal-700 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow">
+                          <i class="fa fa-hospital-o"></i> Flagship Pharmacy
                         </span>
                       `}
                       ${s.is24x7 ? `<span class="bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase shadow">24x7 Open</span>` : ''}
@@ -2211,17 +2208,17 @@ class ACSApp {
                       href="/pharmacy/${s.slug}"
                       onclick="event.preventDefault(); window.acsApp.viewHostedWebsite('${s.id}')" 
                       class="bg-[#135c7e] hover:bg-[#0f4b67] text-white py-2 px-3 rounded-xl font-bold transition flex items-center justify-center gap-1.5 shadow-xs"
-                      title="Open live storefront website"
+                      title="Verify pharmacy details, license, and medicine stock"
                     >
-                      <i class="fa fa-globe"></i> Open Storefront
+                      <i class="fa fa-hospital-o"></i> Verify Store &amp; Stock
                     </a>
                     <a 
                       href="/pharmacy/${s.slug}/audit"
                       onclick="event.preventDefault(); window.acsApp.viewHostedAudit('${s.id}')" 
                       class="bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 py-2 px-3 rounded-xl font-bold transition flex items-center justify-center gap-1.5"
-                      title="View statutory compliance dossier"
+                      title="View statutory compliance and staff credentials"
                     >
-                      <i class="fa fa-file-text-o"></i> Audit Dossier
+                      <i class="fa fa-shield"></i> License &amp; Staff Dossier
                     </a>
                   </div>
 
@@ -2309,11 +2306,11 @@ class ACSApp {
                 <i class="fa fa-shield"></i> State Pharmacy & Medicine Data Registry
               </div>
               <h1 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight">
-                Host Your Pharmacy.<br />
-                <span class="text-amber-400">Get a Real Live Website</span> & Statutory Compliance.
+                Verify UP Pharmacies.<br />
+                <span class="text-amber-400">Search Real Medicine Stocks</span>, Staff &amp; Licenses.
               </h1>
               <p class="text-teal-100 text-sm sm:text-base leading-relaxed max-w-xl">
-                The centralized portal for Uttar Pradesh pharmacy owners to create their verified public storefront website, manage UPPC registered pharmacists, track live medicine batches, and secure financial records.
+                The official public verification portal for Uttar Pradesh retail pharmacies. Search any licensed chemist across Lucknow, Kanpur, Deoria, and all UP districts to verify Form 20/21 drug licenses, on-duty UPPC registered pharmacists, and live retail medicine availability.
               </p>
 
               <!-- Live Stat Badges -->
@@ -2442,23 +2439,23 @@ class ACSApp {
           </div>
         </div>
 
-        <!-- Sample Live Hosted Stores Preview Banner -->
+        <!-- Verified Retail Pharmacies Across Uttar Pradesh -->
         <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
-                <i class="fa fa-desktop text-[#135c7e]"></i> Explore Live Hosted Pharmacy Websites
+                <i class="fa fa-hospital-o text-[#135c7e]"></i> Verified Retail Pharmacies Across Uttar Pradesh
               </h3>
               <p class="text-xs text-slate-500">
-                Click any store below to see the real hosted webpage generated by the platform.
+                Browse verified chemists below to check live medicine stock, on-duty pharmacists, and statutory Form 20/21 licenses.
               </p>
             </div>
             <div class="flex items-center gap-2">
               <button onclick="window.acsApp.setLandingSubTab('showcase')" class="bg-amber-400 hover:bg-amber-500 text-slate-950 px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-sm">
-                <i class="fa fa-list"></i> Full Live Directory (${this.stores.length})
+                <i class="fa fa-list"></i> Full State Directory (${this.stores.length})
               </button>
               <button onclick="window.acsApp.openAddStoreModal()" class="bg-[#135c7e] hover:bg-[#0f4b67] text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-                <i class="fa fa-plus-circle"></i> Host Your Own Pharmacy
+                <i class="fa fa-plus-circle"></i> Register Chemist Store
               </button>
             </div>
           </div>
@@ -2482,7 +2479,7 @@ class ACSApp {
                     onclick="event.preventDefault(); window.acsApp.viewHostedWebsite('${s.id}')" 
                     class="w-full bg-[#135c7e] hover:bg-[#0f4b67] text-white text-[11px] font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1"
                   >
-                    <i class="fa fa-globe"></i> View Hosted Site
+                    <i class="fa fa-hospital-o"></i> Verify Pharmacy &amp; Stocks &rarr;
                   </a>
                 </div>
               </div>

@@ -13,6 +13,7 @@ Allow: /maa-vindhyavasini-medicos-deoria
 Allow: /kushwaha-medical-store-deoria
 Allow: /raghav-chemist-deoria
 Allow: /sitemap.xml
+Allow: /sitemap.html
 Allow: /feed.xml
 Allow: /googleUiTlffmr24BU04f8q64XuJHuhhUCEmyrToKIJo74JFU.html
 

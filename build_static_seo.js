@@ -259,6 +259,66 @@ stores.forEach((store) => {
   fs.writeFileSync(path.join(baseDir, 'index.html'), preRenderedIndex, 'utf8');
   console.log(`Pre-rendered root index.html with ${stores.length} pharmacies (${preRenderedIndex.length} bytes)!`);
 
+  // Generate public HTML Sitemap & Directory Hub (/sitemap.html and /pharmacy/index.html)
+  const sitemapHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Uttar Pradesh Licensed Retail Pharmacy Directory & Drug Verification Portal | All Stores</title>
+  <meta name="description" content="Official public registry of Uttar Pradesh retail pharmacies, UPPC registered pharmacists on duty, Form 20/21 drug licenses, and live verified medicine stocks across UP." />
+  <link rel="canonical" href="${baseOrigin}/sitemap.html" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#f4f7fa] text-slate-800 p-6 md:p-12 antialiased">
+  <div class="max-w-5xl mx-auto">
+    <div class="mb-8 border-b border-slate-200 pb-5">
+      <span class="text-xs font-bold text-[#135c7e] uppercase tracking-wider block mb-1">Official State Registry</span>
+      <h1 class="text-3xl font-black text-slate-900">Uttar Pradesh Licensed Retail Pharmacy Directory</h1>
+      <p class="text-slate-600 text-sm mt-1">Search, verify Form 20/21 drug licenses, and check registered UPPC pharmacists on duty across ${stores.length} verified chemist stores.</p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      ${stores.map(s => `
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <span class="text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full">
+                UPPC Licensed Pharmacy
+              </span>
+              <span class="text-xs font-mono font-bold text-slate-500">${s.district}, UP</span>
+            </div>
+            <h2 class="text-xl font-bold text-slate-900 mb-1">
+              <a href="/pharmacy/${s.slug}" class="text-[#135c7e] hover:underline">${s.name}</a>
+            </h2>
+            <p class="text-xs text-slate-500 mb-4">${s.address}</p>
+            <div class="text-xs space-y-1.5 text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <div><strong class="text-slate-900">Form 20 Drug License:</strong> <span class="font-mono">${s.license20}</span></div>
+              <div><strong class="text-slate-900">Form 21 Drug License:</strong> <span class="font-mono">${s.license21}</span></div>
+              <div><strong class="text-slate-900">Chief Pharmacist:</strong> ${s.ownerName} (${(s.staff && s.staff[0] && s.staff[0].uppcRegNo) || 'UPPC-PH'})</div>
+              <div><strong class="text-slate-900">Helpline / Order:</strong> ${s.phone}</div>
+              <div><strong class="text-slate-900">Live Medicine Catalog:</strong> ${s.stocks.length} Verified In-Stock Medicines</div>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <a href="/pharmacy/${s.slug}" class="font-bold text-[#135c7e] hover:underline flex items-center gap-1">
+              Verify Store &amp; Medicine Stock &rarr;
+            </a>
+            <a href="/pharmacy/${s.slug}/audit" class="text-slate-500 hover:text-slate-800 underline">
+              License Dossier
+            </a>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="mt-12 text-center text-xs text-slate-500 border-t border-slate-200 pt-6">
+      <a href="/" class="text-[#135c7e] font-bold hover:underline">&larr; Return to Central Portal Gateway</a>
+    </div>
+  </div>
+</body>
+</html>`;
+  fs.writeFileSync(path.join(baseDir, 'sitemap.html'), sitemapHtml, 'utf8');
+  fs.writeFileSync(path.join(baseDir, 'pharmacy', 'index.html'), sitemapHtml, 'utf8');
+  console.log(`Generated public HTML sitemap & pharmacy index hub (/sitemap.html & /pharmacy/index.html)!`);
+
   // Call Google Indexing API automation
   try {
     const { notifyGoogleIndexing } = require('./google_indexing.js');
