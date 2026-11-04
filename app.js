@@ -1649,17 +1649,16 @@ class ACSApp {
       postalCode = pinMatch ? pinMatch[1] : (store.city === "Kanpur Nagar" ? "208001" : (store.city === "Lucknow" ? "226001" : "274001"));
     }
 
-    // In-stock medicine catalog items
+    // Pharmacy Dispensing & Healthcare Supply Services
     const catalogOffers = (store.stocks || []).map(med => ({
       "@type": "Offer",
       "itemOffered": {
-        "@type": "Drug",
-        "name": med.name,
-        "activeIngredient": med.saltName || med.name,
-        "dosageForm": med.unit || "Tablets / Strips",
-        "manufacturer": {
-          "@type": "Organization",
-          "name": med.manufacturer || "Generic Pharmaceuticals"
+        "@type": "Service",
+        "name": `${med.name} Dispensing`,
+        "description": `${med.name} (${med.saltName || med.name}, ${med.unit || "Tablets / Strips"}). Manufacturer: ${med.manufacturer || "Pharmaceutical"}. Dispensed by licensed pharmacist under Form 20/21.`,
+        "provider": {
+          "@type": "Pharmacy",
+          "name": store.name
         }
       },
       "price": med.mrp,
