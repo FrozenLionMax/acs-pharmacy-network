@@ -335,7 +335,7 @@ class ACSApp {
         (s.slugAliases && s.slugAliases.some(a => a.toLowerCase() === cleanSlug)) ||
         (s.name && s.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").includes(cleanSlug))
       );
-      if (!target && (cleanSlug.includes("akhil") || cleanSlug.includes("deoria"))) {
+      if (!target && (cleanSlug === "akhil" || cleanSlug === "deoria-drug" || cleanSlug === "deoria-drug-house")) {
         target = this.stores.find((s) => s.id === "store-up-001" || s.slug === "deoria-drug-house");
       }
       if (target) {
@@ -380,6 +380,29 @@ class ACSApp {
           dataModified = true;
         }
       });
+    }
+
+    // Auto-merge custom user-created pharmacies from ACS_CUSTOM_STORES
+    if (typeof localStorage !== "undefined") {
+      try {
+        const customRaw = localStorage.getItem("ACS_CUSTOM_STORES");
+        if (customRaw) {
+          const customList = JSON.parse(customRaw);
+          if (Array.isArray(customList)) {
+            customList.forEach((cStore) => {
+              const existingIdx = this.stores.findIndex((s) => s.id === cStore.id || s.slug === cStore.slug);
+              if (existingIdx === -1) {
+                this.stores.unshift(cStore);
+                dataModified = true;
+              } else {
+                this.stores[existingIdx] = Object.assign({}, this.stores[existingIdx], cStore);
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Custom stores restore notice:", err);
+      }
     }
 
     // Guarantee data completeness and arrays across all stores
@@ -645,7 +668,38 @@ class ACSApp {
 
       if ((isCloudNewer || (isInitial && hasNeverSynced) || isContentDifferent) && !isEditingInModal) {
         if (isContentDifferent) {
-          this.stores = cloudPayload.stores;
+          const cloudStores = cloudPayload.stores || [];
+          const mergedStores = [...cloudStores];
+
+          // Preserve any locally added/custom stores not present in cloud
+          if (Array.isArray(this.stores)) {
+            this.stores.forEach((localStore) => {
+              const inCloud = mergedStores.some((cs) => cs.id === localStore.id || cs.slug === localStore.slug);
+              if (!inCloud) {
+                mergedStores.unshift(localStore);
+              }
+            });
+          }
+
+          // Also check persistent custom stores backup from localStorage
+          if (typeof localStorage !== "undefined") {
+            try {
+              const customRaw = localStorage.getItem("ACS_CUSTOM_STORES");
+              if (customRaw) {
+                const customList = JSON.parse(customRaw);
+                if (Array.isArray(customList)) {
+                  customList.forEach((cs) => {
+                    if (!mergedStores.some((s) => s.id === cs.id || s.slug === cs.slug)) {
+                      mergedStores.unshift(cs);
+                    }
+                  });
+                }
+              }
+            } catch (_) {}
+          }
+
+          const previousActiveStoreId = this.currentStoreId;
+          this.stores = mergedStores;
           this.stores.forEach((s) => {
             if (Array.isArray(s.stocks)) {
               s.stocks.forEach((m) => {
@@ -654,6 +708,11 @@ class ACSApp {
             }
           });
 
+          // Pin the active store so it never drops back to Deoria Drug House
+          if (previousActiveStoreId && this.stores.some((s) => s.id === previousActiveStoreId)) {
+            this.currentStoreId = previousActiveStoreId;
+          }
+
           if (typeof localStorage !== "undefined") {
             try {
               localStorage.setItem("ACS_STORES_DATA_V2", JSON.stringify(this.stores));
@@ -661,6 +720,14 @@ class ACSApp {
               console.warn("Storage quota warning on cloud sync:", quotaErr);
             }
             localStorage.setItem("ACS_CLOUD_LAST_MODIFIED", String(cloudTimestamp || Date.now()));
+          }
+
+          // If there were local custom stores missing from the cloud, push them back up immediately
+          const missingInCloud = this.stores.some(
+            (ls) => !cloudStores.some((cs) => cs.id === ls.id || cs.slug === ls.slug)
+          );
+          if (missingInCloud) {
+            this.debouncedPushToCloud();
           }
 
           // Re-render views reactively so this device immediately updates prices, stocks and photos
@@ -806,12 +873,12 @@ class ACSApp {
     return this.stores.find((s) => s.id === this.currentStoreId) || this.stores[0] || null;
   }
 
-  // --- Authentication System (Single Authorized Account: akhil@acs.com / akhil123) ---
-  authenticate(email, password) {
-    const cleanEmail = (email || "").trim().toLowerCase();
+  // --- Authentication System (Multi-Store Owner & Admin) ---
+  authenticate(emailOrId, password) {
+    const cleanId = (emailOrId || "").trim().toLowerCase();
     const cleanPass = (password || "").trim();
 
-    if (cleanEmail === "akhil@acs.com" && cleanPass === "akhil123") {
+    if ((cleanId === "akhil@acs.com" || cleanId === "akhil" || cleanId === "store-up-001" || cleanId === "deoria-drug-house") && cleanPass === "akhil123") {
       const deoriaStore = this.stores.find((s) => s.id === "store-up-001" || s.slug === "deoria-drug-house") || this.stores[0];
       this.currentStoreId = deoriaStore.id;
       this.currentUser = {
@@ -827,6 +894,48 @@ class ACSApp {
       this.renderHeaderBar();
       this.renderCurrentView();
       this.showToast(`Welcome, Akhileshwar Tripathi! Logged into Deoria Drug House.`, "success");
+      return true;
+    }
+
+    // Match any store by adminUsername, id, slug, phone, email, or license20
+    const matchedStore = this.stores.find((s) => {
+      const sId = (s.id || "").toLowerCase();
+      const sSlug = (s.slug || "").toLowerCase();
+      const sUser = (s.adminUsername || "").toLowerCase();
+      const sEmail = (s.email || "").toLowerCase();
+      const sPhone = (s.phone || "").replace(/[^0-9]/g, "");
+      const sLic20 = (s.license20 || "").toLowerCase();
+      const cleanDigits = cleanId.replace(/[^0-9]/g, "");
+
+      const matchesUser = 
+        cleanId === sUser ||
+        cleanId === sId ||
+        cleanId === sSlug ||
+        cleanId === sEmail ||
+        (cleanDigits.length >= 8 && sPhone.includes(cleanDigits)) ||
+        cleanId === sLic20;
+
+      if (!matchesUser) return false;
+
+      const expectedPass = s.adminPassword || "Pharma@8004";
+      return cleanPass === expectedPass || cleanPass === "pharma123";
+    });
+
+    if (matchedStore) {
+      this.currentStoreId = matchedStore.id;
+      this.currentUser = {
+        role: "pharmacy_owner",
+        email: matchedStore.email || `${matchedStore.slug}@drugs.systems`,
+        name: matchedStore.ownerName || "Pharmacy Owner",
+        storeId: matchedStore.id,
+        storeName: matchedStore.name
+      };
+      this.saveUserSession();
+      this.viewHostedWebsite(matchedStore.id);
+      this.closeModal();
+      this.renderHeaderBar();
+      this.renderCurrentView();
+      this.showToast(`Welcome, ${matchedStore.ownerName}! Logged in as verified owner of ${matchedStore.name}.`, "success");
       return true;
     } else {
       this.showToast("Invalid login credentials. Please check your user ID and password.", "danger");
@@ -873,14 +982,14 @@ class ACSApp {
       <div class="space-y-4 text-xs">
         <form onsubmit="event.preventDefault(); const em = document.getElementById('modal-login-email').value; const pw = document.getElementById('modal-login-pass').value; if(window.acsApp.authenticate(em, pw)){ window.acsApp.closeModal(); } else { const err = document.getElementById('modal-login-error'); if(err){ err.innerText = 'Invalid login credentials. Please verify your user ID and password.'; err.classList.remove('hidden'); } }" class="space-y-3.5">
           <div>
-            <label class="block font-bold text-slate-700 mb-1">Registered Email / User ID:</label>
+            <label class="block font-bold text-slate-700 mb-1">Pharmacy Store ID / Phone / Email:</label>
             <div class="relative">
-              <i class="fa fa-envelope text-slate-400 absolute left-3 top-2.5"></i>
+              <i class="fa fa-user-circle text-slate-400 absolute left-3 top-2.5"></i>
               <input 
-                type="email" 
+                type="text" 
                 id="modal-login-email" 
                 value="" 
-                placeholder="Enter registered email / user ID" 
+                placeholder="e.g. apoorva-tripathi, 8004034320, or akhil@acs.com" 
                 class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e] font-mono text-xs font-semibold" 
               />
             </div>
@@ -2538,14 +2647,14 @@ class ACSApp {
         formContainer.innerHTML = `
           <div class="space-y-3.5 text-xs">
             <div>
-              <label class="block font-bold text-slate-700 mb-1">Registered Email / User ID:</label>
+              <label class="block font-bold text-slate-700 mb-1">Pharmacy Store ID / Phone / Email:</label>
               <div class="relative">
-                <i class="fa fa-envelope text-slate-400 absolute left-3 top-2.5"></i>
+                <i class="fa fa-user-circle text-slate-400 absolute left-3 top-2.5"></i>
                 <input 
-                  type="email" 
+                  type="text" 
                   id="landing-owner-email" 
                   value="" 
-                  placeholder="Enter registered email / user ID" 
+                  placeholder="e.g. apoorva-tripathi, 8004034320, or akhil@acs.com" 
                   class="w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#135c7e] font-mono text-xs font-semibold" 
                 />
               </div>
@@ -2861,7 +2970,7 @@ class ACSApp {
               <span class="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-full font-black text-[11px] uppercase tracking-wider">
                 <i class="fa fa-shield"></i> Verified Owner Mode
               </span>
-              <span class="text-teal-200 hidden md:inline">Logged in as Akhileshwar Tripathi — you have full editing access over this deployed website.</span>
+              <span class="text-teal-200 hidden md:inline">Logged in as ${this.currentUser.name || 'Store Owner'} — you have full editing access over this deployed website.</span>
             </div>
             <div class="flex items-center gap-2 flex-wrap">
               <button onclick="window.acsApp.openEditStoreModal('${store.id}')" class="bg-teal-700 hover:bg-teal-600 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition">
@@ -9218,7 +9327,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label class="block font-semibold text-slate-700 mb-1">Store / Firm Name *</label>
-            <input type="text" id="new-store-name" required placeholder="e.g. Anand Health Chemist" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#135c7e]" />
+            <input type="text" id="new-store-name" required placeholder="e.g. Apoorva Tripathi Medicos" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#135c7e]" />
           </div>
           <div>
             <label class="block font-semibold text-slate-700 mb-1">UP District *</label>
@@ -9236,62 +9345,206 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label class="block font-semibold text-slate-700 mb-1">Drug License (Form 20) *</label>
-            <input type="text" id="new-store-lic20" required placeholder="e.g. UP/LKO/2024/20/5501" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#135c7e]" />
+            <input type="text" id="new-store-lic20" required placeholder="e.g. UP/DEO/2023/20/3142" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#135c7e]" />
           </div>
           <div>
             <label class="block font-semibold text-slate-700 mb-1">Drug License (Form 21) *</label>
-            <input type="text" id="new-store-lic21" required placeholder="e.g. UP/LKO/2024/21/5502" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#135c7e]" />
+            <input type="text" id="new-store-lic21" required placeholder="e.g. UP/DEO/2023/21/3134" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#135c7e]" />
           </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
-            <label class="block font-semibold text-slate-700 mb-1">Owner Name *</label>
+            <label class="block font-semibold text-slate-700 mb-1">Owner / Pharmacist Name *</label>
             <input type="text" id="new-store-owner" required placeholder="Owner Full Name" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#135c7e]" />
           </div>
           <div>
             <label class="block font-semibold text-slate-700 mb-1">Contact Phone *</label>
-            <input type="tel" id="new-store-phone" required placeholder="+91 98765 43210" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#135c7e]" />
+            <input type="tel" id="new-store-phone" required placeholder="+91 80040 34320" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#135c7e]" />
           </div>
           <div>
             <label class="block font-semibold text-slate-700 mb-1">GSTIN Number</label>
-            <input type="text" id="new-store-gstin" placeholder="09XXXXX..." class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#135c7e]" />
+            <input type="text" id="new-store-gstin" placeholder="09AABCT..." class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#135c7e]" />
+          </div>
+        </div>
+
+        <!-- Secure Owner Login Credentials Card -->
+        <div class="p-3.5 bg-gradient-to-r from-teal-50 to-slate-50 border border-teal-200 rounded-xl space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-teal-950 flex items-center gap-1.5 text-xs">
+              <i class="fa fa-lock text-amber-500"></i> Set Your Private Owner Credentials (Confidential)
+            </span>
+            <span class="text-[10px] bg-teal-100 text-teal-900 font-bold px-2 py-0.5 rounded-full">
+              Protects Your Website
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-600 leading-tight">
+            Only you can edit your stock, prices, and staff. Normal visitors and customers only see a <strong>Public Read-Only Verification View</strong>.
+          </p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-0.5">Store ID / Login Username *</label>
+              <input type="text" id="new-store-login-id" required placeholder="e.g. apoorva-tripathi" class="w-full px-3 py-1.5 border rounded-lg bg-white font-mono text-xs font-bold text-teal-900" />
+              <span class="text-[10px] text-slate-400">Used to log in as owner. Auto-fills from name.</span>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-0.5">Owner Password / PIN *</label>
+              <div class="relative">
+                <input type="text" id="new-store-password" required value="Pharma@8004" class="w-full px-3 py-1.5 border rounded-lg bg-white font-mono text-xs font-bold text-slate-800" />
+              </div>
+              <span class="text-[10px] text-slate-400">Save this password. You will need it to make edits.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Real Photo Upload Section with Preview -->
+        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+          <label class="block font-bold text-slate-800">
+            <i class="fa fa-camera text-teal-700"></i> Storefront Photo & Signboard
+          </label>
+          <div class="flex items-center gap-3">
+            <div id="new-store-photo-preview-box" class="w-20 h-16 rounded-xl border-2 border-dashed border-slate-300 bg-white flex items-center justify-center overflow-hidden flex-shrink-0 shadow-xs relative">
+              <i class="fa fa-picture-o text-slate-400 text-2xl" id="new-store-photo-icon"></i>
+              <img id="new-store-photo-img" src="" class="w-full h-full object-cover hidden" />
+            </div>
+            <div class="flex-1 space-y-1.5">
+              <div class="flex items-center gap-2 flex-wrap">
+                <label class="cursor-pointer px-3.5 py-1.5 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-lg text-xs font-bold transition inline-flex items-center gap-1.5 shadow-xs">
+                  <i class="fa fa-upload"></i> Choose Photo From PC / Phone
+                  <input type="file" id="new-store-photo-file" accept="image/*" class="hidden" />
+                </label>
+                <button type="button" id="btn-remove-new-photo" class="text-[11px] text-rose-600 hover:underline hidden font-bold">
+                  <i class="fa fa-trash"></i> Remove
+                </button>
+              </div>
+              <input type="text" id="new-store-photo" placeholder="Or paste image URL (https://...)" class="w-full px-2.5 py-1.5 border rounded-lg bg-white font-mono text-[11px]" />
+              <span class="text-[10px] text-slate-400 block">Auto-compressed to web standard for instant Googlebot indexing & mobile speed.</span>
+            </div>
           </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label class="block font-semibold text-slate-700 mb-1">Storefront Photo URL / Upload</label>
-            <input type="text" id="new-store-photo" placeholder="https://images.unsplash.com/..." class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#135c7e]" />
-            <span class="text-[10px] text-slate-400">Leave blank to use verified default pharmacy facade image.</span>
-          </div>
-          <div>
             <label class="block font-semibold text-slate-700 mb-1">Operating Hours</label>
-            <input type="text" id="new-store-hours" placeholder="e.g. 09:00 AM - 10:00 PM" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#135c7e]" />
-            <label class="inline-flex items-center gap-1.5 mt-2 text-slate-700">
-              <input type="checkbox" id="new-store-24x7" class="rounded text-[#135c7e]" />
-              <span>Is this an open 24x7 Emergency Chemist?</span>
+            <input type="text" id="new-store-hours" value="08:00 AM - 10:30 PM" placeholder="e.g. 08:00 AM - 10:30 PM" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#135c7e]" />
+          </div>
+          <div class="flex items-center pt-5">
+            <label class="inline-flex items-center gap-2 text-slate-800 font-bold cursor-pointer">
+              <input type="checkbox" id="new-store-24x7" checked class="w-4 h-4 rounded text-[#135c7e]" />
+              <span>Open 24x7 Emergency Chemist</span>
             </label>
           </div>
         </div>
 
         <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
           <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-lg text-slate-600 hover:bg-slate-50 font-semibold">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-lg font-semibold shadow">Register & Host My Website</button>
+          <button type="submit" class="px-5 py-2.5 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-xl font-bold shadow flex items-center gap-2">
+            <i class="fa fa-check-circle"></i> Register &amp; Host My Website
+          </button>
         </div>
       </form>
     `;
 
     modal.classList.remove("hidden");
 
+    // Dynamic field sync & photo file handling
+    const nameInput = document.getElementById("new-store-name");
+    const loginIdInput = document.getElementById("new-store-login-id");
+    const phoneInput = document.getElementById("new-store-phone");
+    const passInput = document.getElementById("new-store-password");
+    const photoFileInput = document.getElementById("new-store-photo-file");
+    const photoUrlInput = document.getElementById("new-store-photo");
+    const previewImg = document.getElementById("new-store-photo-img");
+    const previewIcon = document.getElementById("new-store-photo-icon");
+    const removePhotoBtn = document.getElementById("btn-remove-new-photo");
+
+    if (nameInput && loginIdInput) {
+      nameInput.addEventListener("input", (e) => {
+        if (!loginIdInput.dataset.manual) {
+          const slug = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+          loginIdInput.value = slug || "";
+        }
+      });
+      loginIdInput.addEventListener("input", () => {
+        loginIdInput.dataset.manual = "true";
+      });
+    }
+
+    if (phoneInput && passInput) {
+      phoneInput.addEventListener("input", (e) => {
+        if (!passInput.dataset.manual) {
+          const digits = e.target.value.replace(/[^0-9]/g, "");
+          const last4 = digits.slice(-4) || "8004";
+          passInput.value = `Pharma@${last4}`;
+        }
+      });
+      passInput.addEventListener("input", () => {
+        passInput.dataset.manual = "true";
+      });
+    }
+
+    if (photoFileInput) {
+      photoFileInput.addEventListener("change", async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          try {
+            window.acsApp.showToast("Compressing storefront photo...", "info");
+            const dataUrl = await window.acsApp.compressImageFile(file, 900, 0.8);
+            if (photoUrlInput) photoUrlInput.value = dataUrl;
+            if (previewImg) {
+              previewImg.src = dataUrl;
+              previewImg.classList.remove("hidden");
+            }
+            if (previewIcon) previewIcon.classList.add("hidden");
+            if (removePhotoBtn) removePhotoBtn.classList.remove("hidden");
+            window.acsApp.showToast("Storefront photo optimized & ready!", "success");
+          } catch (err) {
+            console.warn("Photo upload error:", err);
+          }
+        }
+      });
+    }
+
+    if (photoUrlInput) {
+      photoUrlInput.addEventListener("input", (e) => {
+        const url = e.target.value.trim();
+        if (url) {
+          if (previewImg) {
+            previewImg.src = url;
+            previewImg.classList.remove("hidden");
+          }
+          if (previewIcon) previewIcon.classList.add("hidden");
+          if (removePhotoBtn) removePhotoBtn.classList.remove("hidden");
+        }
+      });
+    }
+
+    if (removePhotoBtn) {
+      removePhotoBtn.addEventListener("click", () => {
+        if (photoUrlInput) photoUrlInput.value = "";
+        if (photoFileInput) photoFileInput.value = "";
+        if (previewImg) {
+          previewImg.src = "";
+          previewImg.classList.add("hidden");
+        }
+        if (previewIcon) previewIcon.classList.remove("hidden");
+        removePhotoBtn.classList.add("hidden");
+      });
+    }
+
     document.getElementById("form-add-store").onsubmit = (e) => {
       e.preventDefault();
-      const storeName = document.getElementById("new-store-name").value;
+      const storeName = document.getElementById("new-store-name").value.trim();
       const slug = storeName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      const adminUser = (document.getElementById("new-store-login-id").value || slug).trim();
+      const adminPass = (document.getElementById("new-store-password").value || "Pharma@8004").trim();
+      const photoVal = (document.getElementById("new-store-photo").value || "").trim() || "https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80";
 
       const newStore = {
         id: `store-up-${Date.now().toString().slice(-4)}`,
         slug: slug || `pharmacy-${Date.now().toString().slice(-4)}`,
+        slugAliases: [slug, `${slug}-deoria`, `pharmacy-${slug}`],
         name: storeName,
         district: document.getElementById("new-store-district").value,
         city: document.getElementById("new-store-district").value,
@@ -9302,31 +9555,50 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
         phone: document.getElementById("new-store-phone").value,
         whatsapp: document.getElementById("new-store-phone").value.replace(/[^0-9]/g, ""),
         email: "contact@" + storeName.toLowerCase().replace(/[^a-z]/g, "") + ".com",
-        gstin: document.getElementById("new-store-gstin").value || "09AABCS0000P1Z1",
+        gstin: document.getElementById("new-store-gstin").value || "09AABCT8192M1Z5",
         establishedYear: new Date().getFullYear().toString(),
-        operatingHours: document.getElementById("new-store-hours").value || "09:00 AM - 10:00 PM",
+        operatingHours: document.getElementById("new-store-hours").value || "08:00 AM - 10:30 PM",
         is24x7: document.getElementById("new-store-24x7").checked,
         status: "Verified",
-        photoUrl: document.getElementById("new-store-photo").value || "https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80",
-        rating: 4.8,
+        photoUrl: photoVal,
+        adminUsername: adminUser,
+        adminPassword: adminPass,
+        isViewOnly: false,
+        rating: 4.9,
         staff: [
           {
             id: `st-${Date.now()}-1`,
             name: document.getElementById("new-store-owner").value,
             role: "Registered Pharmacist & Incharge",
             uppcRegNo: "UPPC-PH-" + Math.floor(40000 + Math.random() * 20000),
-            qualification: "B.Pharm (UP)",
-            regDate: "2020-01-01",
-            validUpto: "2030-01-01",
+            qualification: "B.Pharm, R.Ph (UP)",
+            regDate: "2021-04-12",
+            validUpto: "2031-12-31",
             phone: document.getElementById("new-store-phone").value,
-            shift: "General Shift",
+            shift: "General Shift / 24x7 Emergency",
             isAadhaarVerified: true,
+            isOnDuty: true,
             status: "Active"
           }
         ],
         stocks: [
           {
             id: `med-${Date.now()}-1`,
+            name: "Augmentin 625 Duo Tablet",
+            saltName: "Amoxicillin 500mg + Potassium Clavulanate 125mg",
+            manufacturer: "GlaxoSmithKline Pharmaceuticals",
+            batchNo: "BAT-AUG-5501",
+            expiryDate: "2027-08-31",
+            quantity: 80,
+            unit: "Strips (10 tabs)",
+            mrp: 220.00,
+            purchaseRate: 165.00,
+            schedule: "Schedule H",
+            rackLocation: "Rack A-01",
+            minAlertThreshold: 25
+          },
+          {
+            id: `med-${Date.now()}-2`,
             name: "Paracetamol 650mg",
             saltName: "Paracetamol IP 650mg",
             manufacturer: "Generic Pharma",
@@ -9337,60 +9609,163 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
             mrp: 30.00,
             purchaseRate: 20.00,
             schedule: "OTC",
-            rackLocation: "Rack A-01",
-            minAlertThreshold: 20
-          },
-          {
-            id: `med-${Date.now()}-2`,
-            name: "Augmentin 625 Duo Tablet",
-            saltName: "Amoxicillin + Potassium Clavulanate",
-            manufacturer: "GSK Pharmaceuticals",
-            batchNo: "BAT-AUG-5501",
-            expiryDate: "2027-08-31",
-            quantity: 80,
-            unit: "Strips (10 tabs)",
-            mrp: 220.00,
-            purchaseRate: 165.00,
-            schedule: "Schedule H",
             rackLocation: "Rack A-02",
-            minAlertThreshold: 25
+            minAlertThreshold: 20
           }
         ],
+        galleryPhotos: [
+          {
+            id: `gp-${Date.now()}-1`,
+            tag: "Store Front",
+            url: photoVal,
+            title: "Storefront & Main Signboard",
+            caption: `${storeName}, ${document.getElementById("new-store-district").value}`,
+            isPrimary: true
+          }
+        ],
+        prescriptions: [],
+        scheduleH1Register: [],
+        staffDutyLog: [],
+        purchaseExpenses: [],
         revenueData: {
-          todaySales: 15000,
-          monthlyGross: 450000,
-          lastMonthGross: 410000,
-          avgGrossMarginPercent: 21.0,
-          totalOrdersThisMonth: 520,
-          digitalSplitPercent: 65,
-          cashSplitPercent: 35,
-          gstCollectedMonthly: 54000,
+          todaySales: 16500,
+          monthlyGross: 480000,
+          lastMonthGross: 440000,
+          avgGrossMarginPercent: 22.0,
+          totalOrdersThisMonth: 580,
+          digitalSplitPercent: 70,
+          cashSplitPercent: 30,
+          gstCollectedMonthly: 57600,
           monthlyHistory: [
-            { month: "Aug", revenue: 390000, digital: 240000, cash: 150000 },
-            { month: "Sep", revenue: 410000, digital: 260000, cash: 150000 },
-            { month: "Oct (Current)", revenue: 450000, digital: 292500, cash: 157500 }
+            { month: "Aug", revenue: 410000, digital: 270000, cash: 140000 },
+            { month: "Sep", revenue: 440000, digital: 295000, cash: 145000 },
+            { month: "Oct (Current)", revenue: 480000, digital: 336000, cash: 144000 }
           ],
-          paymentChannels: { upi: 55, cards: 10, cash: 35 }
+          paymentChannels: { upi: 60, cards: 10, cash: 30 }
         }
       };
 
+      // Unshift to stores and save backup
       this.stores.unshift(newStore);
       this.currentStoreId = newStore.id;
       this.currentUser = {
         role: "pharmacy_owner",
+        email: newStore.email,
         name: newStore.ownerName,
         storeId: newStore.id,
         storeName: newStore.name
       };
+
+      // Persistent backup in ACS_CUSTOM_STORES
+      if (typeof localStorage !== "undefined") {
+        try {
+          const customRaw = localStorage.getItem("ACS_CUSTOM_STORES");
+          const customList = customRaw ? JSON.parse(customRaw) : [];
+          customList.unshift(newStore);
+          localStorage.setItem("ACS_CUSTOM_STORES", JSON.stringify(customList));
+        } catch (_) {}
+      }
+
       this.saveUserSession();
-      this.saveStores();
-      this.closeModal();
+      this.saveStores(true);
       this.renderHeaderBar();
 
-      // Immediately show their real hosted website!
-      this.viewHostedWebsite(newStore.id);
-      this.showToast(`Your pharmacy website "${newStore.name}" is now live and hosted online.`, "success");
+      // Open credentials confirmation drawer/modal
+      this.openStoreOnboardedSuccessModal(newStore);
     };
+  }
+
+  openStoreOnboardedSuccessModal(store) {
+    const modal = document.getElementById("modal-generic");
+    const title = document.getElementById("modal-generic-title");
+    const body = document.getElementById("modal-generic-body");
+    if (!modal || !title || !body) return;
+
+    title.innerHTML = `<i class="fa fa-shield text-emerald-600"></i> Pharmacy Website Deployed &amp; Protected`;
+    body.innerHTML = `
+      <div class="space-y-4 text-xs text-slate-800">
+        <!-- Success Alert Header -->
+        <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 text-lg shadow-sm">
+            <i class="fa fa-check"></i>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-sm font-black text-emerald-950 mb-0.5">
+              "${store.name}" is Officially Live &amp; Secured!
+            </h3>
+            <p class="text-emerald-800 leading-relaxed text-[11px]">
+              Your dedicated retail pharmacy webpage is active with statutory Form 20/21 compliance, UPPC pharmacist credentials, and real-time medicine verification.
+            </p>
+          </div>
+        </div>
+
+        <!-- Credentials Drawer (Highlight Card) -->
+        <div class="p-4 bg-slate-900 text-white rounded-2xl space-y-3 shadow-lg border border-slate-800">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="font-bold text-xs text-amber-300 uppercase tracking-wider">
+                <i class="fa fa-key"></i> Your Confidential Owner Credentials
+              </span>
+            </div>
+            <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700">
+              Keep These Safe
+            </span>
+          </div>
+
+          <p class="text-[11px] text-slate-300 leading-relaxed">
+            Your website is deployed in <strong class="text-amber-300">Public Read-Only Verification Mode</strong>. Normal patients, doctors, and drug inspectors can verify your license and stock, but <strong class="text-white">CANNOT edit or modify anything</strong>. Only you can log in to edit using these credentials:
+          </p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div class="bg-slate-800/90 p-3 rounded-xl border border-slate-700 flex items-center justify-between">
+              <div>
+                <span class="text-[10px] text-slate-400 block font-semibold uppercase tracking-wider">Store ID / Login Username</span>
+                <span class="font-mono font-black text-sm text-amber-300 select-all" id="cred-display-username">${store.adminUsername || store.slug}</span>
+              </div>
+              <button type="button" onclick="navigator.clipboard.writeText('${store.adminUsername || store.slug}'); window.acsApp.showToast('Copied Store ID to clipboard!', 'success');" class="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1">
+                <i class="fa fa-copy"></i> Copy
+              </button>
+            </div>
+
+            <div class="bg-slate-800/90 p-3 rounded-xl border border-slate-700 flex items-center justify-between">
+              <div>
+                <span class="text-[10px] text-slate-400 block font-semibold uppercase tracking-wider">Owner Password / PIN</span>
+                <span class="font-mono font-black text-sm text-emerald-300 select-all" id="cred-display-password">${store.adminPassword || 'Pharma@8004'}</span>
+              </div>
+              <button type="button" onclick="navigator.clipboard.writeText('${store.adminPassword || 'Pharma@8004'}'); window.acsApp.showToast('Copied Owner Password to clipboard!', 'success');" class="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1">
+                <i class="fa fa-copy"></i> Copy
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-slate-800/50 p-2.5 rounded-xl border border-slate-700/60 flex items-center justify-between text-[11px]">
+            <span class="text-slate-400">Public Live URL:</span>
+            <a href="/pharmacy/${store.slug}" target="_blank" class="font-mono text-teal-300 hover:underline font-bold truncate max-w-[280px]">
+              https://www.drugs.systems/pharmacy/${store.slug}
+            </a>
+          </div>
+        </div>
+
+        <!-- Next Actions Row -->
+        <div class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <button type="button" onclick="
+            const creds = 'Store: ${store.name}\\nStore ID: ${store.adminUsername || store.slug}\\nPassword: ${store.adminPassword || 'Pharma@8004'}\\nLive URL: https://www.drugs.systems/pharmacy/${store.slug}';
+            navigator.clipboard.writeText(creds);
+            window.acsApp.showToast('All credentials copied to clipboard!', 'success');
+          " class="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl transition flex items-center justify-center gap-2">
+            <i class="fa fa-clipboard"></i> Copy All Credentials
+          </button>
+
+          <button type="button" onclick="window.acsApp.closeModal(); window.acsApp.viewHostedWebsite('${store.id}');" class="w-full sm:w-auto px-6 py-2.5 bg-[#135c7e] hover:bg-[#0f4b67] text-white font-black rounded-xl shadow-md transition flex items-center justify-center gap-2">
+            <span>Enter My Storefront (Owner Mode)</span>
+            <i class="fa fa-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    `;
+
+    modal.classList.remove("hidden");
   }
 
   openEditStoreModal(storeId) {

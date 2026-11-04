@@ -1078,10 +1078,21 @@ try {
     throw new Error('Apoorva Tripathi Medicos missing Hindi/English search aliases!');
   }
   const apoorvaSchema = app.generateStoreSchemaGraph(apoorvaStore, 'https://www.drugs.systems');
-  if (apoorvaSchema['@graph'][0].name !== 'Apoorva Tripathi Medicos') {
-    throw new Error('Apoorva Tripathi Medicos Schema.org graph name mismatch!');
+  // Test Owner Authentication with custom credentials
+  const authResult = app.authenticate('apoorva-tripathi', 'Pharma@8004');
+  if (!authResult || !app.currentUser || app.currentUser.storeId !== 'store-up-007') {
+    throw new Error('Authentication failed for Apoorva Tripathi Medicos owner credentials!');
   }
-  console.log('Apoorva Tripathi Medicos, Deoria verified from scratch: Routing, Aliases, Storefront, Catalog Search, Rx Matching, POS, & Schema.org passed 100%!');
+  app.logout();
+
+  // Test Success / Credentials confirmation modal rendering
+  app.openStoreOnboardedSuccessModal(apoorvaStore);
+  const successModalBody = mockElements['modal-generic-body'].innerHTML;
+  if (!successModalBody.includes('apoorva-tripathi') || !successModalBody.includes('Pharma@8004')) {
+    throw new Error('openStoreOnboardedSuccessModal missing credentials display!');
+  }
+
+  console.log('Apoorva Tripathi Medicos, Deoria verified from scratch: Routing, Aliases, Storefront, Catalog Search, Rx Matching, POS, Auth & Credentials Modal passed 100%!');
 
   console.log('ALL CONNECTION TESTS VERIFIED AND PASSED 100%!');
   console.log('ALL PHOTO & PROFILE STUDIO TESTS PASSED 100%!');

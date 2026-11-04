@@ -1102,6 +1102,160 @@ const INITIAL_STORES_DATA = [
       ],
       paymentChannels: { upi: 54, cards: 14, cash: 32 }
     }
+  },
+  {
+    id: "store-up-007",
+    slug: "apoorva-tripathi-medicos-deoria",
+    slugAliases: [
+      "apoorva-tripathi-medicos",
+      "aporvaa-tripathi-medicos",
+      "apoorva-tripathi-deoria",
+      "aporvaa-tripathi-medicos-deoria",
+      "apoorva-medicos-deoria"
+    ],
+    name: "Apoorva Tripathi Medicos",
+    alternateNames: [
+      "Aporvaa Tripathi Medicos",
+      "अपूर्वा त्रिपाठी मेडिकोज",
+      "अपूर्वा त्रिपाठी देवरिया",
+      "Apoorva Tripathi Chemist",
+      "Apoorva Medicos Deoria"
+    ],
+    district: "Deoria",
+    city: "Deoria",
+    address: "Saket Nagar, Station Road, Deoria, Uttar Pradesh - 274001",
+    license20: "UP/DEO/2023/20/3142",
+    license21: "UP/DEO/2023/21/3134",
+    ownerName: "Apoorva Tripathi",
+    phone: "+91 80040 34320",
+    whatsapp: "918004034320",
+    email: "contact@apoorvatripathimedicos.com",
+    gstin: "09AABCT8192M1Z5",
+    establishedYear: "2023",
+    operatingHours: "08:00 AM - 10:30 PM",
+    is24x7: true,
+    status: "Verified",
+    rating: 4.9,
+    photoUrl: "https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80",
+    adminUsername: "apoorva-tripathi",
+    adminPassword: "Pharma@8004",
+    isViewOnly: false,
+    staff: [
+      {
+        id: "st-007-1",
+        name: "Apoorva Tripathi",
+        role: "Proprietor & Registered Pharmacist",
+        uppcRegNo: "UPPC-PH-49218",
+        qualification: "B.Pharm, R.Ph (UP)",
+        regDate: "2021-04-12",
+        validUpto: "2031-12-31",
+        phone: "+91 80040 34320",
+        shift: "General Shift / 24x7 Emergency",
+        isAadhaarVerified: true,
+        isOnDuty: true,
+        status: "Active"
+      }
+    ],
+    stocks: [
+      {
+        id: "med-atm-01",
+        name: "Augmentin 625 Duo Tablet",
+        saltName: "Amoxicillin 500mg + Potassium Clavulanate 125mg",
+        manufacturer: "GlaxoSmithKline Pharmaceuticals",
+        batchNo: "BAT-AUG-5501",
+        expiryDate: "2027-08-31",
+        quantity: 80,
+        unit: "Strips (10 tabs)",
+        mrp: 220.00,
+        purchaseRate: 165.00,
+        schedule: "Schedule H",
+        rackLocation: "Rack A-01",
+        minAlertThreshold: 25
+      },
+      {
+        id: "med-atm-02",
+        name: "Paracetamol 650mg",
+        saltName: "Paracetamol IP 650mg",
+        manufacturer: "Micro Labs Ltd",
+        batchNo: "BAT-GEN-101",
+        expiryDate: "2028-12-31",
+        quantity: 100,
+        unit: "Strips (10 tabs)",
+        mrp: 30.00,
+        purchaseRate: 20.00,
+        schedule: "OTC",
+        rackLocation: "Rack A-02",
+        minAlertThreshold: 20
+      },
+      {
+        id: "med-atm-03",
+        name: "Azithral 500 Tablet",
+        saltName: "Azithromycin 500mg",
+        manufacturer: "Alembic Pharmaceuticals",
+        batchNo: "AZ-8812",
+        expiryDate: "2027-06-30",
+        quantity: 60,
+        unit: "Strips (5 tabs)",
+        mrp: 132.00,
+        purchaseRate: 98.00,
+        schedule: "Schedule H1",
+        rackLocation: "Rack B-01",
+        minAlertThreshold: 15
+      },
+      {
+        id: "med-atm-04",
+        name: "Pan-D Capsule",
+        saltName: "Pantoprazole 40mg + Domperidone 30mg",
+        manufacturer: "Alkem Laboratories",
+        batchNo: "PAN-4412",
+        expiryDate: "2027-11-30",
+        quantity: 90,
+        unit: "Strips (15 caps)",
+        mrp: 215.00,
+        purchaseRate: 155.00,
+        schedule: "Schedule H",
+        rackLocation: "Rack B-02",
+        minAlertThreshold: 20
+      }
+    ],
+    galleryPhotos: [
+      {
+        id: "gp-store-up-007-1",
+        tag: "Store Front",
+        url: "https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80",
+        title: "Storefront & Main Signboard",
+        caption: "Apoorva Tripathi Medicos, Saket Nagar, Station Road, Deoria",
+        isPrimary: true
+      },
+      {
+        id: "gp-store-up-007-2",
+        tag: "Dispensing",
+        url: "https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=800&q=80",
+        title: "Medicine Racks & Dispensing Desk",
+        caption: "Statutory medicine storage with UPPC pharmacist consultation counter",
+        isPrimary: false
+      }
+    ],
+    prescriptions: [],
+    scheduleH1Register: [],
+    staffDutyLog: [],
+    purchaseExpenses: [],
+    revenueData: {
+      todaySales: 16500,
+      monthlyGross: 480000,
+      lastMonthGross: 440000,
+      avgGrossMarginPercent: 22.0,
+      totalOrdersThisMonth: 580,
+      digitalSplitPercent: 70,
+      cashSplitPercent: 30,
+      gstCollectedMonthly: 57600,
+      monthlyHistory: [
+        { month: "Aug", revenue: 410000, digital: 270000, cash: 140000 },
+        { month: "Sep", revenue: 440000, digital: 295000, cash: 145000 },
+        { month: "Oct (Current)", revenue: 480000, digital: 336000, cash: 144000 }
+      ],
+      paymentChannels: { upi: 60, cards: 10, cash: 30 }
+    }
   }
 ];
 // District lists for Uttar Pradesh
