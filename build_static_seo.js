@@ -322,12 +322,16 @@ stores.forEach((store) => {
   // Call Google Indexing API automation
   try {
     const { notifyGoogleIndexing } = require('./google_indexing.js');
-    notifyGoogleIndexing(allIndexedUrls).catch(e => {
+    notifyGoogleIndexing(allIndexedUrls).then(() => {
+      console.log('Static SEO Pre-rendering & Automated Indexing build completed successfully!');
+      process.exit(0);
+    }).catch(e => {
       console.log('[Google Indexing API Notice]:', e.message);
+      process.exit(0);
     });
   } catch (e) {
     console.log('[Google Indexing API Skipped]:', e.message);
+    process.exit(0);
   }
 
-  console.log('Static SEO Pre-rendering & Automated Indexing build completed successfully!');
 
