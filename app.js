@@ -53,6 +53,7 @@ class ACSApp {
 
   init() {
     this.loadStores();
+    this.loadUserSession();
     this.checkUrlRouting();
     this.setupEventListeners();
     this.renderHeaderBar();
@@ -319,7 +320,7 @@ class ACSApp {
     } else if (path && path !== "/" && path !== "/index.html") {
       const cleanPath = path.replace(/^\/+|\/+$/g, "").trim().toLowerCase();
       const parts = cleanPath.split("/").filter(Boolean);
-      if (parts.length > 0 && !["directory", "login", "landing", "verify", "staff", "revenue"].includes(parts[0])) {
+      if (parts.length > 0 && !["directory", "login", "landing", "verify", "staff", "revenue"].includes(parts[0].replace(/\.html$/, ""))) {
         slug = (parts[0] === "store" || parts[0] === "p") && parts[1] ? parts[1] : parts[0];
         if (parts[1] === "audit" || parts[1] === "dossier" || parts[2] === "audit") {
           isAudit = true;
@@ -328,7 +329,7 @@ class ACSApp {
     }
 
     if (slug) {
-      const cleanSlug = slug.toLowerCase().trim();
+      const cleanSlug = slug.toLowerCase().trim().replace(/\.html$/, "");
       let target = this.stores.find((s) => 
         (s.slug && s.slug.toLowerCase() === cleanSlug) || 
         (s.id && s.id.toLowerCase() === cleanSlug) || 
@@ -358,16 +359,16 @@ class ACSApp {
         // Ensure Deoria Drug House is present as the primary store
         if (!this.stores || !this.stores.some((s) => s.slug === "deoria-drug-house")) {
           this.stores = JSON.parse(JSON.stringify(INITIAL_STORES_DATA));
-          this.saveStores();
+          this.saveStores(false);
         }
       } catch (e) {
         console.error("Failed to parse local storage, falling back to initial data", e);
         this.stores = JSON.parse(JSON.stringify(INITIAL_STORES_DATA));
-        this.saveStores();
+        this.saveStores(false);
       }
     } else {
       this.stores = JSON.parse(JSON.stringify(INITIAL_STORES_DATA));
-      this.saveStores();
+      this.saveStores(false);
     }
 
     let dataModified = false;
@@ -415,6 +416,31 @@ class ACSApp {
       if (!s.revenueData) s.revenueData = {};
       s.revenueData.transactions = s.revenueData.transactions || [];
 
+      // Auto-populate logs from INITIAL_STORES_DATA if missing in local copy
+      const initMatch = typeof INITIAL_STORES_DATA !== "undefined" && Array.isArray(INITIAL_STORES_DATA) ? INITIAL_STORES_DATA.find((is) => is.id === s.id) : null;
+      if (initMatch) {
+        if (s.scheduleH1Register.length === 0 && Array.isArray(initMatch.scheduleH1Register) && initMatch.scheduleH1Register.length > 0) {
+          s.scheduleH1Register = JSON.parse(JSON.stringify(initMatch.scheduleH1Register));
+          dataModified = true;
+        }
+        if (s.staffDutyLog.length === 0 && Array.isArray(initMatch.staffDutyLog) && initMatch.staffDutyLog.length > 0) {
+          s.staffDutyLog = JSON.parse(JSON.stringify(initMatch.staffDutyLog));
+          dataModified = true;
+        }
+        if (s.prescriptions.length === 0 && Array.isArray(initMatch.prescriptions) && initMatch.prescriptions.length > 0) {
+          s.prescriptions = JSON.parse(JSON.stringify(initMatch.prescriptions));
+          dataModified = true;
+        }
+        if (s.purchaseExpenses.length === 0 && Array.isArray(initMatch.purchaseExpenses) && initMatch.purchaseExpenses.length > 0) {
+          s.purchaseExpenses = JSON.parse(JSON.stringify(initMatch.purchaseExpenses));
+          dataModified = true;
+        }
+        if (s.revenueData.transactions.length === 0 && initMatch.revenueData && Array.isArray(initMatch.revenueData.transactions) && initMatch.revenueData.transactions.length > 0) {
+          s.revenueData.transactions = JSON.parse(JSON.stringify(initMatch.revenueData.transactions));
+          dataModified = true;
+        }
+      }
+
       // Automatically sanitize legacy "10 + 1 Free" or "+1 Free" from existing browser localStorage
       if (Array.isArray(s.stocks)) {
         s.stocks.forEach((m) => {
@@ -430,7 +456,7 @@ class ACSApp {
     });
 
     if (dataModified) {
-      this.saveStores();
+      this.saveStores(false);
     }
 
     if (!this.currentStoreId && this.stores.length > 0) {
@@ -731,6 +757,7 @@ class ACSApp {
           }
 
           // Re-render views reactively so this device immediately updates prices, stocks and photos
+          this.renderHeaderBar();
           this.renderCurrentView();
           this.updateCloudSyncBadge("synced", "Synchronized across all devices");
 
@@ -839,33 +866,51 @@ class ACSApp {
   }
 
   loadUserSession() {
-    const savedUser = localStorage.getItem("ACS_USER_SESSION_V2");
+    const savedUser = (typeof localStorage !== "undefined" && (localStorage.getItem("ACS_USER_SESSION_V2") || localStorage.getItem("ACS_USER_SESSION_V1"))) || null;
     if (savedUser) {
       try {
         const u = JSON.parse(savedUser);
         if (u && (u.email === "akhil@acs.com" || u.role === "pharmacy_owner" || u.role === "admin")) {
           this.currentUser = u;
-          this.currentStoreId = "store-up-001";
-          this.activeTab = "store-detail";
+          if (u.storeId && Array.isArray(this.stores) && this.stores.some((s) => s.id === u.storeId)) {
+            if (!this.currentStoreId || this.activeTab !== "hosted-site") {
+              this.currentStoreId = u.storeId;
+            }
+          } else if (!this.currentStoreId && Array.isArray(this.stores) && this.stores.length > 0) {
+            this.currentStoreId = this.stores[0].id;
+          }
+          if (this.activeTab !== "hosted-site") {
+            this.activeTab = "store-detail";
+          }
         } else {
           this.currentUser = null;
-          this.activeTab = "landing";
+          if (this.activeTab !== "hosted-site") {
+            this.activeTab = "landing";
+          }
         }
       } catch (e) {
         this.currentUser = null;
-        this.activeTab = "landing";
+        if (this.activeTab !== "hosted-site") {
+          this.activeTab = "landing";
+        }
       }
     } else {
       this.currentUser = null;
-      this.activeTab = "landing";
+      if (this.activeTab !== "hosted-site") {
+        this.activeTab = "landing";
+      }
     }
   }
 
   saveUserSession() {
+    if (typeof localStorage === "undefined") return;
     if (this.currentUser) {
-      localStorage.setItem("ACS_USER_SESSION_V2", JSON.stringify(this.currentUser));
+      const serialized = JSON.stringify(this.currentUser);
+      localStorage.setItem("ACS_USER_SESSION_V2", serialized);
+      localStorage.setItem("ACS_USER_SESSION_V1", serialized);
     } else {
       localStorage.removeItem("ACS_USER_SESSION_V2");
+      localStorage.removeItem("ACS_USER_SESSION_V1");
     }
   }
 
@@ -2882,19 +2927,19 @@ class ACSApp {
     return `
       <div class="hosted-standalone-site w-full bg-white text-slate-800 animate-fade-in min-h-screen flex flex-col justify-between">
         <!-- Micro Statutory Top Bar -->
-        <div class="bg-teal-950 text-teal-100 py-2.5 px-6 sm:px-12 flex flex-wrap items-center justify-between text-xs border-b border-teal-900">
-          <div class="flex items-center gap-3">
-            <span><i class="fa fa-shield text-amber-400"></i> UP FSDA Licensed Retail Pharmacy</span>
+        <div class="bg-teal-950 text-teal-100 py-1.5 sm:py-2 px-3 sm:px-12 flex items-center justify-between text-[11px] sm:text-xs border-b border-teal-900">
+          <div class="flex items-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar">
+            <span class="truncate flex items-center gap-1.5"><i class="fa fa-shield text-amber-400"></i> <span class="hidden sm:inline">UP FSDA Licensed Retail Pharmacy</span><span class="sm:hidden">UP FSDA Retail</span></span>
             <span class="text-teal-700">|</span>
-            <span class="font-mono text-teal-200">Lic 20: ${store.license20}</span>
+            <span class="font-mono text-teal-200 whitespace-nowrap">Lic 20: ${store.license20}</span>
             <span class="text-teal-700 hidden sm:inline">|</span>
-            <span class="font-mono text-teal-200 hidden sm:inline">Lic 21: ${store.license21}</span>
+            <span class="font-mono text-teal-200 hidden sm:inline whitespace-nowrap">Lic 21: ${store.license21}</span>
             <span class="text-teal-700 hidden md:inline">|</span>
-            <span class="hidden md:inline"><i class="fa fa-map-marker text-amber-400"></i> ${store.district}, Uttar Pradesh</span>
+            <span class="hidden md:inline whitespace-nowrap"><i class="fa fa-map-marker text-amber-400"></i> ${store.district}, Uttar Pradesh</span>
           </div>
-          <div class="flex items-center gap-3">
-            <span>Hours: <strong>${store.operatingHours}</strong></span>
-            ${store.is24x7 ? `<span class="bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider">24x7 Open</span>` : ''}
+          <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <span class="hidden xs:inline text-[11px]">Hours: <strong>${store.operatingHours}</strong></span>
+            ${store.is24x7 ? `<span class="bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider">24x7 Open</span>` : ''}
             <span class="text-teal-700 hidden sm:inline">|</span>
             <a href="tel:${cleanPhone}" class="text-amber-300 hover:text-white font-bold hidden sm:inline">
               <i class="fa fa-phone"></i> ${store.phone}
@@ -2903,9 +2948,9 @@ class ACSApp {
         </div>
 
         <!-- Public Patient Pharmacy Navbar -->
-        <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 py-3.5 px-4 sm:px-10 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3.5">
+        <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 py-3 px-3 sm:px-10 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div class="flex items-center gap-3">
-            <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#135c7e] to-[#2c5895] text-white flex items-center justify-center text-xl font-black shadow-md flex-shrink-0">
+            <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-[#135c7e] to-[#2c5895] text-white flex items-center justify-center text-lg sm:text-xl font-black shadow-md flex-shrink-0">
               <i class="fa fa-plus"></i>
             </div>
             <div>
@@ -2922,43 +2967,47 @@ class ACSApp {
           </div>
 
           <!-- Direct Patient Action Buttons (100% Consumer-Focused) -->
-          <div class="flex flex-wrap items-center gap-2 text-xs">
-            <button onclick="window.acsApp.openPrescriptionUploadModal('${store.name}')" class="bg-amber-400 hover:bg-amber-500 text-slate-950 px-4 py-2 rounded-xl font-black transition flex items-center gap-1.5 shadow-sm">
-              <i class="fa fa-file-text-o"></i> Prescription Verification
-            </button>
-            <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm">
-              <i class="fa fa-whatsapp text-sm"></i> WhatsApp
-            </a>
-            <a href="tel:${cleanPhone}" class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5">
-              <i class="fa fa-phone text-[#135c7e]"></i> Call Store
-            </a>
-            <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 hidden sm:inline-flex">
-              <i class="fa fa-location-arrow text-amber-600"></i> Directions
-            </a>
-            <button onclick="window.acsApp.openStoreCertificateModal('${store.id}')" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-xs">
-              <i class="fa fa-certificate text-amber-600"></i> UP License Certificate
-            </button>
-            <button onclick="window.acsApp.copyStoreLink('/pharmacy/${store.slug}')" class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs" title="Copy website link to share">
-              <i class="fa fa-clone text-[#135c7e]"></i> Copy Link
-            </button>
-            <button onclick="window.acsApp.openGoogleConsoleAutomationModal('${store.id}')" class="bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 px-3 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer" title="Googlebot Indexing, Knowledge Graph &amp; SERP Status">
-              <i class="fa fa-google text-[#4285F4]"></i> Googlebot &amp; Schema
-            </button>
-            <a href="https://www.google.com/search?q=${encodeURIComponent(store.name + ' ' + (store.district || '') + ' ' + (store.ownerName || ''))}" target="_blank" rel="noopener noreferrer" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 px-3 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs hidden lg:inline-flex" title="Search pharmacy on Google">
-              <i class="fa fa-search text-teal-700"></i> Google Test
-            </a>
-            <button onclick="window.acsApp.triggerPwaInstall()" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-3 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer" title="Install App on Phone / Desktop">
-              <i class="fa fa-download text-amber-700"></i> <span class="hidden sm:inline">Install</span> App
-            </button>
-            ${this.currentUser && this.currentUser.storeId === store.id ? `
-              <button onclick="window.acsApp.switchTab('store-detail')" class="bg-slate-900 hover:bg-black text-white px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm">
-                <i class="fa fa-dashboard text-amber-400"></i> Owner Portal
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 text-xs">
+            <div class="flex items-center gap-1.5 sm:gap-2">
+              <button onclick="window.acsApp.openPrescriptionUploadModal('${store.name}')" class="flex-1 sm:flex-none bg-amber-400 hover:bg-amber-500 text-slate-950 px-3.5 py-2 rounded-xl font-black transition flex items-center justify-center gap-1.5 shadow-sm text-xs">
+                <i class="fa fa-file-text-o"></i> Prescription Verification
               </button>
-            ` : `
-              <button onclick="window.acsApp.openLoginModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs" title="Pharmacist Login to edit store, stock and photos">
-                <i class="fa fa-lock text-amber-600"></i> Pharmacist Login
+              <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl font-bold transition flex items-center justify-center gap-1.5 shadow-sm text-xs">
+                <i class="fa fa-whatsapp text-sm"></i> WhatsApp
+              </a>
+              <a href="tel:${cleanPhone}" class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-2 rounded-xl font-bold transition flex items-center justify-center gap-1.5 text-xs">
+                <i class="fa fa-phone text-[#135c7e]"></i> Call Store
+              </a>
+            </div>
+            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 text-[11px] whitespace-nowrap">
+                <i class="fa fa-location-arrow text-amber-600"></i> Directions
+              </a>
+              <button onclick="window.acsApp.openStoreCertificateModal('${store.id}')" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs text-[11px] whitespace-nowrap">
+                <i class="fa fa-certificate text-amber-600"></i> UP License Certificate
               </button>
-            `}
+              <button onclick="window.acsApp.copyStoreLink('/pharmacy/${store.slug}')" class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs text-[11px] whitespace-nowrap" title="Copy website link to share">
+                <i class="fa fa-clone text-[#135c7e]"></i> Copy Link
+              </button>
+              <button onclick="window.acsApp.openGoogleConsoleAutomationModal('${store.id}')" class="bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer text-[11px] whitespace-nowrap" title="Googlebot Indexing, Knowledge Graph &amp; SERP Status">
+                <i class="fa fa-google text-[#4285F4]"></i> Googlebot &amp; Schema
+              </button>
+              <a href="https://www.google.com/search?q=${encodeURIComponent(store.name + ' ' + (store.district || '') + ' ' + (store.ownerName || ''))}" target="_blank" rel="noopener noreferrer" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs hidden lg:inline-flex text-[11px] whitespace-nowrap" title="Search pharmacy on Google">
+                <i class="fa fa-search text-teal-700"></i> Google Test
+              </a>
+              <button onclick="window.acsApp.triggerPwaInstall()" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer text-[11px] whitespace-nowrap" title="Install App on Phone / Desktop">
+                <i class="fa fa-download text-amber-700"></i> <span class="hidden sm:inline">Install</span> App
+              </button>
+              ${this.currentUser && this.currentUser.storeId === store.id ? `
+                <button onclick="window.acsApp.switchTab('store-detail')" class="bg-slate-900 hover:bg-black text-white px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1 text-[11px] whitespace-nowrap shadow-sm">
+                  <i class="fa fa-dashboard text-amber-400"></i> Owner Portal
+                </button>
+              ` : `
+                <button onclick="window.acsApp.openLoginModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs text-[11px] whitespace-nowrap" title="Pharmacist Login to edit store, stock and photos">
+                  <i class="fa fa-lock text-amber-600"></i> Pharmacist Login
+                </button>
+              `}
+            </div>
           </div>
         </header>
 
@@ -2996,7 +3045,7 @@ class ACSApp {
             <!-- ======================================================== -->
             <div>
               <!-- Store Hero Banner Image -->
-              <div class="relative h-72 sm:h-96 bg-slate-900 overflow-hidden group">
+              <div class="relative h-56 sm:h-72 md:h-96 bg-slate-900 overflow-hidden group">
                 <img id="storefront-hero-img" src="${store.photoUrl}" alt="${store.name}" class="w-full h-full object-cover opacity-90 transition duration-500" onerror="this.src='https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80'" />
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/40 to-transparent"></div>
                 
@@ -3012,13 +3061,13 @@ class ACSApp {
                   </div>
                 ` : ''}
 
-                <div class="absolute bottom-6 left-4 right-4 sm:bottom-8 sm:left-10 sm:right-10 text-white flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                <div class="absolute bottom-4 left-3 right-3 sm:bottom-8 sm:left-10 sm:right-10 text-white flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4">
                   <div>
-                    <span class="text-xs font-black uppercase tracking-widest text-amber-300 block mb-1">
+                    <span class="text-[10px] sm:text-xs font-black uppercase tracking-widest text-amber-300 block mb-1">
                       Licensed Retail Chemists &amp; Druggists • Uttar Pradesh
                     </span>
-                    <h2 class="text-2xl sm:text-4xl font-black">${store.name}</h2>
-                    <p class="text-xs sm:text-sm text-slate-200 mt-2 max-w-2xl leading-relaxed">
+                    <h2 class="text-xl sm:text-4xl font-black">${store.name}</h2>
+                    <p class="text-xs sm:text-sm text-slate-200 mt-1 sm:mt-2 max-w-2xl leading-relaxed line-clamp-2 sm:line-clamp-none">
                       Dispensing 100% authentic allopathic, generic, biological, and OTC medications under constant supervision of registered UPPC pharmacists.
                     </p>
                   </div>
@@ -3347,16 +3396,25 @@ class ACSApp {
                           id="hosted-view-toggle-table" 
                           onclick="window.acsApp.setHostedCatalogViewMode('table')" 
                           class="px-2.5 py-1 rounded-lg font-bold text-xs transition flex items-center gap-1 ${(!this.hostedCatalogViewMode || this.hostedCatalogViewMode === 'table') ? 'bg-[#135c7e] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}"
-                          title="Table View (Like Owner Register)"
+                          title="Table View (Full Register)"
                         >
                           <i class="fa fa-table"></i> Table
+                        </button>
+                        <button 
+                          type="button" 
+                          id="hosted-view-toggle-compact" 
+                          onclick="window.acsApp.setHostedCatalogViewMode('compact')" 
+                          class="px-2.5 py-1 rounded-lg font-bold text-xs transition flex items-center gap-1 ${this.hostedCatalogViewMode === 'compact' ? 'bg-[#135c7e] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}"
+                          title="Compact View (Phone Optimized)"
+                        >
+                          <i class="fa fa-list"></i> Compact
                         </button>
                         <button 
                           type="button" 
                           id="hosted-view-toggle-cards" 
                           onclick="window.acsApp.setHostedCatalogViewMode('cards')" 
                           class="px-2.5 py-1 rounded-lg font-bold text-xs transition flex items-center gap-1 ${this.hostedCatalogViewMode === 'cards' ? 'bg-[#135c7e] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}"
-                          title="Card View (Compact)"
+                          title="Card View (Expanded)"
                         >
                           <i class="fa fa-th-large"></i> Cards
                         </button>
@@ -3377,13 +3435,13 @@ class ACSApp {
                       />
                     </div>
 
-                    <div class="flex flex-wrap items-center gap-2 pt-1">
-                      <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Categories:</span>
+                    <div class="flex items-center gap-2 pt-1 overflow-x-auto no-scrollbar py-1">
+                      <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1 whitespace-nowrap">Categories:</span>
                       <button 
                         type="button" 
                         data-cat="ALL" 
                         onclick="window.acsApp.setHostedCategoryFilter('ALL')" 
-                        class="hosted-cat-pill px-3 py-1.5 rounded-xl font-bold text-xs transition ${(!this.hostedCategoryFilter || this.hostedCategoryFilter === 'ALL') ? 'bg-[#135c7e] text-white font-black' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}"
+                        class="hosted-cat-pill px-3 py-1.5 rounded-xl font-bold text-xs transition whitespace-nowrap ${(!this.hostedCategoryFilter || this.hostedCategoryFilter === 'ALL') ? 'bg-[#135c7e] text-white font-black' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}"
                       >
                         All Medicines (${store.stocks.length})
                       </button>
@@ -3391,7 +3449,7 @@ class ACSApp {
                         type="button" 
                         data-cat="RX" 
                         onclick="window.acsApp.setHostedCategoryFilter('RX')" 
-                        class="hosted-cat-pill px-3 py-1.5 rounded-xl font-bold text-xs transition ${this.hostedCategoryFilter === 'RX' ? 'bg-[#135c7e] text-white font-black' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}"
+                        class="hosted-cat-pill px-3 py-1.5 rounded-xl font-bold text-xs transition whitespace-nowrap ${this.hostedCategoryFilter === 'RX' ? 'bg-[#135c7e] text-white font-black' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}"
                       >
                         Prescription (Schedule H/H1)
                       </button>
@@ -3399,7 +3457,7 @@ class ACSApp {
                         type="button" 
                         data-cat="OTC" 
                         onclick="window.acsApp.setHostedCategoryFilter('OTC')" 
-                        class="hosted-cat-pill px-3 py-1.5 rounded-xl font-bold text-xs transition ${this.hostedCategoryFilter === 'OTC' ? 'bg-[#135c7e] text-white font-black' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}"
+                        class="hosted-cat-pill px-3 py-1.5 rounded-xl font-bold text-xs transition whitespace-nowrap ${this.hostedCategoryFilter === 'OTC' ? 'bg-[#135c7e] text-white font-black' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}"
                       >
                         OTC / Everyday Care
                       </button>
@@ -3407,7 +3465,7 @@ class ACSApp {
                         type="button" 
                         data-cat="AYUSH" 
                         onclick="window.acsApp.setHostedCategoryFilter('AYUSH')" 
-                        class="hosted-cat-pill px-3 py-1.5 rounded-xl font-bold text-xs transition ${this.hostedCategoryFilter === 'AYUSH' ? 'bg-[#135c7e] text-white font-black' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}"
+                        class="hosted-cat-pill px-3 py-1.5 rounded-xl font-bold text-xs transition whitespace-nowrap ${this.hostedCategoryFilter === 'AYUSH' ? 'bg-[#135c7e] text-white font-black' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}"
                       >
                         Ayush / Herbal
                       </button>
@@ -4057,7 +4115,7 @@ class ACSApp {
             <i class="fa fa-home text-base text-teal-300"></i>
             <span class="text-[9px] font-bold">Home</span>
           </button>
-          <button onclick="const el = document.getElementById('search-public-medicines'); if (el) { el.focus(); el.scrollIntoView({behavior: 'smooth'}); }" class="flex-1 py-1.5 px-1 text-slate-200 hover:text-white flex flex-col items-center justify-center gap-0.5">
+          <button onclick="const el = document.getElementById('hosted-stock-search-input') || document.getElementById('search-public-medicines'); if (el) { el.focus(); el.scrollIntoView({behavior: 'smooth'}); }" class="flex-1 py-1.5 px-1 text-slate-200 hover:text-white flex flex-col items-center justify-center gap-0.5">
             <i class="fa fa-search text-base text-amber-300"></i>
             <span class="text-[9px] font-bold">Search</span>
           </button>
@@ -4232,6 +4290,26 @@ class ACSApp {
     }
   }
 
+  getDosageIconInfo(medicine) {
+    const text = (((medicine && medicine.name) || "") + " " + ((medicine && medicine.unit) || "")).toLowerCase();
+    if (text.includes("syrup") || text.includes("suspension") || text.includes("solution") || text.includes("tonic") || text.includes("elixir") || text.includes("liquid") || text.includes("dry syrup")) {
+      return { icon: "fa-flask", cls: "dosage-icon-syr", label: "Syrup / Oral Liquid" };
+    }
+    if (text.includes("inject") || text.includes("vial") || text.includes("ampoule") || text.includes("infusion") || text.includes("iv")) {
+      return { icon: "fa-eyedropper", cls: "dosage-icon-inj", label: "Injectable / Vial" };
+    }
+    if (text.includes("drop") || text.includes("eye") || text.includes("ear") || text.includes("nasal")) {
+      return { icon: "fa-tint", cls: "dosage-icon-drop", label: "Drops" };
+    }
+    if (text.includes("ointment") || text.includes("cream") || text.includes("gel") || text.includes("lotion") || text.includes("spray") || text.includes("emulgel")) {
+      return { icon: "fa-paint-brush", cls: "dosage-icon-oint", label: "Ointment / Gel" };
+    }
+    if (text.includes("capsule") || text.includes("cap")) {
+      return { icon: "fa-circle-o", cls: "dosage-icon-tab", label: "Capsule" };
+    }
+    return { icon: "fa-circle", cls: "dosage-icon-tab", label: "Tablet" };
+  }
+
   getHostedMedicineCatalogHtml(store) {
     const isPharmacist = !!(this.currentUser && (this.currentUser.storeId === store.id || this.currentUser.role === 'admin' || this.currentUser.role === 'pharmacy_owner'));
     const categoryFilter = this.hostedCategoryFilter || "ALL";
@@ -4299,7 +4377,7 @@ class ACSApp {
       `;
     }
 
-    // DESKTOP & TABLET MASTER TABLE (Similar to Pharmacy Owner's View, but strictly sanitized & uneditable)
+    // 1. DESKTOP MASTER TABLE (Full statutory register view, CP protected)
     const tableHtml = `
       <!-- Verified Pharmacy Stock Notice -->
       <div class="mb-4 p-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-wrap items-center justify-between gap-2 shadow-2xs">
@@ -4327,7 +4405,7 @@ class ACSApp {
               <th class="py-3.5 px-3 min-w-[140px]">Batch &amp; Expiry</th>
               <th class="py-3.5 px-3 min-w-[120px]">Packaging</th>
               <th class="py-3.5 px-3 min-w-[130px] text-center">Stock</th>
-              <th class="py-3.5 px-3 min-w-[130px] text-right">Cost Price (CP)</th>
+              ${isPharmacist ? `<th class="py-3.5 px-3 min-w-[130px] text-right">Cost Price (CP)</th>` : ''}
               <th class="py-3.5 px-4 min-w-[150px] text-right">Retail Price (MRP)</th>
               ${isPharmacist ? `<th class="py-3.5 px-3 min-w-[110px] text-center">Free</th>` : ''}
               <th class="py-3.5 px-4 text-center min-w-[140px]">Actions</th>
@@ -4338,7 +4416,7 @@ class ACSApp {
               const inStock = m.quantity > 0;
               const isScheduleH1 = m.schedule && m.schedule.includes("H1");
               const isScheduleH = m.schedule && m.schedule.includes("H");
-              const waUrl = `${waBase}?text=Hello%20${encodeURIComponent(store.name)},%20I%20am%20inquiring%20about%20availability%20of%20${encodeURIComponent(m.name)}%20(${encodeURIComponent(m.saltName)}).`;
+              const waUrl = `${waBase}?text=Hello%20${encodeURIComponent(store.name)},%20I%20am%20checking%20availability%20of%20${encodeURIComponent(m.name)}%20(${encodeURIComponent(m.saltName)}).`;
 
               let schedBadge = `<span class="bg-teal-50 text-teal-800 border border-teal-200 px-2 py-0.5 rounded text-[10px] font-bold">${m.schedule}</span>`;
               if (isScheduleH1) {
@@ -4388,10 +4466,12 @@ class ACSApp {
                       ${inStock ? `${m.quantity} ${m.unit || 'Strips'}` : '0 Strips (Out of Stock)'}
                     </span>
                   </td>
-                  <td class="py-3.5 px-3 text-right">
-                    <span class="text-sm font-bold font-mono text-slate-700 block">${cpFormatted}</span>
-                    <span class="text-[9px] text-slate-400 block font-normal">Wholesale / CP</span>
-                  </td>
+                  ${isPharmacist ? `
+                    <td class="py-3.5 px-3 text-right">
+                      <span class="text-sm font-bold font-mono text-slate-700 block">${cpFormatted}</span>
+                      <span class="text-[9px] text-slate-400 block font-normal">Wholesale / CP</span>
+                    </td>
+                  ` : ''}
                   <td class="py-3.5 px-4 text-right">
                     <span class="text-base font-black font-mono text-emerald-700 block">₹ ${m.mrp.toFixed(2)}</span>
                     <span class="text-[9px] text-slate-500 font-medium block">Per ${m.unit}</span>
@@ -4449,13 +4529,139 @@ class ACSApp {
       </div>
     `;
 
-    // MOBILE SCREEN CARDS (Optimized for phone screens)
+    // 2. ULTRA-COMPACT MOBILE LIST (Phone screen optimized rows with dosage icons)
+    const compactHtml = `
+      <div class="space-y-2.5">
+        ${filteredPublicStock.map((m) => {
+          const inStock = m.quantity > 0;
+          const isScheduleH1 = m.schedule && m.schedule.includes("H1");
+          const isScheduleH = m.schedule && m.schedule.includes("H");
+          const waUrl = `${waBase}?text=Hello%20${encodeURIComponent(store.name)},%20I%20am%20checking%20availability%20of%20${encodeURIComponent(m.name)}%20(${encodeURIComponent(m.saltName)}).`;
+          const dosage = this.getDosageIconInfo(m);
+
+          let unitDoseBadge = "";
+          const unitMatch = m.unit && m.unit.match(/\((\d+)\s*(tabs?|caps?|vials?|ml)\)/i);
+          if (unitMatch && m.mrp > 0) {
+            const count = parseInt(unitMatch[1], 10);
+            if (count > 0) {
+              const doseUnit = unitMatch[2].toLowerCase();
+              const perPrice = (m.mrp / count).toFixed(2);
+              unitDoseBadge = `<span class="text-[9px] text-teal-800 font-mono font-semibold block">~₹ ${perPrice}/${doseUnit}</span>`;
+            }
+          }
+
+          let schedBadge = `<span class="bg-teal-50 text-teal-800 border border-teal-200 px-1.5 py-0.2 rounded text-[9px] font-bold">${m.schedule}</span>`;
+          if (isScheduleH1) {
+            schedBadge = `<span class="bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.2 rounded text-[9px] font-bold"><i class="fa fa-exclamation-circle text-[8px]"></i> ${m.schedule}</span>`;
+          } else if (isScheduleH) {
+            schedBadge = `<span class="bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.2 rounded text-[9px] font-bold">${m.schedule}</span>`;
+          }
+
+          const cpFormatted = (typeof m.purchaseRate === 'number' && m.purchaseRate > 0) ? `₹ ${m.purchaseRate.toFixed(2)}` : 'Trade N/A';
+
+          return `
+            <div class="med-compact-row bg-white rounded-2xl border border-slate-200/90 hover:border-[#135c7e] p-3 sm:p-3.5 shadow-2xs transition flex items-center justify-between gap-2.5 sm:gap-3">
+              <!-- Left: Dosage Icon + Details -->
+              <div class="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                <div class="w-10 h-10 rounded-xl ${dosage.cls} flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-2xs" title="${dosage.label}">
+                  <i class="fa ${dosage.icon}"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <h4 
+                      onclick="window.acsApp.openMedicineDetailModal('${m.id}', '${store.id}')"
+                      class="text-xs sm:text-sm font-black text-slate-900 truncate hover:text-[#135c7e] cursor-pointer"
+                      title="${m.name}"
+                    >
+                      ${m.name}
+                    </h4>
+                    ${schedBadge}
+                  </div>
+                  <p class="text-[10px] sm:text-[11px] font-mono text-slate-600 truncate mt-0.5" title="${m.saltName}">
+                    ${m.saltName}
+                  </p>
+                  <div class="flex items-center gap-2 mt-1 text-[9px] text-slate-400">
+                    <span class="inline-flex items-center gap-1 font-mono font-bold ${inStock ? 'text-emerald-700' : 'text-rose-600'}">
+                      <span class="w-1.5 h-1.5 rounded-full ${inStock ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
+                      ${inStock ? `Stock: ${m.quantity} ${m.unit || 'Strips'}` : 'Out of Stock'}
+                    </span>
+                    <span class="text-slate-300">|</span>
+                    <span class="truncate max-w-[100px] sm:max-w-[150px]">${m.manufacturer}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right: Price + Quick Actions -->
+              <div class="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
+                <div class="text-right">
+                  <div class="text-xs sm:text-sm font-black font-mono text-emerald-700 leading-tight">
+                    ₹ ${m.mrp.toFixed(2)}
+                  </div>
+                  <span class="text-[9px] text-slate-400 block">${m.unit}</span>
+                  ${unitDoseBadge}
+                  ${isPharmacist ? `
+                    <div class="mt-0.5 pt-0.5 border-t border-slate-100">
+                      <span class="text-[8px] font-mono text-slate-500 block">CP: ${cpFormatted}</span>
+                      ${(() => {
+                        const scheme = this.formatFreeScheme(m.freeScheme);
+                        return (scheme && scheme !== '-') ? `<span class="text-[8px] font-bold text-amber-700 font-mono">Free: ${scheme}</span>` : '';
+                      })()}
+                    </div>
+                  ` : ''}
+                </div>
+
+                <div class="flex items-center gap-1">
+                  <a 
+                    href="${waUrl}" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    class="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white flex items-center justify-center text-sm transition shadow-2xs" 
+                    title="WhatsApp"
+                  >
+                    <i class="fa fa-whatsapp"></i>
+                  </a>
+                  <button 
+                    type="button" 
+                    onclick="window.acsApp.openMedicineDetailModal('${m.id}', '${store.id}')" 
+                    class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-[#135c7e] text-slate-700 hover:text-white flex items-center justify-center text-xs transition shadow-2xs" 
+                    title="View Details"
+                  >
+                    <i class="fa fa-info-circle"></i>
+                  </button>
+                  ${isPharmacist ? `
+                    <button 
+                      type="button" 
+                      onclick="window.acsApp.openEditMedicineModal('${m.id}')" 
+                      class="w-8 h-8 rounded-xl bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white flex items-center justify-center text-xs transition shadow-2xs" 
+                      title="Edit SKU"
+                    >
+                      <i class="fa fa-pencil"></i>
+                    </button>
+                    <button 
+                      type="button" 
+                      onclick="window.acsApp.deleteMedicine('${m.id}')" 
+                      class="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white flex items-center justify-center text-xs transition shadow-2xs" 
+                      title="Delete SKU"
+                    >
+                      <i class="fa fa-trash"></i>
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+
+    // 3. EXPANDED CARDS VIEW (Multi-column touch grid)
     const cardsHtml = `
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         ${filteredPublicStock.map((m) => {
           const inStock = m.quantity > 0;
           const isScheduleH = m.schedule && m.schedule.includes("H");
-          const waUrl = `${waBase}?text=Hello%20${encodeURIComponent(store.name)},%20I%20am%20inquiring%20about%20availability%20of%20${encodeURIComponent(m.name)}%20(${encodeURIComponent(m.saltName)}).`;
+          const waUrl = `${waBase}?text=Hello%20${encodeURIComponent(store.name)},%20I%20am%20checking%20availability%20of%20${encodeURIComponent(m.name)}%20(${encodeURIComponent(m.saltName)}).`;
+          const dosage = this.getDosageIconInfo(m);
 
           let unitDoseBadge = "";
           const unitMatch = m.unit && m.unit.match(/\((\d+)\s*(tabs?|caps?|vials?|ml)\)/i);
@@ -4473,9 +4679,14 @@ class ACSApp {
             <div class="bg-white rounded-2xl border border-slate-200 hover:border-teal-400/80 hover:shadow-md transition p-4 sm:p-5 flex flex-col justify-between space-y-3 group">
               <div>
                 <div class="flex items-center justify-between gap-2 mb-2">
-                  <span class="px-2.5 py-0.5 rounded-lg text-[11px] font-bold font-mono ${inStock ? 'bg-emerald-50 text-emerald-900 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'}">
-                    <span class="text-slate-500 font-sans font-medium text-[10px] mr-1">Stock:</span>${inStock ? `${m.quantity} ${m.unit || 'Strips'}` : '0 Strips'}
-                  </span>
+                  <div class="flex items-center gap-2">
+                    <span class="w-7 h-7 rounded-lg ${dosage.cls} flex items-center justify-center text-xs font-bold" title="${dosage.label}">
+                      <i class="fa ${dosage.icon}"></i>
+                    </span>
+                    <span class="px-2.5 py-0.5 rounded-lg text-[11px] font-bold font-mono ${inStock ? 'bg-emerald-50 text-emerald-900 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'}">
+                      <span class="text-slate-500 font-sans font-medium text-[10px] mr-1">Stock:</span>${inStock ? `${m.quantity} ${m.unit || 'Strips'}` : '0 Strips'}
+                    </span>
+                  </div>
                   <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isScheduleH ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-teal-50 text-teal-800 border border-teal-200'}">
                     ${m.schedule}
                   </span>
@@ -4496,19 +4707,33 @@ class ACSApp {
               </div>
 
               <div class="pt-2.5 border-t border-slate-100 space-y-2.5">
-                <div class="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
-                  <div>
-                    <span class="text-[9px] uppercase font-bold text-slate-500 block">Cost Price (CP)</span>
-                    <span class="text-sm font-bold text-slate-700 font-mono block">${cpFormatted}</span>
-                    <span class="text-[8px] text-slate-400 block">Wholesale Rate</span>
+                ${isPharmacist ? `
+                  <div class="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                    <div>
+                      <span class="text-[9px] uppercase font-bold text-slate-500 block">Cost Price (CP)</span>
+                      <span class="text-sm font-bold text-slate-700 font-mono block">${cpFormatted}</span>
+                      <span class="text-[8px] text-slate-400 block">Wholesale Rate</span>
+                    </div>
+                    <div class="text-right">
+                      <span class="text-[9px] uppercase font-bold text-emerald-800 block">Retail Price (MRP)</span>
+                      <span class="text-base font-black text-emerald-700 font-mono block">₹ ${m.mrp.toFixed(2)}</span>
+                      <span class="text-[8px] text-slate-500 font-medium block">Per ${m.unit}</span>
+                      ${unitDoseBadge}
+                    </div>
                   </div>
-                  <div class="text-right">
-                    <span class="text-[9px] uppercase font-bold text-emerald-800 block">Retail Price (MRP)</span>
-                    <span class="text-base font-black text-emerald-700 font-mono block">₹ ${m.mrp.toFixed(2)}</span>
-                    <span class="text-[8px] text-slate-500 font-medium block">Per ${m.unit}</span>
-                    ${unitDoseBadge}
+                ` : `
+                  <div class="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                    <div>
+                      <span class="text-[9px] uppercase font-bold text-slate-500 block">Maximum Retail Price</span>
+                      <span class="text-[10px] text-slate-400 font-medium">Verified Official MRP</span>
+                    </div>
+                    <div class="text-right">
+                      <span class="text-base font-black text-emerald-700 font-mono block">₹ ${m.mrp.toFixed(2)}</span>
+                      <span class="text-[8px] text-slate-500 font-medium block">Per ${m.unit}</span>
+                      ${unitDoseBadge}
+                    </div>
                   </div>
-                </div>
+                `}
 
                 ${(() => {
                   if (!isPharmacist) return '';
@@ -4572,21 +4797,26 @@ class ACSApp {
       </div>
     ` : '';
 
-    if (viewMode === "table") {
-      // In table mode: on desktop show master table, on mobile (md:hidden) show cards so phone screens never have horizontal overflow!
+    if (viewMode === "compact") {
+      return `
+        ${ownerBannerHtml}
+        ${compactHtml}
+      `;
+    } else if (viewMode === "cards") {
+      return `
+        ${ownerBannerHtml}
+        ${cardsHtml}
+      `;
+    } else {
+      // Default "table" view: On desktop show master table, on mobile (md:hidden) show ultra-compact rows!
       return `
         ${ownerBannerHtml}
         <div class="hidden md:block">
           ${tableHtml}
         </div>
         <div class="md:hidden">
-          ${cardsHtml}
+          ${compactHtml}
         </div>
-      `;
-    } else {
-      return `
-        ${ownerBannerHtml}
-        ${cardsHtml}
       `;
     }
   }
@@ -4597,16 +4827,13 @@ class ACSApp {
     if (store) {
       this.updateHostedMedicineCatalog(store);
       const btnTable = document.getElementById("hosted-view-toggle-table");
+      const btnCompact = document.getElementById("hosted-view-toggle-compact");
       const btnCards = document.getElementById("hosted-view-toggle-cards");
-      if (btnTable && btnCards) {
-        if (mode === "table") {
-          btnTable.className = "px-2.5 py-1 rounded-lg font-bold text-xs transition flex items-center gap-1 bg-[#135c7e] text-white shadow-xs";
-          btnCards.className = "px-2.5 py-1 rounded-lg font-bold text-xs transition flex items-center gap-1 text-slate-600 hover:text-slate-900";
-        } else {
-          btnTable.className = "px-2.5 py-1 rounded-lg font-bold text-xs transition flex items-center gap-1 text-slate-600 hover:text-slate-900";
-          btnCards.className = "px-2.5 py-1 rounded-lg font-bold text-xs transition flex items-center gap-1 bg-[#135c7e] text-white shadow-xs";
-        }
-      }
+      const activeCls = "px-2.5 py-1 rounded-lg font-bold text-xs transition flex items-center gap-1 bg-[#135c7e] text-white shadow-xs";
+      const inactiveCls = "px-2.5 py-1 rounded-lg font-bold text-xs transition flex items-center gap-1 text-slate-600 hover:text-slate-900";
+      if (btnTable) btnTable.className = (mode === "table" || !mode) ? activeCls : inactiveCls;
+      if (btnCompact) btnCompact.className = (mode === "compact") ? activeCls : inactiveCls;
+      if (btnCards) btnCards.className = (mode === "cards") ? activeCls : inactiveCls;
     }
   }
 
@@ -13036,13 +13263,16 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
 
   resetToDefaultData() {
     if (confirm("Reset all pharmacies, stock, staff, and financial data back to official initial sample state?")) {
+      localStorage.removeItem("ACS_STORES_DATA_V2");
       localStorage.removeItem("ACS_STORES_DATA_V1");
+      localStorage.removeItem("ACS_CUSTOM_STORES");
+      localStorage.removeItem("ACS_CLOUD_LAST_MODIFIED");
       localStorage.removeItem("ACS_USER_SESSION_V1");
       this.stores = JSON.parse(JSON.stringify(INITIAL_STORES_DATA));
       this.currentStoreId = this.stores[0].id;
       this.currentUser = null;
       this.activeTab = "landing";
-      this.saveStores();
+      this.saveStores(true);
       this.renderHeaderBar();
       this.renderCurrentView();
       this.showToast("Database reset to initial sample state!", "info");
@@ -13052,8 +13282,15 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
   setupEventListeners() {
     // Cross-tab reactive synchronization
     window.addEventListener("storage", (e) => {
-      if (e.key === "ACS_STORES_DATA_V1") {
+      if (
+        e.key === "ACS_STORES_DATA_V2" ||
+        e.key === "ACS_STORES_DATA_V1" ||
+        e.key === "ACS_USER_SESSION_V2" ||
+        e.key === "ACS_USER_SESSION_V1"
+      ) {
+        this.loadUserSession();
         this.loadStores();
+        this.renderHeaderBar();
         this.renderCurrentView();
       }
     });
@@ -13084,7 +13321,14 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
   }
 }
 
-// Instantiate on DOMContentLoaded
-document.addEventListener("DOMContentLoaded", () => {
-  window.acsApp = new ACSApp();
-});
+// Instantiate on DOMContentLoaded or immediately if DOM already parsed
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+      if (!window.acsApp) window.acsApp = new ACSApp();
+    });
+  } else {
+    if (!window.acsApp) window.acsApp = new ACSApp();
+  }
+}
+

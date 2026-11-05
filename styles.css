@@ -444,3 +444,64 @@ body {
     display: none !important;
   }
 }
+
+/* ======================================================= */
+/* MOBILE COMPACT MEDICINE CATALOG & ERGONOMIC UI          */
+/* ======================================================= */
+
+.dosage-icon-tab {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+  color: #0369a1;
+}
+.dosage-icon-syr {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #b45309;
+}
+.dosage-icon-inj {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #b91c1c;
+}
+.dosage-icon-drop {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #15803d;
+}
+.dosage-icon-oint {
+  background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+  color: #7e22ce;
+}
+.dosage-icon-gen {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  color: #475569;
+}
+
+.med-compact-row {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.med-compact-row:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(19, 92, 126, 0.08);
+  border-color: #93c5fd;
+}
+.med-compact-row:active {
+  transform: scale(0.995);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Mobile Quick Bar Safe Spacing */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .mobile-bottom-bar {
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+  }
+}
+
+.mobile-compact-table th,
+.mobile-compact-table td {
+  padding: 0.5rem 0.4rem;
+}

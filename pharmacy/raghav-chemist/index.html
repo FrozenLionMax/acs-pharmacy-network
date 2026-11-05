@@ -426,18 +426,18 @@
 
       <div class="hosted-standalone-site w-full bg-white text-slate-800 animate-fade-in min-h-screen flex flex-col justify-between">
         <!-- Micro Statutory Top Bar -->
-        <div class="bg-teal-950 text-teal-100 py-2.5 px-6 sm:px-12 flex flex-wrap items-center justify-between text-xs border-b border-teal-900">
-          <div class="flex items-center gap-3">
-            <span><i class="fa fa-shield text-amber-400"></i> UP FSDA Licensed Retail Pharmacy</span>
+        <div class="bg-teal-950 text-teal-100 py-1.5 sm:py-2 px-3 sm:px-12 flex items-center justify-between text-[11px] sm:text-xs border-b border-teal-900">
+          <div class="flex items-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar">
+            <span class="truncate flex items-center gap-1.5"><i class="fa fa-shield text-amber-400"></i> <span class="hidden sm:inline">UP FSDA Licensed Retail Pharmacy</span><span class="sm:hidden">UP FSDA Retail</span></span>
             <span class="text-teal-700">|</span>
-            <span class="font-mono text-teal-200">Lic 20: UP/DEO/2019/20/1429</span>
+            <span class="font-mono text-teal-200 whitespace-nowrap">Lic 20: UP/DEO/2019/20/1429</span>
             <span class="text-teal-700 hidden sm:inline">|</span>
-            <span class="font-mono text-teal-200 hidden sm:inline">Lic 21: UP/DEO/2019/21/1430</span>
+            <span class="font-mono text-teal-200 hidden sm:inline whitespace-nowrap">Lic 21: UP/DEO/2019/21/1430</span>
             <span class="text-teal-700 hidden md:inline">|</span>
-            <span class="hidden md:inline"><i class="fa fa-map-marker text-amber-400"></i> Deoria, Uttar Pradesh</span>
+            <span class="hidden md:inline whitespace-nowrap"><i class="fa fa-map-marker text-amber-400"></i> Deoria, Uttar Pradesh</span>
           </div>
-          <div class="flex items-center gap-3">
-            <span>Hours: <strong>08:00 AM - 10:00 PM</strong></span>
+          <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <span class="hidden xs:inline text-[11px]">Hours: <strong>08:00 AM - 10:00 PM</strong></span>
             
             <span class="text-teal-700 hidden sm:inline">|</span>
             <a href="tel:919415844321" class="text-amber-300 hover:text-white font-bold hidden sm:inline">
@@ -447,9 +447,9 @@
         </div>
 
         <!-- Public Patient Pharmacy Navbar -->
-        <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 py-3.5 px-4 sm:px-10 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3.5">
+        <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 py-3 px-3 sm:px-10 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div class="flex items-center gap-3">
-            <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#135c7e] to-[#2c5895] text-white flex items-center justify-center text-xl font-black shadow-md flex-shrink-0">
+            <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-[#135c7e] to-[#2c5895] text-white flex items-center justify-center text-lg sm:text-xl font-black shadow-md flex-shrink-0">
               <i class="fa fa-plus"></i>
             </div>
             <div>
@@ -466,39 +466,43 @@
           </div>
 
           <!-- Direct Patient Action Buttons (100% Consumer-Focused) -->
-          <div class="flex flex-wrap items-center gap-2 text-xs">
-            <button onclick="window.acsApp.openPrescriptionUploadModal('Raghav Chemist & Druggists')" class="bg-amber-400 hover:bg-amber-500 text-slate-950 px-4 py-2 rounded-xl font-black transition flex items-center gap-1.5 shadow-sm">
-              <i class="fa fa-file-text-o"></i> Prescription Verification
-            </button>
-            <a href="https://wa.me/919415844321?text=Hello%20Raghav%20Chemist%20%26%20Druggists,%20I%20am%20inquiring%20about%20medicine%20availability." target="_blank" rel="noopener noreferrer" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm">
-              <i class="fa fa-whatsapp text-sm"></i> WhatsApp
-            </a>
-            <a href="tel:919415844321" class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5">
-              <i class="fa fa-phone text-[#135c7e]"></i> Call Store
-            </a>
-            <a href="https://maps.google.com/?q=Malviya+Road+Ram+Gulam+Tola+Deoria" target="_blank" rel="noopener noreferrer" class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 hidden sm:inline-flex">
-              <i class="fa fa-location-arrow text-amber-600"></i> Directions
-            </a>
-            <button onclick="window.acsApp.openStoreCertificateModal('store-up-004')" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-xs">
-              <i class="fa fa-certificate text-amber-600"></i> UP License Certificate
-            </button>
-            <button onclick="window.acsApp.copyStoreLink('/pharmacy/raghav-chemist-deoria')" class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs" title="Copy website link to share">
-              <i class="fa fa-clone text-[#135c7e]"></i> Copy Link
-            </button>
-            <button onclick="window.acsApp.openGoogleConsoleAutomationModal('store-up-004')" class="bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 px-3 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer" title="Googlebot Indexing, Knowledge Graph &amp; SERP Status">
-              <i class="fa fa-google text-[#4285F4]"></i> Googlebot &amp; Schema
-            </button>
-            <a href="https://www.google.com/search?q=Raghav%20Chemist%20%26%20Druggists%20Deoria%20Raghavendra%20Nath%20Tiwari" target="_blank" rel="noopener noreferrer" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 px-3 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs hidden lg:inline-flex" title="Search pharmacy on Google">
-              <i class="fa fa-search text-teal-700"></i> Google Test
-            </a>
-            <button onclick="window.acsApp.triggerPwaInstall()" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-3 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer" title="Install App on Phone / Desktop">
-              <i class="fa fa-download text-amber-700"></i> <span class="hidden sm:inline">Install</span> App
-            </button>
-            
-              <button onclick="window.acsApp.openLoginModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs" title="Pharmacist Login to edit store, stock and photos">
-                <i class="fa fa-lock text-amber-600"></i> Pharmacist Login
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 text-xs">
+            <div class="flex items-center gap-1.5 sm:gap-2">
+              <button onclick="window.acsApp.openPrescriptionUploadModal('Raghav Chemist & Druggists')" class="flex-1 sm:flex-none bg-amber-400 hover:bg-amber-500 text-slate-950 px-3.5 py-2 rounded-xl font-black transition flex items-center justify-center gap-1.5 shadow-sm text-xs">
+                <i class="fa fa-file-text-o"></i> Prescription Verification
               </button>
-            
+              <a href="https://wa.me/919415844321?text=Hello%20Raghav%20Chemist%20%26%20Druggists,%20I%20am%20inquiring%20about%20medicine%20availability." target="_blank" rel="noopener noreferrer" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl font-bold transition flex items-center justify-center gap-1.5 shadow-sm text-xs">
+                <i class="fa fa-whatsapp text-sm"></i> WhatsApp
+              </a>
+              <a href="tel:919415844321" class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-2 rounded-xl font-bold transition flex items-center justify-center gap-1.5 text-xs">
+                <i class="fa fa-phone text-[#135c7e]"></i> Call Store
+              </a>
+            </div>
+            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              <a href="https://maps.google.com/?q=Malviya+Road+Ram+Gulam+Tola+Deoria" target="_blank" rel="noopener noreferrer" class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 text-[11px] whitespace-nowrap">
+                <i class="fa fa-location-arrow text-amber-600"></i> Directions
+              </a>
+              <button onclick="window.acsApp.openStoreCertificateModal('store-up-004')" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs text-[11px] whitespace-nowrap">
+                <i class="fa fa-certificate text-amber-600"></i> UP License Certificate
+              </button>
+              <button onclick="window.acsApp.copyStoreLink('/pharmacy/raghav-chemist-deoria')" class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs text-[11px] whitespace-nowrap" title="Copy website link to share">
+                <i class="fa fa-clone text-[#135c7e]"></i> Copy Link
+              </button>
+              <button onclick="window.acsApp.openGoogleConsoleAutomationModal('store-up-004')" class="bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer text-[11px] whitespace-nowrap" title="Googlebot Indexing, Knowledge Graph &amp; SERP Status">
+                <i class="fa fa-google text-[#4285F4]"></i> Googlebot &amp; Schema
+              </button>
+              <a href="https://www.google.com/search?q=Raghav%20Chemist%20%26%20Druggists%20Deoria%20Raghavendra%20Nath%20Tiwari" target="_blank" rel="noopener noreferrer" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs hidden lg:inline-flex text-[11px] whitespace-nowrap" title="Search pharmacy on Google">
+                <i class="fa fa-search text-teal-700"></i> Google Test
+              </a>
+              <button onclick="window.acsApp.triggerPwaInstall()" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer text-[11px] whitespace-nowrap" title="Install App on Phone / Desktop">
+                <i class="fa fa-download text-amber-700"></i> <span class="hidden sm:inline">Install</span> App
+              </button>
+              
+                <button onclick="window.acsApp.openLoginModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs text-[11px] whitespace-nowrap" title="Pharmacist Login to edit store, stock and photos">
+                  <i class="fa fa-lock text-amber-600"></i> Pharmacist Login
+                </button>
+              
+            </div>
           </div>
         </header>
 
@@ -512,19 +516,19 @@
             <!-- ======================================================== -->
             <div>
               <!-- Store Hero Banner Image -->
-              <div class="relative h-72 sm:h-96 bg-slate-900 overflow-hidden group">
+              <div class="relative h-56 sm:h-72 md:h-96 bg-slate-900 overflow-hidden group">
                 <img id="storefront-hero-img" src="https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1200&q=80" alt="Raghav Chemist & Druggists" class="w-full h-full object-cover opacity-90 transition duration-500" onerror="this.src='https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80'" />
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/40 to-transparent"></div>
                 
                 
 
-                <div class="absolute bottom-6 left-4 right-4 sm:bottom-8 sm:left-10 sm:right-10 text-white flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                <div class="absolute bottom-4 left-3 right-3 sm:bottom-8 sm:left-10 sm:right-10 text-white flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4">
                   <div>
-                    <span class="text-xs font-black uppercase tracking-widest text-amber-300 block mb-1">
+                    <span class="text-[10px] sm:text-xs font-black uppercase tracking-widest text-amber-300 block mb-1">
                       Licensed Retail Chemists &amp; Druggists • Uttar Pradesh
                     </span>
-                    <h2 class="text-2xl sm:text-4xl font-black">Raghav Chemist & Druggists</h2>
-                    <p class="text-xs sm:text-sm text-slate-200 mt-2 max-w-2xl leading-relaxed">
+                    <h2 class="text-xl sm:text-4xl font-black">Raghav Chemist & Druggists</h2>
+                    <p class="text-xs sm:text-sm text-slate-200 mt-1 sm:mt-2 max-w-2xl leading-relaxed line-clamp-2 sm:line-clamp-none">
                       Dispensing 100% authentic allopathic, generic, biological, and OTC medications under constant supervision of registered UPPC pharmacists.
                     </p>
                   </div>
@@ -841,16 +845,25 @@
                           id="hosted-view-toggle-table" 
                           onclick="window.acsApp.setHostedCatalogViewMode('table')" 
                           class="px-2.5 py-1 rounded-lg font-bold text-xs transition flex items-center gap-1 bg-[#135c7e] text-white shadow-xs"
-                          title="Table View (Like Owner Register)"
+                          title="Table View (Full Register)"
                         >
                           <i class="fa fa-table"></i> Table
+                        </button>
+                        <button 
+                          type="button" 
+                          id="hosted-view-toggle-compact" 
+                          onclick="window.acsApp.setHostedCatalogViewMode('compact')" 
+                          class="px-2.5 py-1 rounded-lg font-bold text-xs transition flex items-center gap-1 text-slate-600 hover:text-slate-900"
+                          title="Compact View (Phone Optimized)"
+                        >
+                          <i class="fa fa-list"></i> Compact
                         </button>
                         <button 
                           type="button" 
                           id="hosted-view-toggle-cards" 
                           onclick="window.acsApp.setHostedCatalogViewMode('cards')" 
                           class="px-2.5 py-1 rounded-lg font-bold text-xs transition flex items-center gap-1 text-slate-600 hover:text-slate-900"
-                          title="Card View (Compact)"
+                          title="Card View (Expanded)"
                         >
                           <i class="fa fa-th-large"></i> Cards
                         </button>
@@ -871,13 +884,13 @@
                       />
                     </div>
 
-                    <div class="flex flex-wrap items-center gap-2 pt-1">
-                      <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Categories:</span>
+                    <div class="flex items-center gap-2 pt-1 overflow-x-auto no-scrollbar py-1">
+                      <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1 whitespace-nowrap">Categories:</span>
                       <button 
                         type="button" 
                         data-cat="ALL" 
                         onclick="window.acsApp.setHostedCategoryFilter('ALL')" 
-                        class="hosted-cat-pill px-3 py-1.5 rounded-xl font-bold text-xs transition bg-[#135c7e] text-white font-black"
+                        class="hosted-cat-pill px-3 py-1.5 rounded-xl font-bold text-xs transition whitespace-nowrap bg-[#135c7e] text-white font-black"
                       >
                         All Medicines (3)
                       </button>
@@ -885,7 +898,7 @@
                         type="button" 
                         data-cat="RX" 
                         onclick="window.acsApp.setHostedCategoryFilter('RX')" 
-                        class="hosted-cat-pill px-3 py-1.5 rounded-xl font-bold text-xs transition bg-slate-100 text-slate-700 hover:bg-slate-200"
+                        class="hosted-cat-pill px-3 py-1.5 rounded-xl font-bold text-xs transition whitespace-nowrap bg-slate-100 text-slate-700 hover:bg-slate-200"
                       >
                         Prescription (Schedule H/H1)
                       </button>
@@ -893,7 +906,7 @@
                         type="button" 
                         data-cat="OTC" 
                         onclick="window.acsApp.setHostedCategoryFilter('OTC')" 
-                        class="hosted-cat-pill px-3 py-1.5 rounded-xl font-bold text-xs transition bg-slate-100 text-slate-700 hover:bg-slate-200"
+                        class="hosted-cat-pill px-3 py-1.5 rounded-xl font-bold text-xs transition whitespace-nowrap bg-slate-100 text-slate-700 hover:bg-slate-200"
                       >
                         OTC / Everyday Care
                       </button>
@@ -901,7 +914,7 @@
                         type="button" 
                         data-cat="AYUSH" 
                         onclick="window.acsApp.setHostedCategoryFilter('AYUSH')" 
-                        class="hosted-cat-pill px-3 py-1.5 rounded-xl font-bold text-xs transition bg-slate-100 text-slate-700 hover:bg-slate-200"
+                        class="hosted-cat-pill px-3 py-1.5 rounded-xl font-bold text-xs transition whitespace-nowrap bg-slate-100 text-slate-700 hover:bg-slate-200"
                       >
                         Ayush / Herbal
                       </button>
@@ -940,7 +953,7 @@
               <th class="py-3.5 px-3 min-w-[140px]">Batch &amp; Expiry</th>
               <th class="py-3.5 px-3 min-w-[120px]">Packaging</th>
               <th class="py-3.5 px-3 min-w-[130px] text-center">Stock</th>
-              <th class="py-3.5 px-3 min-w-[130px] text-right">Cost Price (CP)</th>
+              
               <th class="py-3.5 px-4 min-w-[150px] text-right">Retail Price (MRP)</th>
               
               <th class="py-3.5 px-4 text-center min-w-[140px]">Actions</th>
@@ -975,10 +988,7 @@
                       290 Strips (15 tabs)
                     </span>
                   </td>
-                  <td class="py-3.5 px-3 text-right">
-                    <span class="text-sm font-bold font-mono text-slate-700 block">₹ 23.50</span>
-                    <span class="text-[9px] text-slate-400 block font-normal">Wholesale / CP</span>
-                  </td>
+                  
                   <td class="py-3.5 px-4 text-right">
                     <span class="text-base font-black font-mono text-emerald-700 block">₹ 34.00</span>
                     <span class="text-[9px] text-slate-500 font-medium block">Per Strips (15 tabs)</span>
@@ -1027,10 +1037,7 @@
                       65 Bottles (200ml)
                     </span>
                   </td>
-                  <td class="py-3.5 px-3 text-right">
-                    <span class="text-sm font-bold font-mono text-slate-700 block">₹ 125.00</span>
-                    <span class="text-[9px] text-slate-400 block font-normal">Wholesale / CP</span>
-                  </td>
+                  
                   <td class="py-3.5 px-4 text-right">
                     <span class="text-base font-black font-mono text-emerald-700 block">₹ 175.00</span>
                     <span class="text-[9px] text-slate-500 font-medium block">Per Bottles (200ml)</span>
@@ -1079,10 +1086,7 @@
                       120 Strips (15 tabs)
                     </span>
                   </td>
-                  <td class="py-3.5 px-3 text-right">
-                    <span class="text-sm font-bold font-mono text-slate-700 block">₹ 142.00</span>
-                    <span class="text-[9px] text-slate-400 block font-normal">Wholesale / CP</span>
-                  </td>
+                  
                   <td class="py-3.5 px-4 text-right">
                     <span class="text-base font-black font-mono text-emerald-700 block">₹ 198.00</span>
                     <span class="text-[9px] text-slate-500 font-medium block">Per Strips (15 tabs)</span>
@@ -1111,167 +1115,197 @@
         </div>
         <div class="md:hidden">
           
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="space-y-2.5">
         
-            <div class="bg-white rounded-2xl border border-slate-200 hover:border-teal-400/80 hover:shadow-md transition p-4 sm:p-5 flex flex-col justify-between space-y-3 group">
-              <div>
-                <div class="flex items-center justify-between gap-2 mb-2">
-                  <span class="px-2.5 py-0.5 rounded-lg text-[11px] font-bold font-mono bg-emerald-50 text-emerald-900 border border-emerald-200">
-                    <span class="text-slate-500 font-sans font-medium text-[10px] mr-1">Stock:</span>290 Strips (15 tabs)
-                  </span>
-                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
-                    OTC
-                  </span>
+            <div class="med-compact-row bg-white rounded-2xl border border-slate-200/90 hover:border-[#135c7e] p-3 sm:p-3.5 shadow-2xs transition flex items-center justify-between gap-2.5 sm:gap-3">
+              <!-- Left: Dosage Icon + Details -->
+              <div class="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                <div class="w-10 h-10 rounded-xl dosage-icon-tab flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-2xs" title="Tablet">
+                  <i class="fa fa-circle"></i>
                 </div>
-
-                <h4 class="text-base font-black text-slate-900 group-hover:text-[#135c7e] transition leading-snug">
-                  Dolo 650 Tablet
-                </h4>
-                <div class="mt-1 p-2 bg-slate-50 border border-slate-100 rounded-xl">
-                  <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Active Generic Salt:</span>
-                  <span class="text-[11px] font-mono font-semibold text-slate-700 block line-clamp-2">Paracetamol 650mg</span>
-                </div>
-
-                <div class="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
-                  <span class="truncate max-w-[160px]"><i class="fa fa-industry text-slate-400 mr-1"></i>Micro Labs Ltd</span>
-                  <span class="font-mono text-[10px] text-slate-400">Batch: BAT-DOL-7719</span>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <h4 
+                      onclick="window.acsApp.openMedicineDetailModal('med-rcd-01', 'store-up-004')"
+                      class="text-xs sm:text-sm font-black text-slate-900 truncate hover:text-[#135c7e] cursor-pointer"
+                      title="Dolo 650 Tablet"
+                    >
+                      Dolo 650 Tablet
+                    </h4>
+                    <span class="bg-teal-50 text-teal-800 border border-teal-200 px-1.5 py-0.2 rounded text-[9px] font-bold">OTC</span>
+                  </div>
+                  <p class="text-[10px] sm:text-[11px] font-mono text-slate-600 truncate mt-0.5" title="Paracetamol 650mg">
+                    Paracetamol 650mg
+                  </p>
+                  <div class="flex items-center gap-2 mt-1 text-[9px] text-slate-400">
+                    <span class="inline-flex items-center gap-1 font-mono font-bold text-emerald-700">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      Stock: 290 Strips (15 tabs)
+                    </span>
+                    <span class="text-slate-300">|</span>
+                    <span class="truncate max-w-[100px] sm:max-w-[150px]">Micro Labs Ltd</span>
+                  </div>
                 </div>
               </div>
 
-              <div class="pt-2.5 border-t border-slate-100 space-y-2.5">
-                <div class="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
-                  <div>
-                    <span class="text-[9px] uppercase font-bold text-slate-500 block">Cost Price (CP)</span>
-                    <span class="text-sm font-bold text-slate-700 font-mono block">₹ 23.50</span>
-                    <span class="text-[8px] text-slate-400 block">Wholesale Rate</span>
+              <!-- Right: Price + Quick Actions -->
+              <div class="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
+                <div class="text-right">
+                  <div class="text-xs sm:text-sm font-black font-mono text-emerald-700 leading-tight">
+                    ₹ 34.00
                   </div>
-                  <div class="text-right">
-                    <span class="text-[9px] uppercase font-bold text-emerald-800 block">Retail Price (MRP)</span>
-                    <span class="text-base font-black text-emerald-700 font-mono block">₹ 34.00</span>
-                    <span class="text-[8px] text-slate-500 font-medium block">Per Strips (15 tabs)</span>
-                    <span class="text-[8px] text-teal-800 font-mono block">~₹ 2.27 / tabs</span>
-                  </div>
+                  <span class="text-[9px] text-slate-400 block">Strips (15 tabs)</span>
+                  <span class="text-[9px] text-teal-800 font-mono font-semibold block">~₹ 2.27/tabs</span>
+                  
                 </div>
 
-                
-
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1">
+                  <a 
+                    href="https://wa.me/919415844321?text=Hello%20Raghav%20Chemist%20%26%20Druggists,%20I%20am%20checking%20availability%20of%20Dolo%20650%20Tablet%20(Paracetamol%20650mg)." 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    class="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white flex items-center justify-center text-sm transition shadow-2xs" 
+                    title="WhatsApp"
+                  >
+                    <i class="fa fa-whatsapp"></i>
+                  </a>
                   <button 
                     type="button" 
                     onclick="window.acsApp.openMedicineDetailModal('med-rcd-01', 'store-up-004')" 
-                    class="flex-1 py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition text-center flex items-center justify-center gap-1.5 shadow-2xs"
+                    class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-[#135c7e] text-slate-700 hover:text-white flex items-center justify-center text-xs transition shadow-2xs" 
+                    title="View Details"
                   >
-                    <i class="fa fa-info-circle text-[#135c7e]"></i> View Details
+                    <i class="fa fa-info-circle"></i>
                   </button>
                   
                 </div>
               </div>
             </div>
           
-            <div class="bg-white rounded-2xl border border-slate-200 hover:border-teal-400/80 hover:shadow-md transition p-4 sm:p-5 flex flex-col justify-between space-y-3 group">
-              <div>
-                <div class="flex items-center justify-between gap-2 mb-2">
-                  <span class="px-2.5 py-0.5 rounded-lg text-[11px] font-bold font-mono bg-emerald-50 text-emerald-900 border border-emerald-200">
-                    <span class="text-slate-500 font-sans font-medium text-[10px] mr-1">Stock:</span>65 Bottles (200ml)
-                  </span>
-                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
-                    Ayush / OTC
-                  </span>
+            <div class="med-compact-row bg-white rounded-2xl border border-slate-200/90 hover:border-[#135c7e] p-3 sm:p-3.5 shadow-2xs transition flex items-center justify-between gap-2.5 sm:gap-3">
+              <!-- Left: Dosage Icon + Details -->
+              <div class="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                <div class="w-10 h-10 rounded-xl dosage-icon-syr flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-2xs" title="Syrup / Oral Liquid">
+                  <i class="fa fa-flask"></i>
                 </div>
-
-                <h4 class="text-base font-black text-slate-900 group-hover:text-[#135c7e] transition leading-snug">
-                  Liv.52 DS Syrup
-                </h4>
-                <div class="mt-1 p-2 bg-slate-50 border border-slate-100 rounded-xl">
-                  <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Active Generic Salt:</span>
-                  <span class="text-[11px] font-mono font-semibold text-slate-700 block line-clamp-2">Ayurvedic Herbal Liver Formulation</span>
-                </div>
-
-                <div class="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
-                  <span class="truncate max-w-[160px]"><i class="fa fa-industry text-slate-400 mr-1"></i>Himalaya Wellness</span>
-                  <span class="font-mono text-[10px] text-slate-400">Batch: BAT-LIV-8820</span>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <h4 
+                      onclick="window.acsApp.openMedicineDetailModal('med-rcd-02', 'store-up-004')"
+                      class="text-xs sm:text-sm font-black text-slate-900 truncate hover:text-[#135c7e] cursor-pointer"
+                      title="Liv.52 DS Syrup"
+                    >
+                      Liv.52 DS Syrup
+                    </h4>
+                    <span class="bg-teal-50 text-teal-800 border border-teal-200 px-1.5 py-0.2 rounded text-[9px] font-bold">Ayush / OTC</span>
+                  </div>
+                  <p class="text-[10px] sm:text-[11px] font-mono text-slate-600 truncate mt-0.5" title="Ayurvedic Herbal Liver Formulation">
+                    Ayurvedic Herbal Liver Formulation
+                  </p>
+                  <div class="flex items-center gap-2 mt-1 text-[9px] text-slate-400">
+                    <span class="inline-flex items-center gap-1 font-mono font-bold text-emerald-700">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      Stock: 65 Bottles (200ml)
+                    </span>
+                    <span class="text-slate-300">|</span>
+                    <span class="truncate max-w-[100px] sm:max-w-[150px]">Himalaya Wellness</span>
+                  </div>
                 </div>
               </div>
 
-              <div class="pt-2.5 border-t border-slate-100 space-y-2.5">
-                <div class="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
-                  <div>
-                    <span class="text-[9px] uppercase font-bold text-slate-500 block">Cost Price (CP)</span>
-                    <span class="text-sm font-bold text-slate-700 font-mono block">₹ 125.00</span>
-                    <span class="text-[8px] text-slate-400 block">Wholesale Rate</span>
+              <!-- Right: Price + Quick Actions -->
+              <div class="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
+                <div class="text-right">
+                  <div class="text-xs sm:text-sm font-black font-mono text-emerald-700 leading-tight">
+                    ₹ 175.00
                   </div>
-                  <div class="text-right">
-                    <span class="text-[9px] uppercase font-bold text-emerald-800 block">Retail Price (MRP)</span>
-                    <span class="text-base font-black text-emerald-700 font-mono block">₹ 175.00</span>
-                    <span class="text-[8px] text-slate-500 font-medium block">Per Bottles (200ml)</span>
-                    <span class="text-[8px] text-teal-800 font-mono block">~₹ 0.88 / ml</span>
-                  </div>
+                  <span class="text-[9px] text-slate-400 block">Bottles (200ml)</span>
+                  <span class="text-[9px] text-teal-800 font-mono font-semibold block">~₹ 0.88/ml</span>
+                  
                 </div>
 
-                
-
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1">
+                  <a 
+                    href="https://wa.me/919415844321?text=Hello%20Raghav%20Chemist%20%26%20Druggists,%20I%20am%20checking%20availability%20of%20Liv.52%20DS%20Syrup%20(Ayurvedic%20Herbal%20Liver%20Formulation)." 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    class="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white flex items-center justify-center text-sm transition shadow-2xs" 
+                    title="WhatsApp"
+                  >
+                    <i class="fa fa-whatsapp"></i>
+                  </a>
                   <button 
                     type="button" 
                     onclick="window.acsApp.openMedicineDetailModal('med-rcd-02', 'store-up-004')" 
-                    class="flex-1 py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition text-center flex items-center justify-center gap-1.5 shadow-2xs"
+                    class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-[#135c7e] text-slate-700 hover:text-white flex items-center justify-center text-xs transition shadow-2xs" 
+                    title="View Details"
                   >
-                    <i class="fa fa-info-circle text-[#135c7e]"></i> View Details
+                    <i class="fa fa-info-circle"></i>
                   </button>
                   
                 </div>
               </div>
             </div>
           
-            <div class="bg-white rounded-2xl border border-slate-200 hover:border-teal-400/80 hover:shadow-md transition p-4 sm:p-5 flex flex-col justify-between space-y-3 group">
-              <div>
-                <div class="flex items-center justify-between gap-2 mb-2">
-                  <span class="px-2.5 py-0.5 rounded-lg text-[11px] font-bold font-mono bg-emerald-50 text-emerald-900 border border-emerald-200">
-                    <span class="text-slate-500 font-sans font-medium text-[10px] mr-1">Stock:</span>120 Strips (15 tabs)
-                  </span>
-                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                    Schedule H
-                  </span>
+            <div class="med-compact-row bg-white rounded-2xl border border-slate-200/90 hover:border-[#135c7e] p-3 sm:p-3.5 shadow-2xs transition flex items-center justify-between gap-2.5 sm:gap-3">
+              <!-- Left: Dosage Icon + Details -->
+              <div class="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                <div class="w-10 h-10 rounded-xl dosage-icon-tab flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-2xs" title="Tablet">
+                  <i class="fa fa-circle"></i>
                 </div>
-
-                <h4 class="text-base font-black text-slate-900 group-hover:text-[#135c7e] transition leading-snug">
-                  Telma 40 Tablet
-                </h4>
-                <div class="mt-1 p-2 bg-slate-50 border border-slate-100 rounded-xl">
-                  <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Active Generic Salt:</span>
-                  <span class="text-[11px] font-mono font-semibold text-slate-700 block line-clamp-2">Telmisartan 40mg</span>
-                </div>
-
-                <div class="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
-                  <span class="truncate max-w-[160px]"><i class="fa fa-industry text-slate-400 mr-1"></i>Glenmark Pharmaceuticals</span>
-                  <span class="font-mono text-[10px] text-slate-400">Batch: BAT-TEL-8812</span>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <h4 
+                      onclick="window.acsApp.openMedicineDetailModal('med-rcd-03', 'store-up-004')"
+                      class="text-xs sm:text-sm font-black text-slate-900 truncate hover:text-[#135c7e] cursor-pointer"
+                      title="Telma 40 Tablet"
+                    >
+                      Telma 40 Tablet
+                    </h4>
+                    <span class="bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.2 rounded text-[9px] font-bold">Schedule H</span>
+                  </div>
+                  <p class="text-[10px] sm:text-[11px] font-mono text-slate-600 truncate mt-0.5" title="Telmisartan 40mg">
+                    Telmisartan 40mg
+                  </p>
+                  <div class="flex items-center gap-2 mt-1 text-[9px] text-slate-400">
+                    <span class="inline-flex items-center gap-1 font-mono font-bold text-emerald-700">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      Stock: 120 Strips (15 tabs)
+                    </span>
+                    <span class="text-slate-300">|</span>
+                    <span class="truncate max-w-[100px] sm:max-w-[150px]">Glenmark Pharmaceuticals</span>
+                  </div>
                 </div>
               </div>
 
-              <div class="pt-2.5 border-t border-slate-100 space-y-2.5">
-                <div class="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
-                  <div>
-                    <span class="text-[9px] uppercase font-bold text-slate-500 block">Cost Price (CP)</span>
-                    <span class="text-sm font-bold text-slate-700 font-mono block">₹ 142.00</span>
-                    <span class="text-[8px] text-slate-400 block">Wholesale Rate</span>
+              <!-- Right: Price + Quick Actions -->
+              <div class="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
+                <div class="text-right">
+                  <div class="text-xs sm:text-sm font-black font-mono text-emerald-700 leading-tight">
+                    ₹ 198.00
                   </div>
-                  <div class="text-right">
-                    <span class="text-[9px] uppercase font-bold text-emerald-800 block">Retail Price (MRP)</span>
-                    <span class="text-base font-black text-emerald-700 font-mono block">₹ 198.00</span>
-                    <span class="text-[8px] text-slate-500 font-medium block">Per Strips (15 tabs)</span>
-                    <span class="text-[8px] text-teal-800 font-mono block">~₹ 13.20 / tabs</span>
-                  </div>
+                  <span class="text-[9px] text-slate-400 block">Strips (15 tabs)</span>
+                  <span class="text-[9px] text-teal-800 font-mono font-semibold block">~₹ 13.20/tabs</span>
+                  
                 </div>
 
-                
-
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1">
+                  <a 
+                    href="https://wa.me/919415844321?text=Hello%20Raghav%20Chemist%20%26%20Druggists,%20I%20am%20checking%20availability%20of%20Telma%2040%20Tablet%20(Telmisartan%2040mg)." 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    class="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white flex items-center justify-center text-sm transition shadow-2xs" 
+                    title="WhatsApp"
+                  >
+                    <i class="fa fa-whatsapp"></i>
+                  </a>
                   <button 
                     type="button" 
                     onclick="window.acsApp.openMedicineDetailModal('med-rcd-03', 'store-up-004')" 
-                    class="flex-1 py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition text-center flex items-center justify-center gap-1.5 shadow-2xs"
+                    class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-[#135c7e] text-slate-700 hover:text-white flex items-center justify-center text-xs transition shadow-2xs" 
+                    title="View Details"
                   >
-                    <i class="fa fa-info-circle text-[#135c7e]"></i> View Details
+                    <i class="fa fa-info-circle"></i>
                   </button>
                   
                 </div>
@@ -1461,7 +1495,7 @@
             <i class="fa fa-home text-base text-teal-300"></i>
             <span class="text-[9px] font-bold">Home</span>
           </button>
-          <button onclick="const el = document.getElementById('search-public-medicines'); if (el) { el.focus(); el.scrollIntoView({behavior: 'smooth'}); }" class="flex-1 py-1.5 px-1 text-slate-200 hover:text-white flex flex-col items-center justify-center gap-0.5">
+          <button onclick="const el = document.getElementById('hosted-stock-search-input') || document.getElementById('search-public-medicines'); if (el) { el.focus(); el.scrollIntoView({behavior: 'smooth'}); }" class="flex-1 py-1.5 px-1 text-slate-200 hover:text-white flex flex-col items-center justify-center gap-0.5">
             <i class="fa fa-search text-base text-amber-300"></i>
             <span class="text-[9px] font-bold">Search</span>
           </button>
