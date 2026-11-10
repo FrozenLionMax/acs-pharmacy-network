@@ -1402,6 +1402,25 @@ try {
   app.requestStockPushNotifications();
   console.log('Automated Stock Risk Intelligence & Expiry Audit Suite verified successfully!');
 
+  // --- Testing On-Demand SEO Cache Revalidation Endpoint ---
+  const revalidateHandler = require('./api/revalidate.js');
+  let revalStatusCode = 0;
+  let revalResponse = null;
+  await revalidateHandler({
+    method: 'GET',
+    query: { slug: 'deoria-drug-house' },
+    headers: {}
+  }, {
+    headers: {},
+    setHeader(k, v) { this.headers[k] = v; },
+    status(code) { revalStatusCode = code; return this; },
+    json(data) { revalResponse = data; }
+  });
+  if (revalStatusCode !== 200 || !revalResponse?.success || !revalResponse.revalidatedPaths.includes('/pharmacy/deoria-drug-house')) {
+    throw new Error('On-Demand SEO Cache Revalidation endpoint failed!');
+  }
+  console.log('On-Demand SEO Cache Revalidation Endpoint (/api/revalidate) verified successfully!');
+
   console.log('Supabase Cloud Database integration suite verified successfully!');
 
   console.log('ALL CONNECTION TESTS VERIFIED AND PASSED 100%!');
