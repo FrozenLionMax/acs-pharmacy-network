@@ -1015,13 +1015,19 @@ class ACSApp {
             this.debouncedPushToCloud();
           }
 
-          // Re-render views reactively so this device immediately updates prices, stocks and photos
-          this.renderHeaderBar();
-          this.renderCurrentView();
+          // Only re-render when the merged data actually differs from what was on screen
+          const mergedJson = JSON.stringify(this.stores);
+          const dataActuallyChanged = mergedJson !== currentJson;
+
+          if (dataActuallyChanged) {
+            // Use debounced renderer to coalesce with other sync sources and preserve scroll
+            this.debouncedRenderForSync();
+          }
           this.updateCloudSyncBadge("synced", "Synchronized across all devices");
 
-          if (!isInitial) {
-            this.showToast("Real-time Update: Live pharmacy data & photos synchronized from database.", "info");
+          // Silent console log instead of intrusive popup toast for background sync
+          if (!isInitial && dataActuallyChanged) {
+            console.log("[Cloud Sync] Data refreshed from cloud.");
           }
         }
       } else {
@@ -1560,6 +1566,19 @@ class ACSApp {
   }
 
   // --- View Router ---
+  // Debounced version of renderCurrentView for background sync — coalesces rapid
+  // consecutive calls within 150ms and preserves the user's scroll position so the
+  // page never visibly "jumps" during automatic data refreshes.
+  debouncedRenderForSync() {
+    if (this._syncRenderTimeout) clearTimeout(this._syncRenderTimeout);
+    this._syncRenderTimeout = setTimeout(() => {
+      const scrollY = window.scrollY || window.pageYOffset || 0;
+      this.renderHeaderBar();
+      this.renderCurrentView();
+      requestAnimationFrame(() => window.scrollTo(0, scrollY));
+    }, 150);
+  }
+
   renderCurrentView() {
     const container = document.getElementById("main-view-container");
     if (!container) return;
@@ -6922,7 +6941,8 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       });
     }
     this.saveStores(false);
-    this.renderCurrentView();
+    // Use debounced renderer so rapid individual stock updates don't cause flicker
+    this.debouncedRenderForSync();
   }
 
   async pullFromSupabase(isInitial = false) {
@@ -7005,8 +7025,9 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       mappedStores.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
 
       // Only re-render when store data actually differs to eliminate screen flicker
-      const currentSignature = (this.stores || []).map(s => `${s.id}:${(s.stocks||[]).length}:${(s.staff||[]).length}`).join(';');
-      const newSignature = mappedStores.map(s => `${s.id}:${(s.stocks||[]).length}:${(s.staff||[]).length}`).join(';');
+      // Use full JSON comparison for accurate change detection (not just array lengths)
+      const currentSignature = JSON.stringify(this.stores || []);
+      const newSignature = JSON.stringify(mappedStores);
       const isDiff = currentSignature !== newSignature;
 
       if (isDiff || isInitial) {
@@ -7016,13 +7037,14 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           this.currentStoreId = prevStoreId;
         }
         this.saveStores(false);
-        this.renderHeaderBar();
-        this.renderCurrentView();
+        // Use debounced renderer to coalesce with other sync sources and preserve scroll
+        this.debouncedRenderForSync();
       }
 
       this.updateCloudSyncBadge("synced", "PostgreSQL (Supabase) Database Connected & Live");
+      // Silent console log instead of intrusive popup toast for background sync
       if (!isInitial && isDiff) {
-        this.showToast("PostgreSQL Sync: Synchronized latest records from Supabase.", "info");
+        console.log("[Supabase Sync] Data refreshed from PostgreSQL database.");
       }
     } catch (e) {
       console.warn("pullFromSupabase exception:", e);
