@@ -245,6 +245,30 @@ try {
   if (currentStore.stocks.length !== preStockLength + 1) throw new Error('Smart merge failed to append new SKU without duplicating existing');
   console.log('executeSmartStockImport ("MERGE" mode) successfully incremented existing stock & added new SKU!');
 
+  // 4b. Test 34-Line Distributor Sheet with Banner on Row 1 & Headers on Row 2
+  const mock34LineSheet = [
+    ["HT PHARMA DISTRIBUTORS PVT LTD - DEORIA (U.P.)", "", "", "", "", "", "", ""],
+    ["S.No", "Product Description", "Batch No", "Exp Date", "Billed Qty", "Net PTR", "Selling MRP", "Scheme"],
+  ];
+  for (let r = 1; r <= 32; r++) {
+    mock34LineSheet.push([r, `Pharma SKU ${r}`, `BAT-HT-${1000 + r}`, "2028-06-30", "50", "85.00", "125.00", "+1"]);
+  }
+  mock34LineSheet.push(["Grand Total Invoice Amount", "", "", "", "1600", "2720", "4000", ""]);
+
+  const detectedHeaderRow = app.findHeaderRowIndex(mock34LineSheet);
+  if (detectedHeaderRow !== 1) throw new Error(`findHeaderRowIndex failed: expected row index 1 (Row 2), got ${detectedHeaderRow}`);
+  const detectedHeaders = mock34LineSheet[detectedHeaderRow];
+  const detected34Cols = app.detectColumnMapping(detectedHeaders);
+  if (detected34Cols.name !== 1) throw new Error('Failed to auto-detect name on Row 2');
+  if (detected34Cols.batchNo !== 2) throw new Error('Failed to auto-detect batch on Row 2');
+  if (detected34Cols.expiryDate !== 3) throw new Error('Failed to auto-detect expiry on Row 2');
+  if (detected34Cols.quantity !== 4) throw new Error('Failed to auto-detect qty on Row 2');
+  if (detected34Cols.purchaseRate !== 5) throw new Error('Failed to auto-detect PTR on Row 2');
+  if (detected34Cols.mrp !== 6) throw new Error('Failed to auto-detect MRP on Row 2');
+  if (detected34Cols.freeScheme !== 7) throw new Error('Failed to auto-detect Free Scheme on Row 2');
+  if (!app.isSummaryOrFooterRow(mock34LineSheet[34])) throw new Error('isSummaryOrFooterRow failed to identify Grand Total row');
+  console.log('Smart Multi-Row Header Auto-Detection & 34-Line Distributor Sheet Suite verified 100%!');
+
   // 5. Test Barcode Lookup
   app.lookupBarcodeInStock(existingMed.batchNo);
   console.log(`lookupBarcodeInStock("${existingMed.batchNo}") ran successfully!`);

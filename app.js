@@ -9393,55 +9393,268 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     });
   }
 
-  detectColumnMapping(headers) {
-    const synonyms = {
-      name: ["medicine name", "medicine", "brand", "brand name", "product", "product name", "item", "item name", "description", "drug", "name", "particulars"],
-      saltName: ["salt", "salt name", "composition", "generic", "generic name", "formula", "molecule", "salt/composition"],
-      manufacturer: ["manufacturer", "mfg", "company", "make", "brand mfg", "pharma", "lab"],
-      batchNo: ["batch", "batch no", "batch number", "lot", "b.no", "batch#", "lot no", "batch code"],
-      expiryDate: ["expiry", "expiry date", "exp", "exp date", "val", "validity", "exp dt", "expiry dt"],
-      quantity: ["quantity", "qty", "stock", "units", "in stock", "bal qty", "closing qty", "pack qty", "total units", "boxes", "strips"],
-      unit: ["unit", "packaging", "pack", "uom", "pkg", "pack size"],
-      purchaseRate: ["buying cost", "purchase rate", "cost price", "rate", "ptr", "net rate", "cp", "cost", "buy rate", "purchase price", "cost / unit", "whsl rate"],
-      mrp: ["selling cost", "selling price", "mrp", "retail price", "max retail price", "sale rate", "sp", "public mrp", "retail mrp"],
-      schedule: ["schedule", "category", "drug schedule", "sched", "type", "drug type"],
-      rackLocation: ["rack", "rack location", "shelf", "bay", "box", "location", "bin", "shelf no"],
-      freeScheme: ["bulk free scheme", "free scheme", "scheme", "deal", "bulk scheme", "free", "free qty", "bonus", "bonus scheme", "free deal", "bulk free", "scheme offer"]
+  getImportSynonyms() {
+    return {
+      name: [
+        "medicine name", "medicine", "brand", "brand name", "product", "product name", 
+        "item", "item name", "description", "drug", "name", "particulars", "item description", 
+        "items", "mat description", "item details", "drug name", "med name", "products", 
+        "item_name", "product_name", "item desc", "material description", "product particulars",
+        "product description", "med description", "drug desc", "sku", "title"
+      ],
+      saltName: [
+        "salt", "salt name", "composition", "generic", "generic name", "formula", 
+        "molecule", "salt/composition", "active ingredient", "contents", "molecule name",
+        "generic composition", "salt details", "ingredients", "salt comp", "generic comp"
+      ],
+      manufacturer: [
+        "manufacturer", "mfg", "mfr", "company", "make", "brand mfg", "pharma", 
+        "lab", "division", "cmy", "comp", "mfg by", "manufacturer name", "mfg. by", 
+        "marketed by", "mkt by", "mfr name", "mfg name", "company name"
+      ],
+      batchNo: [
+        "batch", "batch no", "batch no.", "batch number", "lot", "b.no", "b.no.", 
+        "bno", "batch#", "lot no", "lot no.", "batch code", "batch/lot", "b/n", "b. no.",
+        "batch_no", "lot_no", "b no", "batch num"
+      ],
+      expiryDate: [
+        "expiry", "expiry date", "exp", "exp.", "exp date", "exp. date", "val", 
+        "validity", "exp dt", "expiry dt", "e.date", "valid upto", "exp_date", 
+        "expiry_date", "expiration", "valid till", "exp dte", "exp-date", "expdt"
+      ],
+      quantity: [
+        "quantity", "qty", "stock", "units", "in stock", "bal qty", "closing qty", 
+        "pack qty", "total units", "boxes", "strips", "qnty", "pcs", "billed qty", 
+        "tot qty", "net qty", "strip qty", "pack quantity", "total qty", "balance qty",
+        "available qty", "current stock", "stock qty", "qty.", "bil qty", "qty recd"
+      ],
+      unit: [
+        "unit", "packaging", "pack", "uom", "pkg", "pack size", "packing", 
+        "pack_size", "pack type", "strip size", "units/pack", "pkg."
+      ],
+      purchaseRate: [
+        "buying cost", "purchase rate", "cost price", "rate", "ptr", "net rate", 
+        "cp", "cost", "buy rate", "purchase price", "cost / unit", "whsl rate", 
+        "p.rate", "pur rate", "p_rate", "basic rate", "pur. rate", "trade rate", 
+        "billing rate", "invoice rate", "landing cost", "net ptr", "rate/unit"
+      ],
+      mrp: [
+        "selling cost", "selling price", "mrp", "m.r.p", "m.r.p.", "retail price", 
+        "max retail price", "sale rate", "sp", "public mrp", "retail mrp", "s.rate", 
+        "s rate", "sell rate", "sale price", "max retail", "mrp ₹", "mrp rs", "s_rate"
+      ],
+      freeScheme: [
+        "bulk free scheme", "free scheme", "scheme", "deal", "bulk scheme", "free", 
+        "free qty", "bonus", "bonus scheme", "free deal", "bulk free", "scheme offer", 
+        "sch", "f.qty", "fqty", "free quantity", "scheme deal", "+deal", "bonus qty", 
+        "sch qty", "scheme deal", "sch. qty", "free deal"
+      ],
+      schedule: [
+        "schedule", "category", "drug schedule", "sched", "type", "drug type", 
+        "schedule type", "rx category", "h/h1 schedule", "schedule cat"
+      ],
+      rackLocation: [
+        "rack", "rack location", "shelf", "bay", "box", "location", "bin", 
+        "shelf no", "rack no", "shelf location", "storage location", "rack id"
+      ]
     };
+  }
 
+  scoreRowAsHeader(row) {
+    if (!Array.isArray(row)) return 0;
+    const mapping = this.detectColumnMapping(row);
+    let score = 0;
+    for (const [field, colIdx] of Object.entries(mapping)) {
+      if (colIdx !== -1) {
+        if (['name', 'batchNo', 'quantity', 'mrp', 'purchaseRate'].includes(field)) {
+          score += 20;
+        } else {
+          score += 10;
+        }
+      }
+    }
+    return score;
+  }
+
+  findHeaderRowIndex(rawRows) {
+    if (!Array.isArray(rawRows) || rawRows.length === 0) return 0;
+    let bestIdx = 0;
+    let maxScore = -1;
+    const scanLimit = Math.min(10, rawRows.length);
+    for (let i = 0; i < scanLimit; i++) {
+      const sc = this.scoreRowAsHeader(rawRows[i]);
+      if (sc > maxScore) {
+        maxScore = sc;
+        bestIdx = i;
+      }
+    }
+    return maxScore >= 10 ? bestIdx : 0;
+  }
+
+  isSummaryOrFooterRow(row) {
+    if (!Array.isArray(row)) return true;
+    const combined = row.map(c => String(c || '').trim()).join(' ').toLowerCase();
+    if (!combined) return true;
+    if (/^(total|sub\s*total|grand\s*total|taxable|net\s*amt|round\s*off|cgst|sgst|igst|invoice\s*total|gross\s*total|amount\s*in\s*words|remarks|terms)/i.test(combined)) {
+      return true;
+    }
+    const firstCells = row.map(c => String(c || '').trim()).filter(Boolean).slice(0, 2);
+    if (firstCells.some(c => /^(total|grand\s*total|sub\s*total|summary|taxable|round\s*off)/i.test(c))) {
+      return true;
+    }
+    return false;
+  }
+
+  detectColumnMapping(headers) {
+    const synonyms = this.getImportSynonyms();
     const mapping = {};
     Object.keys(synonyms).forEach(field => {
       mapping[field] = -1;
     });
 
+    const candidates = [];
     headers.forEach((h, colIdx) => {
-      const cleanHeader = String(h || "").toLowerCase().trim().replace(/[^a-z0-9]/g, " ");
+      const cleanHeader = String(h || "").toLowerCase().trim().replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ");
       if (!cleanHeader) return;
+
       for (const [field, syns] of Object.entries(synonyms)) {
-        if (mapping[field] === -1) {
-          if (syns.some(s => cleanHeader === s || cleanHeader.includes(s) || s.includes(cleanHeader))) {
-            mapping[field] = colIdx;
+        let bestScore = 0;
+        for (const rawSyn of syns) {
+          const s = String(rawSyn || "").toLowerCase().trim().replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ");
+          if (!s) continue;
+
+          // Guard against false positives
+          if (field === "freeScheme" && (cleanHeader.includes("sched") || cleanHeader.includes("schedule"))) {
+            continue;
+          }
+          if (field === "purchaseRate" && cleanHeader.includes("mrp")) {
+            continue;
+          }
+
+          // 1. Exact full match
+          if (cleanHeader === s) {
+            bestScore = Math.max(bestScore, 100);
             break;
           }
+
+          // 2. Whole word match
+          const escaped = s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const wordRegex = new RegExp("(^|\\s)" + escaped + "(\\s|$)", "i");
+          if (wordRegex.test(cleanHeader)) {
+            bestScore = Math.max(bestScore, 80 + Math.min(s.length, 10));
+          } else if (s.length >= 4 && cleanHeader.includes(s)) {
+            bestScore = Math.max(bestScore, 50 + Math.min(s.length, 10));
+          } else if (cleanHeader.length >= 4 && s.includes(cleanHeader)) {
+            bestScore = Math.max(bestScore, 40 + Math.min(cleanHeader.length, 10));
+          }
+        }
+
+        if (bestScore > 0) {
+          candidates.push({ field, colIdx, score: bestScore });
         }
       }
     });
 
+    // Assign greedily by highest match score
+    candidates.sort((a, b) => b.score - a.score);
+
+    const assignedFields = new Set();
+    const assignedCols = new Set();
+
+    for (const cand of candidates) {
+      if (!assignedFields.has(cand.field) && !assignedCols.has(cand.colIdx)) {
+        mapping[cand.field] = cand.colIdx;
+        assignedFields.add(cand.field);
+        assignedCols.add(cand.colIdx);
+      }
+    }
+
     return mapping;
   }
 
-  renderImportMapper(rawRows, fileName = "Imported Sheet") {
+  inferMissingColumns(detected, headers, dataRows) {
+    const mapping = { ...detected };
+
+    // If 'name' was not found, locate the column with highest non-numeric text density
+    if (mapping.name === -1 && dataRows.length > 0) {
+      let bestCol = -1;
+      let maxTextCount = 0;
+      const numCols = headers.length;
+      for (let c = 0; c < numCols; c++) {
+        let textCount = 0;
+        dataRows.slice(0, 10).forEach(row => {
+          const val = String(row[c] || '').trim();
+          if (val.length >= 3 && !/^\d+$/.test(val) && !/^\d{1,4}[\/\-]\d{1,2}[\/\-]\d{1,4}$/.test(val) && !/^[0-9.]+$/.test(val)) {
+            textCount++;
+          }
+        });
+        if (textCount > maxTextCount) {
+          maxTextCount = textCount;
+          bestCol = c;
+        }
+      }
+      if (bestCol !== -1 && maxTextCount >= 2) {
+        mapping.name = bestCol;
+      }
+    }
+
+    // If 'quantity' was not found, find a column with positive integers
+    if (mapping.quantity === -1 && dataRows.length > 0) {
+      for (let c = 0; c < headers.length; c++) {
+        if (c === mapping.name || c === mapping.batchNo) continue;
+        const sampleVals = dataRows.slice(0, 10).map(r => String(r[c] || '').trim()).filter(Boolean);
+        const allInts = sampleVals.length >= 2 && sampleVals.every(v => /^\d{1,5}$/.test(v));
+        if (allInts) {
+          mapping.quantity = c;
+          break;
+        }
+      }
+    }
+
+    // If 'mrp' was not found, find a column with decimal monetary numbers
+    if (mapping.mrp === -1 && dataRows.length > 0) {
+      for (let c = 0; c < headers.length; c++) {
+        if (c === mapping.name || c === mapping.quantity || c === mapping.batchNo) continue;
+        const sampleVals = dataRows.slice(0, 10).map(r => String(r[c] || '').replace(/[₹,\s]/g, '')).filter(Boolean);
+        const allDecimals = sampleVals.length >= 2 && sampleVals.every(v => /^\d+(\.\d{1,2})?$/.test(v));
+        if (allDecimals) {
+          mapping.mrp = c;
+          break;
+        }
+      }
+    }
+
+    return mapping;
+  }
+
+  renderImportMapper(rawRows, fileName = "Imported Sheet", forcedHeaderIdx = null) {
     const container = document.getElementById("import-preview-container");
     if (!container) return;
 
-    if (!rawRows || rawRows.length < 2) {
-      this.showToast("File does not contain enough data or header rows", "warning");
+    if (!rawRows || rawRows.length < 1) {
+      this.showToast("File does not contain any data rows", "warning");
       return;
     }
 
-    const headers = rawRows[0];
-    const dataRows = rawRows.slice(1).filter(r => r.some(cell => String(cell).trim().length > 0));
-    const detected = this.detectColumnMapping(headers);
+    // 1. Detect True Header Row (Auto-skips title/distributor address rows)
+    const detectedHeaderIdx = forcedHeaderIdx !== null ? forcedHeaderIdx : this.findHeaderRowIndex(rawRows);
+    const headers = rawRows[detectedHeaderIdx] || rawRows[0];
+
+    // 2. Extract Data Rows (filtering out header and summary/total rows)
+    const rawDataRows = rawRows.slice(detectedHeaderIdx + 1);
+    const dataRows = rawDataRows.filter(r => {
+      if (!Array.isArray(r)) return false;
+      if (this.isSummaryOrFooterRow(r)) return false;
+      return r.some(cell => String(cell || '').trim().length > 0);
+    });
+
+    if (dataRows.length === 0) {
+      this.showToast("No medicine data rows found under row " + (detectedHeaderIdx + 1) + ". Try selecting a different header row.", "warning");
+    }
+
+    // 3. Detect column mapping and infer missing fields
+    let detected = this.detectColumnMapping(headers);
+    detected = this.inferMissingColumns(detected, headers, dataRows);
 
     const fieldLabels = {
       name: "Medicine Brand Name *",
@@ -9453,130 +9666,212 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       unit: "Packaging Unit",
       purchaseRate: "Buying Cost (CP ₹) *",
       mrp: "Selling Price (MRP ₹) *",
+      freeScheme: "Free / Bonus Scheme (e.g. +1, 10+1)",
       schedule: "Drug Schedule Category",
       rackLocation: "Rack / Shelf Location"
     };
 
     container.classList.remove("hidden");
     container.innerHTML = `
-      <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-        <div class="flex items-center justify-between">
-          <div>
-            <span class="font-bold text-slate-800 text-sm block">Auto-Detected Columns (${fileName})</span>
-            <span class="text-slate-500 text-[11px]">Verify column assignments. Total ${dataRows.length} medicine records ready.</span>
+      <div class="space-y-3 animate-fade-in">
+        <!-- Header Row Detection Banner & Switcher -->
+        <div class="p-3 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div class="flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-lg bg-[#135c7e] text-amber-300 flex items-center justify-center font-bold text-xs flex-shrink-0 shadow-xs">
+              <i class="fa fa-table"></i>
+            </span>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-slate-900 text-xs">${fileName}</span>
+                <span class="px-2 py-0.2 bg-emerald-100 text-emerald-800 font-bold rounded text-[10px]">${dataRows.length} Medicine Rows Detected</span>
+              </div>
+              <span class="text-slate-500 text-[11px] block mt-0.5">
+                ${detectedHeaderIdx > 0 ? `Skipped ${detectedHeaderIdx} title/banner row(s) above header. ` : ''}Header row automatically identified at <strong>Row ${detectedHeaderIdx + 1}</strong>.
+              </span>
+            </div>
           </div>
-          <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-mono font-bold text-[10px]">${dataRows.length} Rows</span>
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <label class="text-[11px] font-bold text-slate-700 whitespace-nowrap">Header Row:</label>
+            <select id="select-header-row" class="px-2.5 py-1.5 border border-teal-300 rounded-lg text-xs font-bold bg-white text-slate-900 shadow-xs cursor-pointer focus:ring-2 focus:ring-teal-500">
+              ${rawRows.slice(0, Math.min(8, rawRows.length)).map((r, i) => {
+                const sample = r.filter(c => String(c).trim()).slice(0, 3).join(' | ');
+                const isCur = i === detectedHeaderIdx;
+                return `<option value="${i}" ${isCur ? 'selected' : ''}>Row ${i + 1}: ${sample ? (sample.length > 30 ? sample.slice(0, 30) + '...' : sample) : '(Empty)'} ${isCur ? '★ (Active Header)' : ''}</option>`;
+              }).join('')}
+            </select>
+          </div>
         </div>
 
         <!-- Column Selectors Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-[11px]">
-          ${Object.entries(fieldLabels).map(([field, label]) => {
-            const mappedIdx = detected[field];
-            return `
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+              <i class="fa fa-columns text-[#135c7e]"></i> Smart Column Assignments
+            </span>
+            <span class="text-[10px] text-slate-500 font-medium">Verify or adjust mappings below</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 text-[11px]">
+            ${Object.entries(fieldLabels).map(([field, label]) => {
+              const mappedIdx = detected[field] !== undefined ? detected[field] : -1;
+              return `
+                <div class="p-2 bg-white rounded-lg border border-slate-200 space-y-1">
+                  <label class="block font-bold text-slate-700 truncate" title="${label}">${label}</label>
+                  <select id="col-map-${field}" class="col-mapper-select w-full px-2 py-1 border border-slate-300 rounded text-xs bg-slate-50 focus:bg-white font-medium text-slate-900">
+                    <option value="-1">-- Not in Sheet --</option>
+                    ${headers.map((h, i) => `
+                      <option value="${i}" ${mappedIdx === i ? "selected" : ""}>Col ${i + 1}: ${h || 'Column ' + (i + 1)}</option>
+                    `).join("")}
+                  </select>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+
+        <!-- Stock Addition Mode -->
+        <div class="p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-2">
+          <span class="font-bold text-blue-950 block text-xs">Inventory Addition Mode:</span>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <label class="flex items-start gap-2 p-2 bg-white rounded-lg border border-blue-200 cursor-pointer shadow-xs">
+              <input type="radio" name="import-mode" value="MERGE" checked class="mt-0.5 text-[#135c7e]" />
               <div>
-                <label class="block font-semibold text-slate-700 mb-0.5">${label}</label>
-                <select id="col-map-${field}" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white font-medium text-xs">
-                  <option value="-1">-- Not in Sheet --</option>
-                  ${headers.map((h, i) => `
-                    <option value="${i}" ${mappedIdx === i ? "selected" : ""}>Col ${i + 1}: ${h || 'Column ' + (i + 1)}</option>
-                  `).join("")}
-                </select>
+                <strong class="text-slate-900 block text-xs">Smart Merge & Increment (Recommended)</strong>
+                <span class="text-[11px] text-slate-500">If medicine name & batch match existing inventory, adds quantity to current stock.</span>
               </div>
-            `;
-          }).join("")}
+            </label>
+            <label class="flex items-start gap-2 p-2 bg-white rounded-lg border border-blue-200 cursor-pointer shadow-xs">
+              <input type="radio" name="import-mode" value="APPEND" class="mt-0.5 text-[#135c7e]" />
+              <div>
+                <strong class="text-slate-900 block text-xs">Append As New Batches</strong>
+                <span class="text-[11px] text-slate-500">Always creates separate SKU entries for all rows.</span>
+              </div>
+            </label>
+          </div>
         </div>
-      </div>
 
-      <!-- Import Mode Selection -->
-      <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
-        <span class="font-bold text-blue-950 block text-xs">Stock Addition Mode:</span>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-          <label class="flex items-start gap-2 p-2 bg-white rounded-lg border border-blue-200 cursor-pointer">
-            <input type="radio" name="import-mode" value="MERGE" checked class="mt-0.5 text-[#135c7e]" />
-            <div>
-              <strong class="text-slate-800 block">Smart Merge & Increment (Recommended)</strong>
-              <span class="text-[11px] text-slate-500">If medicine name & batch match existing inventory, add new units to current stock without duplicate rows.</span>
-            </div>
-          </label>
-          <label class="flex items-start gap-2 p-2 bg-white rounded-lg border border-blue-200 cursor-pointer">
-            <input type="radio" name="import-mode" value="APPEND" class="mt-0.5 text-[#135c7e]" />
-            <div>
-              <strong class="text-slate-800 block">Append As New Batches</strong>
-              <span class="text-[11px] text-slate-500">Always create separate new SKU line entries for all rows.</span>
-            </div>
-          </label>
+        <!-- Live Preview Table -->
+        <div class="space-y-1">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-800 text-xs">Live Extracted Preview (First ${Math.min(5, dataRows.length)} Records):</span>
+            <span class="text-[10px] text-slate-500">Updates live if you change any column above</span>
+          </div>
+          <div class="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-xs">
+            <table class="w-full text-left text-[11px] divide-y divide-slate-200">
+              <thead class="bg-slate-100 font-bold text-slate-700">
+                <tr>
+                  <th class="p-2">#</th>
+                  <th class="p-2">Medicine Brand</th>
+                  <th class="p-2">Batch</th>
+                  <th class="p-2">Exp Date</th>
+                  <th class="p-2 text-center">Qty</th>
+                  <th class="p-2">Buying CP</th>
+                  <th class="p-2">Selling MRP</th>
+                  <th class="p-2">Free Scheme</th>
+                  <th class="p-2">Rack</th>
+                </tr>
+              </thead>
+              <tbody id="import-preview-tbody" class="divide-y divide-slate-100">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      <!-- Live 5-Row Preview -->
-      <div class="space-y-1">
-        <span class="font-bold text-slate-700 text-xs block">Preview of First ${Math.min(5, dataRows.length)} Records:</span>
-        <div class="overflow-x-auto border border-slate-200 rounded-xl">
-          <table class="w-full text-left text-[11px] divide-y divide-slate-200">
-            <thead class="bg-slate-100 font-bold text-slate-700">
-              <tr>
-                <th class="p-2">#</th>
-                <th class="p-2">Medicine Brand</th>
-                <th class="p-2">Batch</th>
-                <th class="p-2">Exp</th>
-                <th class="p-2 text-center">Qty</th>
-                <th class="p-2">Buying CP</th>
-                <th class="p-2">Selling MRP</th>
-                <th class="p-2">Rack</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100 bg-white">
-              ${dataRows.slice(0, 5).map((row, idx) => {
-                const name = detected.name !== -1 ? row[detected.name] : row[0] || 'Drug';
-                const batch = detected.batchNo !== -1 ? row[detected.batchNo] : 'BAT-NEW';
-                const exp = detected.expiryDate !== -1 ? row[detected.expiryDate] : '2028-12-31';
-                const qty = detected.quantity !== -1 ? row[detected.quantity] : 20;
-                const cp = detected.purchaseRate !== -1 ? row[detected.purchaseRate] : 50;
-                const mrp = detected.mrp !== -1 ? row[detected.mrp] : 80;
-                const rack = detected.rackLocation !== -1 ? row[detected.rackLocation] : 'Rack A-01';
-                return `
-                  <tr>
-                    <td class="p-2 text-slate-400 font-mono">${idx + 1}</td>
-                    <td class="p-2 font-bold text-slate-900">${name}</td>
-                    <td class="p-2 font-mono">${batch}</td>
-                    <td class="p-2 font-mono">${exp}</td>
-                    <td class="p-2 font-bold text-center text-indigo-700">${qty}</td>
-                    <td class="p-2 text-slate-700">₹${cp}</td>
-                    <td class="p-2 font-bold text-emerald-800">₹${mrp}</td>
-                    <td class="p-2 text-slate-500">${rack}</td>
-                  </tr>
-                `;
-              }).join("")}
-            </tbody>
-          </table>
+        <div class="pt-2 flex items-center justify-between">
+          <span class="text-xs text-slate-500 font-medium">Ready to import <strong class="text-emerald-800 font-bold">${dataRows.length}</strong> medicines into live inventory.</span>
+          <button type="button" id="btn-execute-import" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md transition flex items-center gap-2 cursor-pointer">
+            <i class="fa fa-cloud-upload"></i> Import & Synchronize Inventory (${dataRows.length} SKUs)
+          </button>
         </div>
-      </div>
-
-      <div class="pt-2 flex justify-end gap-2">
-        <button type="button" id="btn-execute-import" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md transition flex items-center gap-1.5">
-          <i class="fa fa-check"></i> Import & Synchronize Inventory (${dataRows.length} SKUs)
-        </button>
       </div>
     `;
 
-    document.getElementById("btn-execute-import").onclick = () => {
-      const colMap = {
-        name: parseInt(document.getElementById("col-map-name").value),
-        saltName: parseInt(document.getElementById("col-map-saltName").value),
-        manufacturer: parseInt(document.getElementById("col-map-manufacturer").value),
-        batchNo: parseInt(document.getElementById("col-map-batchNo").value),
-        expiryDate: parseInt(document.getElementById("col-map-expiryDate").value),
-        quantity: parseInt(document.getElementById("col-map-quantity").value),
-        unit: parseInt(document.getElementById("col-map-unit").value),
-        purchaseRate: parseInt(document.getElementById("col-map-purchaseRate").value),
-        mrp: parseInt(document.getElementById("col-map-mrp").value),
-        schedule: parseInt(document.getElementById("col-map-schedule").value),
-        rackLocation: parseInt(document.getElementById("col-map-rackLocation").value)
+    // Function to render preview table rows
+    const renderPreviewTable = () => {
+      const tbody = document.getElementById("import-preview-tbody");
+      if (!tbody) return;
+      const getVal = (id) => {
+        const el = document.getElementById(id);
+        return el ? parseInt(el.value) : -1;
+      };
+      const curMap = {
+        name: getVal("col-map-name"),
+        batchNo: getVal("col-map-batchNo"),
+        expiryDate: getVal("col-map-expiryDate"),
+        quantity: getVal("col-map-quantity"),
+        purchaseRate: getVal("col-map-purchaseRate"),
+        mrp: getVal("col-map-mrp"),
+        freeScheme: getVal("col-map-freeScheme"),
+        rackLocation: getVal("col-map-rackLocation")
       };
 
-      const selectedMode = document.querySelector('input[name="import-mode"]:checked').value;
-      this.executeSmartStockImport(dataRows, colMap, selectedMode);
+      tbody.innerHTML = dataRows.slice(0, 5).map((row, idx) => {
+        const name = (curMap.name !== -1 && row[curMap.name]) ? String(row[curMap.name]).trim() : (row.find(c => typeof c === 'string' && c.length >= 3 && !/^\d+$/.test(c)) || 'Medicine ' + (idx + 1));
+        const batch = (curMap.batchNo !== -1 && row[curMap.batchNo]) ? String(row[curMap.batchNo]).trim() : `BAT-AUT-${100 + idx}`;
+        const exp = (curMap.expiryDate !== -1 && row[curMap.expiryDate]) ? this.normalizeExpiryDate(row[curMap.expiryDate]) : '2028-12-31';
+        const qty = (curMap.quantity !== -1 && row[curMap.quantity]) ? String(row[curMap.quantity]).replace(/[^0-9]/g, '') || '20' : '20';
+        const cp = (curMap.purchaseRate !== -1 && row[curMap.purchaseRate]) ? String(row[curMap.purchaseRate]).replace(/[^0-9.]/g, '') || '50' : '50';
+        const mrp = (curMap.mrp !== -1 && row[curMap.mrp]) ? String(row[curMap.mrp]).replace(/[^0-9.]/g, '') || '80' : '80';
+        const free = (curMap.freeScheme !== -1 && row[curMap.freeScheme]) ? this.formatFreeScheme(row[curMap.freeScheme]) : '-';
+        const rack = (curMap.rackLocation !== -1 && row[curMap.rackLocation]) ? String(row[curMap.rackLocation]).trim() : 'Rack A-01';
+
+        return `
+          <tr>
+            <td class="p-2 text-slate-400 font-mono">${idx + 1}</td>
+            <td class="p-2 font-bold text-slate-900">${name}</td>
+            <td class="p-2 font-mono text-slate-700">${batch}</td>
+            <td class="p-2 font-mono text-slate-700">${exp}</td>
+            <td class="p-2 font-bold text-center text-indigo-700">${qty}</td>
+            <td class="p-2 text-slate-700">₹${cp}</td>
+            <td class="p-2 font-bold text-emerald-800">₹${mrp}</td>
+            <td class="p-2 font-bold text-amber-800">${free || '-'}</td>
+            <td class="p-2 text-slate-500">${rack}</td>
+          </tr>
+        `;
+      }).join("");
     };
+
+    renderPreviewTable();
+
+    // Listen to changes on column mapping dropdowns
+    document.querySelectorAll(".col-mapper-select").forEach(sel => {
+      sel.addEventListener("change", renderPreviewTable);
+    });
+
+    // Listen to header row changes
+    const selectHeaderRow = document.getElementById("select-header-row");
+    if (selectHeaderRow) {
+      selectHeaderRow.addEventListener("change", (e) => {
+        this.renderImportMapper(rawRows, fileName, parseInt(e.target.value));
+      });
+    }
+
+    // Handle submit
+    const btnExecute = document.getElementById("btn-execute-import");
+    if (btnExecute) {
+      btnExecute.onclick = () => {
+        const getVal = (id) => {
+          const el = document.getElementById(id);
+          return el ? parseInt(el.value) : -1;
+        };
+        const finalColMap = {
+          name: getVal("col-map-name"),
+          saltName: getVal("col-map-saltName"),
+          manufacturer: getVal("col-map-manufacturer"),
+          batchNo: getVal("col-map-batchNo"),
+          expiryDate: getVal("col-map-expiryDate"),
+          quantity: getVal("col-map-quantity"),
+          unit: getVal("col-map-unit"),
+          purchaseRate: getVal("col-map-purchaseRate"),
+          mrp: getVal("col-map-mrp"),
+          freeScheme: getVal("col-map-freeScheme"),
+          schedule: getVal("col-map-schedule"),
+          rackLocation: getVal("col-map-rackLocation")
+        };
+        const selectedMode = document.querySelector('input[name="import-mode"]:checked')?.value || "MERGE";
+        this.executeSmartStockImport(dataRows, finalColMap, selectedMode);
+      };
+    }
   }
 
   normalizeExpiryDate(val) {
@@ -9602,42 +9897,101 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
 
   executeSmartStockImport(dataRows, colMap, importMode) {
     const store = this.getCurrentStore();
-    if (!store) return;
+    if (!store) {
+      this.showToast("No active pharmacy selected for import", "danger");
+      return;
+    }
 
+    store.stocks = store.stocks || [];
     let updatedCount = 0;
     let addedCount = 0;
 
     dataRows.forEach((row, idx) => {
-      const name = colMap.name !== -1 && row[colMap.name] ? String(row[colMap.name]).trim() : "";
-      if (!name) return; // skip row if no medicine name
+      if (!Array.isArray(row)) return;
+      if (this.isSummaryOrFooterRow(row)) return;
 
-      const batch = colMap.batchNo !== -1 && row[colMap.batchNo] ? String(row[colMap.batchNo]).trim() : `BAT-${Math.floor(1000 + Math.random() * 9000)}`;
-      const qty = colMap.quantity !== -1 ? Math.max(0, parseInt(String(row[colMap.quantity]).replace(/[^0-9]/g, "")) || 0) : 20;
-      const buyCost = colMap.purchaseRate !== -1 ? Math.max(0, parseFloat(String(row[colMap.purchaseRate]).replace(/[^0-9.]/g, "")) || 0) : 70.0;
-      const mrp = colMap.mrp !== -1 ? Math.max(0, parseFloat(String(row[colMap.mrp]).replace(/[^0-9.]/g, "")) || 0) : (buyCost * 1.35);
-      const salt = colMap.saltName !== -1 && row[colMap.saltName] ? String(row[colMap.saltName]).trim() : "Generic Compound";
-      const mfg = colMap.manufacturer !== -1 && row[colMap.manufacturer] ? String(row[colMap.manufacturer]).trim() : "Generic Pharma";
+      // Extract medicine name with fallback
+      let name = "";
+      if (colMap.name !== -1 && row[colMap.name] !== undefined) {
+        name = String(row[colMap.name]).trim();
+      }
+      if (!name) {
+        // Fallback: search for first non-numeric text column
+        const fallbackText = row.find(c => typeof c === 'string' && c.trim().length >= 3 && !/^\d+$/.test(c.trim()) && !/^[0-9.]+$/.test(c.trim()));
+        if (fallbackText) name = fallbackText.trim();
+      }
+      if (!name) return; // skip row if no usable medicine name
+
+      // Exclude title/footer words
+      if (/^(total|sub\s*total|grand\s*total|taxable|net\s*amt|round\s*off|cgst|sgst|igst|invoice\s*total|gross\s*total|amount\s*in\s*words)/i.test(name)) {
+        return;
+      }
+
+      // Batch
+      let batch = (colMap.batchNo !== -1 && row[colMap.batchNo]) ? String(row[colMap.batchNo]).trim() : "";
+      if (!batch) {
+        batch = `BAT-IMP-${Math.floor(1000 + Math.random() * 9000)}`;
+      }
+
+      // Quantity
+      let qty = 20;
+      if (colMap.quantity !== -1 && row[colMap.quantity] !== undefined) {
+        const parsedQty = parseInt(String(row[colMap.quantity]).replace(/[^0-9]/g, ""), 10);
+        if (!isNaN(parsedQty) && parsedQty >= 0) qty = parsedQty;
+      }
+
+      // Purchase Rate (CP)
+      let buyCost = 70.0;
+      if (colMap.purchaseRate !== -1 && row[colMap.purchaseRate] !== undefined) {
+        const parsedCp = parseFloat(String(row[colMap.purchaseRate]).replace(/[^0-9.]/g, ""));
+        if (!isNaN(parsedCp) && parsedCp >= 0) buyCost = parsedCp;
+      }
+
+      // MRP
+      let mrp = buyCost > 0 ? parseFloat((buyCost * 1.35).toFixed(2)) : 100.0;
+      if (colMap.mrp !== -1 && row[colMap.mrp] !== undefined) {
+        const parsedMrp = parseFloat(String(row[colMap.mrp]).replace(/[^0-9.]/g, ""));
+        if (!isNaN(parsedMrp) && parsedMrp >= 0) mrp = parsedMrp;
+      }
+
+      // Salt
+      const salt = (colMap.saltName !== -1 && row[colMap.saltName]) ? String(row[colMap.saltName]).trim() : "Generic Compound";
+
+      // Manufacturer
+      const mfg = (colMap.manufacturer !== -1 && row[colMap.manufacturer]) ? String(row[colMap.manufacturer]).trim() : "Generic Pharma";
+
+      // Expiry Date
       const exp = this.normalizeExpiryDate(colMap.expiryDate !== -1 ? row[colMap.expiryDate] : "2028-12-31");
-      const unit = colMap.unit !== -1 && row[colMap.unit] ? String(row[colMap.unit]).trim() : "Strips";
-      const sched = colMap.schedule !== -1 && row[colMap.schedule] ? String(row[colMap.schedule]).trim() : "Schedule H";
-      const rack = colMap.rackLocation !== -1 && row[colMap.rackLocation] ? String(row[colMap.rackLocation]).trim() : "General Shelf";
-      const freeScheme = colMap.freeScheme !== undefined && colMap.freeScheme !== -1 && row[colMap.freeScheme] ? this.formatFreeScheme(row[colMap.freeScheme]) : "";
+
+      // Unit
+      const unit = (colMap.unit !== -1 && row[colMap.unit]) ? String(row[colMap.unit]).trim() : "Strips";
+
+      // Schedule
+      const sched = (colMap.schedule !== -1 && row[colMap.schedule]) ? String(row[colMap.schedule]).trim() : "Schedule H";
+
+      // Rack
+      const rack = (colMap.rackLocation !== -1 && row[colMap.rackLocation]) ? String(row[colMap.rackLocation]).trim() : "General Shelf";
+
+      // Free Scheme
+      const freeScheme = (colMap.freeScheme !== undefined && colMap.freeScheme !== -1 && row[colMap.freeScheme]) ? this.formatFreeScheme(row[colMap.freeScheme]) : "";
 
       const existing = store.stocks.find(m => 
         m.name.toLowerCase() === name.toLowerCase() && 
         m.batchNo.toLowerCase() === batch.toLowerCase()
       );
 
+      let targetItem = null;
       if (existing && importMode === "MERGE") {
         existing.quantity += qty;
         if (buyCost > 0) existing.purchaseRate = buyCost;
         if (mrp > 0) existing.mrp = mrp;
         if (rack && rack !== "General Shelf") existing.rackLocation = rack;
         if (freeScheme) existing.freeScheme = freeScheme;
+        targetItem = existing;
         updatedCount++;
       } else {
-        store.stocks.push({
-          id: `med-import-${Date.now()}-${idx}`,
+        const newSku = {
+          id: `med-import-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`,
           name: name,
           saltName: salt,
           manufacturer: mfg,
@@ -9651,8 +10005,15 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           schedule: sched,
           rackLocation: rack,
           minAlertThreshold: 20
-        });
+        };
+        store.stocks.push(newSku);
+        targetItem = newSku;
         addedCount++;
+      }
+
+      // Synchronize atomically to live Supabase PostgreSQL
+      if (targetItem && this.pushSingleStockToSupabase) {
+        this.pushSingleStockToSupabase(store.id, targetItem);
       }
     });
 
@@ -9660,7 +10021,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     this.closeModal();
     this.renderCurrentView();
 
-    this.showToast(`Import Complete: ${updatedCount} existing batches incremented, ${addedCount} new medicines added.`, "success");
+    this.showToast(`Excel Import Complete: ${updatedCount} existing batches updated, ${addedCount} new medicines added to live inventory & database.`, "success");
   }
 
   // ==========================================
