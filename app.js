@@ -6704,27 +6704,46 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
   // REAL-TIME SUPABASE POSTGRESQL INTEGRATION
   // ==========================================
   getSupabaseConfig() {
-    let url = "";
-    let key = "";
+    const DEFAULT_PROD_URL = "https://zcvhhfqnhbwpseowfnbr.supabase.co";
+    const DEFAULT_PROD_KEY = "sb_publishable_ieFq5bk-rn8Z3rbCHC31Ng_0QMLW4U1";
+
+    let url = null;
+    let key = null;
     if (typeof localStorage !== "undefined") {
-      url = localStorage.getItem("ACS_SUPABASE_URL") || "";
-      key = localStorage.getItem("ACS_SUPABASE_ANON_KEY") || "";
+      url = localStorage.getItem("ACS_SUPABASE_URL");
+      key = localStorage.getItem("ACS_SUPABASE_ANON_KEY");
     }
-    if (!url && typeof window !== "undefined" && window.ACS_SUPABASE_URL) {
+    if (url === null && typeof window !== "undefined" && window.ACS_SUPABASE_URL) {
       url = window.ACS_SUPABASE_URL;
     }
-    if (!key && typeof window !== "undefined" && window.ACS_SUPABASE_ANON_KEY) {
+    if (key === null && typeof window !== "undefined" && window.ACS_SUPABASE_ANON_KEY) {
       key = window.ACS_SUPABASE_ANON_KEY;
     }
+
+    if (url === null) url = DEFAULT_PROD_URL;
+    if (key === null) key = DEFAULT_PROD_KEY;
+
+    if (url === "disabled") url = "";
+    if (key === "disabled") key = "";
+
     return { url: (url || "").trim(), key: (key || "").trim() };
   }
 
   setSupabaseConfig(url, key) {
     if (typeof localStorage !== "undefined") {
-      if (url) localStorage.setItem("ACS_SUPABASE_URL", url.trim());
-      else localStorage.removeItem("ACS_SUPABASE_URL");
-      if (key) localStorage.setItem("ACS_SUPABASE_ANON_KEY", key.trim());
-      else localStorage.removeItem("ACS_SUPABASE_ANON_KEY");
+      if (url && url.trim()) localStorage.setItem("ACS_SUPABASE_URL", url.trim());
+      else localStorage.setItem("ACS_SUPABASE_URL", "disabled");
+
+      if (key && key.trim()) localStorage.setItem("ACS_SUPABASE_ANON_KEY", key.trim());
+      else localStorage.setItem("ACS_SUPABASE_ANON_KEY", "disabled");
+    }
+    this.initSupabase();
+  }
+
+  resetSupabaseConfigToDefault() {
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem("ACS_SUPABASE_URL");
+      localStorage.removeItem("ACS_SUPABASE_ANON_KEY");
     }
     this.initSupabase();
   }
@@ -6881,7 +6900,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           rating: parseFloat(s.rating || 4.9),
           stocks: stocks,
           staff: staff,
-          revenueData: s.revenue_data || { todaySales: 21500, monthlyGross: 520000, transactions: [] }
+          revenueData: (this.stores && this.stores.find(st => st.id === s.id)?.revenueData) || s.revenue_data || { todaySales: 21500, monthlyGross: 520000, transactions: [] }
         };
       });
 
@@ -7053,6 +7072,9 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
             </button>
             <button type="button" onclick="window.acsApp.saveSupabaseCredentials()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
               <i class="fa fa-save"></i> Save &amp; Connect
+            </button>
+            <button type="button" onclick="window.acsApp.resetSupabaseConfigToDefault(); window.acsApp.openSupabaseConfigModal();" class="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer" title="Revert to official production Supabase instance">
+              <i class="fa fa-refresh"></i> Reset Default
             </button>
             <button type="button" onclick="window.acsApp.syncAllToSupabase()" class="px-3.5 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
               <i class="fa fa-cloud-upload"></i> 1-Click Push All Data to SQL
