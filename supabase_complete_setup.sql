@@ -123,6 +123,19 @@ ALTER TABLE public.staff_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.prescriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if re-running to prevent error 42710
+DROP POLICY IF EXISTS "Public Read Stores" ON public.stores;
+DROP POLICY IF EXISTS "Public Read Stocks" ON public.medicine_stocks;
+DROP POLICY IF EXISTS "Public Read Staff" ON public.staff_members;
+DROP POLICY IF EXISTS "Public Read Prescriptions" ON public.prescriptions;
+DROP POLICY IF EXISTS "Public Read Transactions" ON public.transactions;
+
+DROP POLICY IF EXISTS "Write Stores" ON public.stores;
+DROP POLICY IF EXISTS "Write Stocks" ON public.medicine_stocks;
+DROP POLICY IF EXISTS "Write Staff" ON public.staff_members;
+DROP POLICY IF EXISTS "Write Prescriptions" ON public.prescriptions;
+DROP POLICY IF EXISTS "Write Transactions" ON public.transactions;
+
 -- Allow public read of verified stores, stock availability & statutory pharmacists
 CREATE POLICY "Public Read Stores" ON public.stores FOR SELECT USING (true);
 CREATE POLICY "Public Read Stocks" ON public.medicine_stocks FOR SELECT USING (true);
