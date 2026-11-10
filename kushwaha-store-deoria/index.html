@@ -342,7 +342,7 @@
     <div class="main-brand-header py-4 px-4 sm:px-8">
       <div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-4">
         <!-- Brand Emblem & Title -->
-        <div class="flex items-center gap-4 cursor-pointer" onclick="window.acsApp.switchTab('landing')">
+        <div class="flex items-center gap-4 cursor-pointer" onclick="window.acsApp.returnToMainPortal()">
           <div class="council-emblem w-14 h-14 rounded-2xl flex items-center justify-center text-slate-900 text-2xl font-black shadow-md flex-shrink-0">
             <i class="fa fa-plus-square text-[#135c7e]"></i>
           </div>
@@ -1428,7 +1428,7 @@
               <h5 class="text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2">
                 <i class="fa fa-sitemap text-amber-400"></i> Partner Licensed Pharmacies • Uttar Pradesh Network (8 Live Chemist Stores)
               </h5>
-              <a href="/" onclick="event.preventDefault(); window.acsApp.switchTab('landing'); window.acsApp.setLandingSubTab('showcase');" class="text-amber-400 hover:text-amber-300 text-[11px] font-semibold underline">
+              <a href="/" onclick="event.preventDefault(); window.acsApp.openDeployedShowcase();" class="text-amber-400 hover:text-amber-300 text-[11px] font-semibold underline">
                 Browse Full State Directory &rarr;
               </a>
             </div>
@@ -1562,15 +1562,12 @@
               © 2026 Kushwaha Medical Store & Surgical. Hosted on the Uttar Pradesh Pharmacy Network • Akhil Consultancy Services (ACS).
             </div>
             <div class="flex items-center gap-3">
-              <a href="/" onclick="event.preventDefault(); window.acsApp.switchTab('landing');" class="text-amber-400 hover:text-amber-300 underline font-semibold">
-                Akhil Consultancy Services (ACS) Portal
+              <a href="/" onclick="event.preventDefault(); window.acsApp.returnToMainPortal();" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 hover:text-amber-300 border border-slate-800 hover:border-amber-400/40 font-semibold transition text-xs shadow-xs cursor-pointer">
+                <i class="fa fa-arrow-left"></i> Return to ACS Main Portal Gateway
               </a>
             </div>
           </div>
         </footer>
-
-        <!-- Discreet Floating Button for Logged-In Store Owner or Admin -->
-        
 
         <!-- Mobile Ergonomic Sticky Bottom Quick Action Bar (Screens <= 768px) -->
         <div class="mobile-bottom-bar md:hidden">
@@ -1636,11 +1633,11 @@
         <div>
           <h4 class="text-white font-bold text-sm mb-3 uppercase tracking-wider">Key Modules</h4>
           <ul class="space-y-1.5 text-slate-400">
-            <li><a href="javascript:void(0)" onclick="window.acsApp.switchTab('landing')" class="hover:text-amber-400">Portal Landing Gateway</a></li>
-            <li><a href="javascript:void(0)" onclick="window.acsApp.switchTab('hosted-site')" class="hover:text-amber-400">Live Hosted Pharmacy Webpage</a></li>
-            <li><a href="javascript:void(0)" onclick="window.acsApp.switchTab('stocks')" class="hover:text-amber-400">Schedule H/H1 Batch Tracking</a></li>
-            <li><a href="javascript:void(0)" onclick="window.acsApp.switchTab('staff')" class="hover:text-amber-400">Aadhaar Linked Pharmacist Vault</a></li>
-            <li><a href="javascript:void(0)" onclick="window.acsApp.switchTab('revenue')" class="hover:text-amber-400">Private Financial Ledger & GST</a></li>
+            <li><a href="javascript:void(0)" onclick="window.acsApp.returnToMainPortal()" class="hover:text-amber-400">Portal Landing Gateway</a></li>
+            <li><a href="javascript:void(0)" onclick="window.acsApp.openDeployedShowcase()" class="hover:text-amber-400">State Pharmacy Directory</a></li>
+            <li><a href="javascript:void(0)" onclick="window.acsApp.switchTab('verify')" class="hover:text-amber-400">UPPC License &amp; Pharmacist Verifier</a></li>
+            <li><a href="javascript:void(0)" onclick="window.acsApp.showDeploymentPage()" class="hover:text-amber-400">Deploy Pharmacy Website (60s)</a></li>
+            <li><a href="javascript:void(0)" onclick="window.acsApp.openLoginModal()" class="hover:text-amber-400">Pharmacist Portal Login</a></li>
           </ul>
         </div>
 

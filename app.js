@@ -371,7 +371,16 @@ class ACSApp {
       }
     }
 
-    this.loadUserSession();
+    if (!slug) {
+      if (!path || path === "/" || path === "/index.html") {
+        this.activeTab = "landing";
+        this.landingSubTab = "gateway";
+      } else if (path.startsWith("/directory")) {
+        this.activeTab = "directory";
+      } else if (path.startsWith("/verify")) {
+        this.activeTab = "verify";
+      }
+    }
   }
 
   // --- Storage & Session Layer ---
@@ -1057,26 +1066,14 @@ class ACSApp {
           } else if (!this.currentStoreId && Array.isArray(this.stores) && this.stores.length > 0) {
             this.currentStoreId = this.stores[0].id;
           }
-          if (this.activeTab !== "hosted-site") {
-            this.activeTab = "store-detail";
-          }
         } else {
           this.currentUser = null;
-          if (this.activeTab !== "hosted-site") {
-            this.activeTab = "landing";
-          }
         }
       } catch (e) {
         this.currentUser = null;
-        if (this.activeTab !== "hosted-site") {
-          this.activeTab = "landing";
-        }
       }
     } else {
       this.currentUser = null;
-      if (this.activeTab !== "hosted-site") {
-        this.activeTab = "landing";
-      }
     }
   }
 
@@ -1354,6 +1351,11 @@ class ACSApp {
                 <i class="fa fa-user-circle text-teal-200 mr-1"></i>${this.currentUser.name || 'Owner'}
               </span>
             </div>
+            ${this.activeTab === 'landing' ? `
+              <button onclick="window.acsApp.switchTab('store-detail')" class="bg-amber-400 hover:bg-amber-300 text-slate-950 px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow" title="Open Store Management Portal">
+                <i class="fa fa-dashboard"></i> Store Dashboard
+              </button>
+            ` : ''}
             <button onclick="window.acsApp.logout()" class="bg-rose-600/90 hover:bg-rose-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow">
               <i class="fa fa-sign-out"></i> Logout
             </button>
@@ -1361,9 +1363,14 @@ class ACSApp {
         `;
       }
 
+      const isInternalPortalTab = !["landing", "hosted-site"].includes(this.activeTab);
       if (navBar) {
-        navBar.classList.remove("hidden");
-        this.updateNavButtonsVisibility();
+        if (isInternalPortalTab) {
+          navBar.classList.remove("hidden");
+          this.updateNavButtonsVisibility();
+        } else {
+          navBar.classList.add("hidden");
+        }
       }
     } else {
       // Guest / Not logged in: Show live status & single Pharmacist Login button
@@ -1415,27 +1422,52 @@ class ACSApp {
     this.showToast(`Switched active pharmacy to "${this.getCurrentStore().name}"`, "info");
   }
 
+  returnToMainPortal() {
+    this.activeTab = "landing";
+    this.landingSubTab = "gateway";
+    if (typeof window !== "undefined") {
+      try {
+        window.history.pushState({ tab: "landing" }, "", "/");
+      } catch (e) {}
+      if (window.scrollTo) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }
+    this.renderHeaderBar();
+    this.renderCurrentView();
+  }
+
   switchTab(tabName) {
     this.activeTab = tabName;
 
-    if (window.location.pathname.startsWith("/pharmacy/")) {
-      try {
-        window.history.pushState({}, "", "/");
-      } catch (e) {}
+    if (tabName === "landing") {
+      this.landingSubTab = "gateway";
+    }
+
+    if (typeof window !== "undefined" && window.location && window.location.pathname) {
+      if (window.location.pathname.startsWith("/pharmacy/")) {
+        try {
+          window.history.pushState({}, "", "/");
+        } catch (e) {}
+      }
     }
 
     // Update nav button active states
-    document.querySelectorAll(".nav-item-btn").forEach((btn) => {
-      if (btn.getAttribute("data-tab") === tabName) {
-        btn.classList.add("active");
-      } else {
-        btn.classList.remove("active");
-      }
-    });
+    if (typeof document !== "undefined") {
+      document.querySelectorAll(".nav-item-btn").forEach((btn) => {
+        if (btn.getAttribute("data-tab") === tabName) {
+          btn.classList.add("active");
+        } else {
+          btn.classList.remove("active");
+        }
+      });
+    }
 
     this.renderHeaderBar();
     this.renderCurrentView();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (typeof window !== "undefined" && window.scrollTo) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   }
 
   // --- View Router ---
@@ -3231,6 +3263,9 @@ class ACSApp {
               <button onclick="window.acsApp.switchTab('store-detail')" class="bg-teal-600 hover:bg-teal-500 text-white px-3.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition shadow-xs">
                 <i class="fa fa-dashboard text-amber-300"></i> Open Owner Portal to Edit Data &amp; Photos
               </button>
+              <button onclick="window.acsApp.viewPublicWebsite('${store.id}')" class="bg-white/10 hover:bg-white/20 text-slate-200 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 transition text-xs border border-white/20">
+                <i class="fa fa-eye"></i> View as Public Visitor
+              </button>
             </div>
           </div>
         ` : ''}
@@ -4224,7 +4259,7 @@ class ACSApp {
               <h5 class="text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2">
                 <i class="fa fa-sitemap text-amber-400"></i> Partner Licensed Pharmacies • Uttar Pradesh Network (${this.stores.length} Live Chemist Stores)
               </h5>
-              <a href="/" onclick="event.preventDefault(); window.acsApp.switchTab('landing'); window.acsApp.setLandingSubTab('showcase');" class="text-amber-400 hover:text-amber-300 text-[11px] font-semibold underline">
+              <a href="/" onclick="event.preventDefault(); window.acsApp.openDeployedShowcase();" class="text-amber-400 hover:text-amber-300 text-[11px] font-semibold underline">
                 Browse Full State Directory &rarr;
               </a>
             </div>
@@ -4253,21 +4288,12 @@ class ACSApp {
               © 2026 ${store.name}. Hosted on the Uttar Pradesh Pharmacy Network • Akhil Consultancy Services (ACS).
             </div>
             <div class="flex items-center gap-3">
-              <a href="/" onclick="event.preventDefault(); window.acsApp.switchTab('landing');" class="text-amber-400 hover:text-amber-300 underline font-semibold">
-                Akhil Consultancy Services (ACS) Portal
+              <a href="/" onclick="event.preventDefault(); window.acsApp.returnToMainPortal();" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 hover:text-amber-300 border border-slate-800 hover:border-amber-400/40 font-semibold transition text-xs shadow-xs cursor-pointer">
+                <i class="fa fa-arrow-left"></i> Return to ACS Main Portal Gateway
               </a>
             </div>
           </div>
         </footer>
-
-        <!-- Discreet Floating Button for Logged-In Store Owner or Admin -->
-        ${this.currentUser ? `
-          <div class="fixed bottom-16 md:bottom-5 right-5 z-40">
-            <button onclick="window.acsApp.switchTab('store-detail')" class="bg-slate-900 hover:bg-black text-white px-4 py-2.5 rounded-full shadow-2xl backdrop-blur-md border border-white/20 text-xs font-bold transition flex items-center gap-2">
-              <i class="fa fa-dashboard text-amber-400"></i> Store Management Portal
-            </button>
-          </div>
-        ` : ''}
 
         <!-- Mobile Ergonomic Sticky Bottom Quick Action Bar (Screens <= 768px) -->
         <div class="mobile-bottom-bar md:hidden">
@@ -6780,9 +6806,12 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
 
   selectAndOpenStore(storeId) {
     this.currentStoreId = storeId;
-    this.renderHeaderBar();
-    this.switchTab("store-detail");
-    this.showToast(`Active Store: ${this.getCurrentStore().name}`, "success");
+    if (this.currentUser) {
+      this.switchTab("store-detail");
+      this.showToast(`Active Store: ${this.getCurrentStore().name}`, "success");
+    } else {
+      this.viewHostedWebsite(storeId);
+    }
   }
 
   // ==========================================
@@ -15079,6 +15108,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       localStorage.removeItem("ACS_STORES_DATA_V1");
       localStorage.removeItem("ACS_CUSTOM_STORES");
       localStorage.removeItem("ACS_CLOUD_LAST_MODIFIED");
+      localStorage.removeItem("ACS_USER_SESSION_V2");
       localStorage.removeItem("ACS_USER_SESSION_V1");
       this.stores = JSON.parse(JSON.stringify(INITIAL_STORES_DATA));
       this.currentStoreId = this.stores[0].id;

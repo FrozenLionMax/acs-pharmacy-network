@@ -1298,6 +1298,40 @@ try {
   app.applyDeployExtraPreset(1, 'https://images.unsplash.com/photo-1576602976047-174e57a47881', 'Medicine Racks');
   console.log('Photo Upload Suite, Extra Facility Multi-Photos, and Deployment Presets verified 100%!');
 
+  // Test Non-Hijacked User Session and Clean Public Gateway Return
+  mockLocalStorage.setItem('ACS_USER_SESSION_V2', JSON.stringify({
+    role: 'pharmacy_owner',
+    email: 'akhil@acs.com',
+    name: 'Akhileshwar Tripathi',
+    storeId: 'store-up-001'
+  }));
+  app.activeTab = 'landing';
+  app.loadUserSession();
+  if (app.activeTab !== 'landing') {
+    throw new Error(`loadUserSession hijacked activeTab to '${app.activeTab}' instead of keeping 'landing'!`);
+  }
+  console.log('loadUserSession verified: Never hijacks activeTab away from landing!');
+
+  // Test returnToMainPortal()
+  app.activeTab = 'hosted-site';
+  app.returnToMainPortal();
+  if (app.activeTab !== 'landing' || app.landingSubTab !== 'gateway') {
+    throw new Error(`returnToMainPortal failed: activeTab is '${app.activeTab}', subTab is '${app.landingSubTab}'`);
+  }
+  console.log('returnToMainPortal verified: Cleanly resets to landing gateway!');
+
+  // Test Hosted Website View has NO floating Store Management Portal button
+  const deoriaStore = app.stores.find(s => s.id === 'store-up-001');
+  const deoriaHtml = app.getHostedWebsiteViewHtml(deoriaStore);
+  if (deoriaHtml.includes('Store Management Portal') || deoriaHtml.includes('fixed bottom-16 md:bottom-5 right-5')) {
+    throw new Error('Hosted website view still contains floating Store Management Portal button!');
+  }
+  if (!deoriaHtml.includes('returnToMainPortal()')) {
+    throw new Error('Hosted website footer missing returnToMainPortal link!');
+  }
+  console.log('Clean Hosted Website verified: 0 floating portal buttons, footer links to main portal cleanly!');
+
+
   console.log('ALL CONNECTION TESTS VERIFIED AND PASSED 100%!');
   console.log('ALL PHOTO & PROFILE STUDIO TESTS PASSED 100%!');
   console.log('ALL PUBLIC STOREFRONT & AUTO-MATCHER TESTS PASSED 100%!');
