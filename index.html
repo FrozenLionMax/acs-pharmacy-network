@@ -228,11 +228,34 @@
   <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  <!-- Chart.js for Revenue & Analytics -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Chart.js for Revenue & Analytics (Deferred to speed up first paint) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <!-- SheetJS for High-Performance Excel (.xlsx, .xls) & CSV Parsing -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- SheetJS for High-Performance Excel (.xlsx, .xls) & CSV Parsing (Deferred) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Instant Pre-Router: Suppresses portal header/landing flash on direct pharmacy URLs before first paint -->
+  <script>
+    (function() {
+      try {
+        var p = window.location.pathname.toLowerCase();
+        var host = window.location.hostname.toLowerCase();
+        var isHosted = p.indexOf('/pharmacy/') !== -1 || 
+                       (p !== '/' && p !== '/index.html' && !p.startsWith('/deploy') && !p.startsWith('/directory') && !p.startsWith('/verify')) ||
+                       (host.indexOf('drugs.systems') !== -1 && host !== 'drugs.systems' && host !== 'www.drugs.systems');
+        if (isHosted) {
+          document.documentElement.classList.add('hosted-preload');
+        }
+      } catch(e) {}
+    })();
+  </script>
+  <style>
+    html.hosted-preload header.no-print,
+    html.hosted-preload footer.no-print,
+    html.hosted-preload #main-view-container > * {
+      display: none !important;
+    }
+  </style>
 
   <!-- Base URL for SPA Routing -->
   <base href="/" />

@@ -548,6 +548,17 @@ class ACSApp {
       }
     });
 
+    // Sort stores, stocks, and staff deterministically by ID so layout never oscillates
+    this.stores.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
+    this.stores.forEach((s) => {
+      if (Array.isArray(s.stocks)) {
+        s.stocks.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
+      }
+      if (Array.isArray(s.staff)) {
+        s.staff.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
+      }
+    });
+
     if (dataModified) {
       this.saveStores(false);
     }
@@ -1587,8 +1598,8 @@ class ACSApp {
           name: currentStore.name,
           phone: currentStore.phone,
           photoUrl: currentStore.photoUrl,
-          stocks: (currentStore.stocks || []).map(m => `${m.id}:${m.quantity}:${m.mrp}`),
-          staff: (currentStore.staff || []).map(s => `${s.id}:${s.name}:${s.isOnDuty}`)
+          stocks: (currentStore.stocks || []).map(m => `${m.id}:${m.quantity}:${m.mrp}`).sort(),
+          staff: (currentStore.staff || []).map(s => `${s.id}:${s.name}:${s.isOnDuty}`).sort()
         }) : "";
         if (this._lastRenderedStoreSig && this._lastRenderedStoreSig === currentStoreSig) {
           return; // The store being viewed has not changed at all — keep current DOM untouched
@@ -1612,6 +1623,10 @@ class ACSApp {
   renderCurrentView() {
     const container = document.getElementById("main-view-container");
     if (!container) return;
+
+    if (typeof document !== "undefined" && document.documentElement) {
+      document.documentElement.classList.remove("hosted-preload");
+    }
 
     // Toggle Portal Header / Footer vs Standalone Hosted Mode
     const portalHeader = document.querySelector("header.no-print");
@@ -1648,8 +1663,8 @@ class ACSApp {
         name: store.name,
         phone: store.phone,
         photoUrl: store.photoUrl,
-        stocks: (store.stocks || []).map(m => `${m.id}:${m.quantity}:${m.mrp}`),
-        staff: (store.staff || []).map(s => `${s.id}:${s.name}:${s.isOnDuty}`)
+        stocks: (store.stocks || []).map(m => `${m.id}:${m.quantity}:${m.mrp}`).sort(),
+        staff: (store.staff || []).map(s => `${s.id}:${s.name}:${s.isOnDuty}`).sort()
       });
     }
 
@@ -7014,6 +7029,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           rackLocation: m.rack_location || "Rack A-01",
           minAlertThreshold: m.min_alert_threshold || 15
         }));
+        stocks.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
 
         const staff = (s.staff_members || []).map((st) => ({
           id: st.id,
@@ -7030,6 +7046,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           isOnDuty: st.is_on_duty,
           avatarUrl: st.avatar_url
         }));
+        staff.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
 
         return {
           id: s.id,
