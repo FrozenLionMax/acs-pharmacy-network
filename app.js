@@ -77,8 +77,8 @@ class ACSApp {
     this.setupEventListeners();
     this.renderHeaderBar();
     this.renderCurrentView();
-    this.initCloudSync();
     this.initSupabase();
+    this.initCloudSync();
     this.flushOfflineOutbox();
     this.initPwaInstallation();
     this.handleUrlActionParams();
@@ -864,7 +864,7 @@ class ACSApp {
       blobId: "e7864462-7c2f-42f6-8ff1-297d7a98d912",
       directBlobUrl: "https://superjsonblob.com/api/jsonBlob/e7864462-7c2f-42f6-8ff1-297d7a98d912",
       apiProxyUrl: "/api/stores",
-      pollIntervalMs: 6000
+      pollIntervalMs: 60000
     };
 
     if (typeof window === "undefined") return;
@@ -1565,17 +1565,47 @@ class ACSApp {
     }
   }
 
-  // --- View Router ---
   // Debounced version of renderCurrentView for background sync — coalesces rapid
   // consecutive calls within 150ms and preserves the user's scroll position so the
-  // page never visibly "jumps" during automatic data refreshes.
+  // page never visibly "jumps" or flickers during automatic data refreshes.
   debouncedRenderForSync() {
     if (this._syncRenderTimeout) clearTimeout(this._syncRenderTimeout);
     this._syncRenderTimeout = setTimeout(() => {
-      const scrollY = window.scrollY || window.pageYOffset || 0;
+      // 1. Never re-render if user is currently interacting with an open modal or typing
+      if (typeof document !== "undefined") {
+        const activeModal = document.getElementById("modal-generic");
+        if (activeModal && !activeModal.classList.contains("hidden")) return;
+        const activeEl = document.activeElement;
+        if (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA" || activeEl.isContentEditable)) return;
+      }
+
+      // 2. On public hosted storefronts, only re-render if the active pharmacy's own data changed
+      if (this.activeTab === "hosted-site") {
+        const currentStore = this.getCurrentStore();
+        const currentStoreSig = currentStore ? JSON.stringify({
+          id: currentStore.id,
+          name: currentStore.name,
+          phone: currentStore.phone,
+          photoUrl: currentStore.photoUrl,
+          stocks: (currentStore.stocks || []).map(m => `${m.id}:${m.quantity}:${m.mrp}`),
+          staff: (currentStore.staff || []).map(s => `${s.id}:${s.name}:${s.isOnDuty}`)
+        }) : "";
+        if (this._lastRenderedStoreSig && this._lastRenderedStoreSig === currentStoreSig) {
+          return; // The store being viewed has not changed at all — keep current DOM untouched
+        }
+        this._lastRenderedStoreSig = currentStoreSig;
+      }
+
+      // 3. Perform silent render preserving exact scroll position without smooth animation
+      const scrollY = typeof window !== "undefined" ? (window.scrollY || window.pageYOffset || (document.documentElement && document.documentElement.scrollTop) || 0) : 0;
       this.renderHeaderBar();
       this.renderCurrentView();
-      requestAnimationFrame(() => window.scrollTo(0, scrollY));
+      if (typeof window !== "undefined" && window.scrollTo) {
+        window.scrollTo({ top: scrollY, behavior: "instant" });
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: scrollY, behavior: "instant" });
+        });
+      }
     }, 150);
   }
 
@@ -7030,7 +7060,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       const newSignature = JSON.stringify(mappedStores);
       const isDiff = currentSignature !== newSignature;
 
-      if (isDiff || isInitial) {
+      if (isDiff) {
         const prevStoreId = this.currentStoreId;
         this.stores = mappedStores;
         if (prevStoreId && this.stores.some(st => st.id === prevStoreId)) {

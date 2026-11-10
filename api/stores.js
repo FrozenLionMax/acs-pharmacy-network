@@ -97,6 +97,7 @@ function fetchFromSupabase() {
               const mapped = rawStores.map(s => ({
                 id: s.id,
                 slug: s.slug,
+                customDomain: s.custom_domain || (s.slug_aliases && s.slug_aliases.find((a) => a && a.includes(".") && !a.endsWith(".drugs.systems") && !a.endsWith(".local"))) || "",
                 slugAliases: s.slug_aliases || [],
                 name: s.name,
                 district: s.district,
@@ -151,11 +152,16 @@ function fetchFromSupabase() {
                 })),
                 revenueData: { todaySales: 21500, monthlyGross: 520000, transactions: [] }
               }));
+              mapped.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
+              const maxTs = rawStores.reduce((acc, st) => {
+                const t = new Date(st.updated_at || st.created_at || 0).getTime();
+                return t > acc ? t : acc;
+              }, 0);
               resolve({
                 version: '2.0.0',
                 networkName: 'ACS Uttar Pradesh Pharmacy Network',
                 source: 'supabase_postgresql',
-                lastModified: new Date().toISOString(),
+                lastModified: maxTs ? new Date(maxTs).toISOString() : '2026-11-10T12:00:00.000Z',
                 stores: mapped
               });
               return;

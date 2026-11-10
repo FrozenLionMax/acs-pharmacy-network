@@ -1,11 +1,8 @@
 // Service Worker for ACS Pharmacy Network & Drugs Systems PWA
-const CACHE_NAME = 'acs-pwa-cache-v1';
+const CACHE_NAME = 'acs-pwa-cache-v2';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
-  '/app.js',
-  '/data.js',
-  '/styles.css',
   '/manifest.json',
   '/favicon.svg',
   '/favicon-48x48.png',
@@ -15,24 +12,26 @@ const PRECACHE_ASSETS = [
   '/apple-touch-icon.png'
 ];
 
-// Install Event - Precache core shell assets
+// Install Event - Precache core shell assets and skip waiting immediately
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS).catch((err) => {
         console.warn('PWA Precache warning (some assets may be optional):', err);
       });
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
-// Activate Event - Clean up stale caches and claim clients
+// Activate Event - Purge ALL stale caches and claim clients immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cache) => {
           if (cache !== CACHE_NAME) {
+            console.log('[SW] Purging outdated cache:', cache);
             return caches.delete(cache);
           }
         })
@@ -41,16 +40,15 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event - Stale-while-revalidate strategy with offline fallback
+// Fetch Event - Network-First for same-origin assets so visitors always run
+// the latest deployed code online, seamlessly falling back to cache when offline.
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
 
-  // Skip external analytics/google indexing endpoints from caching
+  // External CDNs & fonts: Cache-first with network fallback
   if (url.origin !== location.origin) {
-    // For third-party fonts or cdn scripts, cache-first with network fallback
     if (url.href.includes('cdnjs.cloudflare.com') || url.href.includes('fonts.googleapis.com') || url.href.includes('cdn.tailwindcss.com')) {
       event.respondWith(
         caches.match(event.request).then((cached) => {
@@ -67,24 +65,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Same-origin requests: Stale-While-Revalidate
+  // Same-origin assets: Network-First strategy
   event.respondWith(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.match(event.request).then((cachedResponse) => {
-        const fetchPromise = fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            cache.put(event.request, networkResponse.clone());
-          }
-          return networkResponse;
-        }).catch(() => {
-          // If offline and request is an HTML navigation, return cached root
-          if (event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html')) {
-            return cache.match('/') || cache.match('/index.html');
-          }
-          return cachedResponse;
-        });
-
-        return cachedResponse || fetchPromise;
+    fetch(event.request).then((networkResponse) => {
+      if (networkResponse && networkResponse.status === 200) {
+        const resClone = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone));
+      }
+      return networkResponse;
+    }).catch(() => {
+      // Offline fallback: serve from local cache
+      return caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) return cachedResponse;
+        if (event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html')) {
+          return caches.match('/') || caches.match('/index.html');
+        }
+        return null;
       });
     })
   );
