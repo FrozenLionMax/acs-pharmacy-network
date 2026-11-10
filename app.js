@@ -367,11 +367,15 @@ class ACSApp {
 
     if (slug) {
       const cleanSlug = slug.toLowerCase().trim().replace(/\.html$/, "");
+      const normalizedQuery = cleanSlug.replace(/[^a-z0-9]/g, "");
       let target = this.stores.find((s) => 
         (s.slug && s.slug.toLowerCase() === cleanSlug) || 
         (s.id && s.id.toLowerCase() === cleanSlug) || 
         (s.slugAliases && s.slugAliases.some(a => a.toLowerCase() === cleanSlug)) ||
-        (s.name && s.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").includes(cleanSlug))
+        (s.name && s.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").includes(cleanSlug)) ||
+        (normalizedQuery && s.slug && s.slug.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedQuery) ||
+        (normalizedQuery && s.slugAliases && s.slugAliases.some(a => a.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedQuery)) ||
+        (normalizedQuery && normalizedQuery.length >= 4 && s.name && s.name.toLowerCase().replace(/[^a-z0-9]/g, "").includes(normalizedQuery))
       );
       if (!target && (cleanSlug === "akhil" || cleanSlug === "deoria-drug" || cleanSlug === "deoria-drug-house")) {
         target = this.stores.find((s) => s.id === "store-up-001" || s.slug === "deoria-drug-house");
