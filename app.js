@@ -5754,10 +5754,26 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           quantity: 10
         },
         {
-          name: "Pan-D",
-          saltName: "Pantoprazole and Domperidone",
-          dosage: "40mg/30mg",
-          frequency: "1 cap OD before breakfast",
+          name: "Pan 40",
+          saltName: "Pantoprazole Gastro-Resistant 40mg",
+          dosage: "40mg",
+          frequency: "1 tab OD before breakfast",
+          duration: "5 days",
+          quantity: 10
+        },
+        {
+          name: "Azithral 500",
+          saltName: "Azithromycin 500mg",
+          dosage: "500mg",
+          frequency: "1 tab OD x 3 days",
+          duration: "3 days",
+          quantity: 3
+        },
+        {
+          name: "Montek LC",
+          saltName: "Montelukast and Levocetirizine",
+          dosage: "10mg/5mg",
+          frequency: "1 tab HS at bedtime",
           duration: "5 days",
           quantity: 10
         }
@@ -6071,6 +6087,36 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     }
   }
 
+  loadTrialPrescriptionPhoto() {
+    const previewContainer = document.getElementById("rx-preview-container");
+    const previewImg = document.getElementById("rx-preview-img");
+    const previewFilename = document.getElementById("rx-preview-filename");
+    const patientNameInput = document.getElementById("rx-patient-name");
+    const phoneInput = document.getElementById("rx-patient-phone");
+
+    if (patientNameInput && !patientNameInput.value) {
+      patientNameInput.value = "Satish Chandra Verma";
+    }
+    if (phoneInput && !phoneInput.value) {
+      phoneInput.value = "+91 94520 18273";
+    }
+
+    const trialImgUrl = "trial_handwritten_rx_photo.jpg";
+    if (previewImg && previewContainer) {
+      previewImg.src = trialImgUrl;
+      if (previewFilename) previewFilename.innerText = "trial_handwritten_rx_photo.jpg (5 Prescribed Medicines)";
+      previewContainer.classList.remove("hidden");
+    }
+
+    if (typeof window !== "undefined") {
+      window._lastUploadedRxDataUrl = trialImgUrl;
+    }
+
+    const store = this.getCurrentStore();
+    this.handlePrescriptionGeminiOcr(store);
+    this.showToast("Loaded trial handwritten doctor Rx photo with 5 medicines!", "info");
+  }
+
   openPrescriptionUploadModal(storeName, initialMedName = "") {
     const store = this.getCurrentStore();
     const modal = document.getElementById("modal-generic");
@@ -6117,7 +6163,10 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
               <span class="text-[10px] text-slate-500 block">Extracts prescription medicines &amp; matches pharmacy stock instantly</span>
             </div>
           </div>
-          <div class="flex items-center gap-1.5">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <button type="button" onclick="window.acsApp.loadTrialPrescriptionPhoto()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer" title="1-Click Load Trial Handwritten Doctor Rx Photo">
+              <i class="fa fa-magic text-amber-300"></i> 1-Click Load Trial Rx Photo
+            </button>
             <button type="button" id="btn-run-gemini-ocr" onclick="window.acsApp.handlePrescriptionGeminiOcr()" class="px-4 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-1.5">
               <i class="fa fa-search text-amber-300"></i> Scan &amp; Match Medicines
             </button>
