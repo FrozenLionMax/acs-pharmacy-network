@@ -1264,6 +1264,40 @@ try {
   }
   console.log('Owner Mode vs Public Read-Only Mode toggle verified 100%!');
 
+  // Test 9: Verify Direct Photo Upload, Multi-Facility Photos, and Deployment Presets
+  const testPhotoFile = { name: "test-photo.jpg", size: 50000, type: "image/jpeg" };
+  const beforeExtraCount = kapoorStore.galleryPhotos.filter(p => !p.isPrimary).length;
+  await app.uploadStorePhotoDirect(kapoorStore.id, testPhotoFile, 'Special Racks Unit', 'Racks', false);
+  const afterExtraCount = kapoorStore.galleryPhotos.filter(p => !p.isPrimary).length;
+  if (afterExtraCount !== beforeExtraCount + 1) {
+    throw new Error(`uploadStorePhotoDirect failed to add extra facility photo! Before: ${beforeExtraCount}, After: ${afterExtraCount}`);
+  }
+  const newlyAddedPhoto = kapoorStore.galleryPhotos[kapoorStore.galleryPhotos.length - 1];
+  if (newlyAddedPhoto.isPrimary !== false || newlyAddedPhoto.title !== 'Special Racks Unit') {
+    throw new Error('uploadStorePhotoDirect extra photo attributes incorrect!');
+  }
+
+  // Test Direct Primary Cover Upload
+  await app.uploadStorePhotoDirect(kapoorStore.id, testPhotoFile, 'Kapoor Main Facade', 'Store Front', true);
+  if (!kapoorStore.photoUrl.startsWith('data:image/')) {
+    throw new Error('uploadStorePhotoDirect primary photo failed to update store.photoUrl!');
+  }
+
+  // Test replaceFacilityPhoto
+  await app.replaceFacilityPhoto(kapoorStore.id, newlyAddedPhoto.id, testPhotoFile);
+  const replacedPhoto = kapoorStore.galleryPhotos.find(p => p.id === newlyAddedPhoto.id);
+  if (!replacedPhoto || !replacedPhoto.url.startsWith('data:image/')) {
+    throw new Error('replaceFacilityPhoto failed to replace photo data URL!');
+  }
+
+  // Test Deployment Preset Helpers
+  if (typeof app.applyDeployExtraPreset !== 'function' || typeof app.applyDeployStorePhotoPreset !== 'function') {
+    throw new Error('Deployment preset methods missing from app!');
+  }
+  app.applyDeployStorePhotoPreset('https://images.unsplash.com/photo-1586015555751-63bb77f4322a');
+  app.applyDeployExtraPreset(1, 'https://images.unsplash.com/photo-1576602976047-174e57a47881', 'Medicine Racks');
+  console.log('Photo Upload Suite, Extra Facility Multi-Photos, and Deployment Presets verified 100%!');
+
   console.log('ALL CONNECTION TESTS VERIFIED AND PASSED 100%!');
   console.log('ALL PHOTO & PROFILE STUDIO TESTS PASSED 100%!');
   console.log('ALL PUBLIC STOREFRONT & AUTO-MATCHER TESTS PASSED 100%!');

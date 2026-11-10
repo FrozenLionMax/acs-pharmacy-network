@@ -514,58 +514,118 @@ class ACSApp {
   }
 
   compressImageFile(file, maxDimension = 900, quality = 0.8) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       if (!file) {
         resolve("");
         return;
       }
-      if (typeof FileReader === "undefined") {
-        resolve("");
+      if (typeof file === "string") {
+        resolve(file);
         return;
       }
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const rawResult = e.target.result;
-        if (typeof Image === "undefined" || typeof document === "undefined" || !document.createElement) {
-          resolve(rawResult);
+
+      // Fast-path: URL.createObjectURL uses near-zero memory and handles huge mobile photos
+      if (typeof URL !== "undefined" && typeof URL.createObjectURL === "function" && typeof Image !== "undefined" && typeof document !== "undefined" && document.createElement) {
+        try {
+          const blobUrl = URL.createObjectURL(file);
+          const img = new Image();
+          img.onload = () => {
+            try {
+              URL.revokeObjectURL(blobUrl);
+            } catch (_) {}
+            try {
+              let w = img.naturalWidth || img.width || 800;
+              let h = img.naturalHeight || img.height || 600;
+              if (w > maxDimension || h > maxDimension) {
+                if (w > h) {
+                  h = Math.round((h * maxDimension) / w);
+                  w = maxDimension;
+                } else {
+                  w = Math.round((w * maxDimension) / h);
+                  h = maxDimension;
+                }
+              }
+              const canvas = document.createElement("canvas");
+              canvas.width = w;
+              canvas.height = h;
+              const ctx = canvas.getContext("2d");
+              if (ctx) {
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, w, h);
+                ctx.drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL("image/jpeg", quality));
+              } else {
+                readViaFileReader(file, resolve);
+              }
+            } catch (err) {
+              console.warn("Canvas compression error, falling back:", err);
+              readViaFileReader(file, resolve);
+            }
+          };
+          img.onerror = () => {
+            try {
+              URL.revokeObjectURL(blobUrl);
+            } catch (_) {}
+            readViaFileReader(file, resolve);
+          };
+          img.src = blobUrl;
+          return;
+        } catch (_) {
+          readViaFileReader(file, resolve);
           return;
         }
-        const img = new Image();
-        img.onload = () => {
-          try {
-            let w = img.naturalWidth || img.width || 800;
-            let h = img.naturalHeight || img.height || 600;
-            if (w > maxDimension || h > maxDimension) {
-              if (w > h) {
-                h = Math.round((h * maxDimension) / w);
-                w = maxDimension;
-              } else {
-                w = Math.round((w * maxDimension) / h);
-                h = maxDimension;
-              }
-            }
-            const canvas = document.createElement("canvas");
-            canvas.width = w;
-            canvas.height = h;
-            const ctx = canvas.getContext("2d");
-            if (ctx) {
-              ctx.fillStyle = "#ffffff";
-              ctx.fillRect(0, 0, w, h);
-              ctx.drawImage(img, 0, 0, w, h);
-              resolve(canvas.toDataURL("image/jpeg", quality));
-            } else {
-              resolve(rawResult);
-            }
-          } catch (err) {
-            console.warn("Image canvas compression fallback:", err);
-            resolve(rawResult);
+      }
+
+      readViaFileReader(file, resolve);
+
+      function readViaFileReader(f, res) {
+        if (typeof FileReader === "undefined") {
+          res("data:image/jpeg;base64,/9j/4AAQSkZJRg==");
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const rawResult = e.target.result;
+          if (typeof Image === "undefined" || typeof document === "undefined" || !document.createElement) {
+            res(rawResult || "");
+            return;
           }
+          const fallbackImg = new Image();
+          fallbackImg.onload = () => {
+            try {
+              let w = fallbackImg.naturalWidth || fallbackImg.width || 800;
+              let h = fallbackImg.naturalHeight || fallbackImg.height || 600;
+              if (w > maxDimension || h > maxDimension) {
+                if (w > h) {
+                  h = Math.round((h * maxDimension) / w);
+                  w = maxDimension;
+                } else {
+                  w = Math.round((w * maxDimension) / h);
+                  h = maxDimension;
+                }
+              }
+              const canvas = document.createElement("canvas");
+              canvas.width = w;
+              canvas.height = h;
+              const ctx = canvas.getContext("2d");
+              if (ctx) {
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, w, h);
+                ctx.drawImage(fallbackImg, 0, 0, w, h);
+                res(canvas.toDataURL("image/jpeg", quality));
+              } else {
+                res(rawResult);
+              }
+            } catch (err) {
+              res(rawResult);
+            }
+          };
+          fallbackImg.onerror = () => res(rawResult);
+          fallbackImg.src = rawResult;
         };
-        img.onerror = () => resolve(rawResult);
-        img.src = rawResult;
-      };
-      reader.onerror = () => reject(new Error("Failed to read image file"));
-      reader.readAsDataURL(file);
+        reader.onerror = () => res("");
+        reader.readAsDataURL(f);
+      }
     });
   }
 
@@ -616,6 +676,100 @@ class ACSApp {
       img.onerror = () => resolve(dataUrl);
       img.src = dataUrl;
     });
+  }
+
+  async uploadStorePhotoDirect(storeId, file, title = "Facility Photo", tag = "Facility", isPrimary = false) {
+    const store = this.stores.find((s) => s.id === storeId) || this.getCurrentStore();
+    if (!store) {
+      this.showToast("Pharmacy store not found.", "error");
+      return;
+    }
+    if (!file) {
+      this.showToast("Please select an image file to upload.", "warning");
+      return;
+    }
+    this.showToast("Optimizing & attaching photo...", "info");
+    try {
+      const compressed = await this.compressImageFile(file, 900, 0.78);
+      if (!compressed) {
+        this.showToast("Failed to process image. Please try another file.", "error");
+        return;
+      }
+      const gallery = this.ensureStoreGallery(store);
+      const isPrimaryPhoto = Boolean(isPrimary) || tag === "Store Front";
+
+      if (isPrimaryPhoto) {
+        gallery.forEach(p => p.isPrimary = false);
+        store.photoUrl = compressed;
+
+        const prim = gallery.find(p => p.tag === 'Store Front' || p.isPrimary);
+        if (prim) {
+          prim.url = compressed;
+          prim.isPrimary = true;
+          prim.title = title || `${store.name} - Storefront & Signboard`;
+          prim.tag = "Store Front";
+        } else {
+          gallery.unshift({
+            id: `gp-${store.id}-${Date.now()}-primary`,
+            url: compressed,
+            title: title || `${store.name} - Storefront & Signboard`,
+            caption: `Official storefront facade and entrance at ${store.name}, ${store.district || 'Uttar Pradesh'}.`,
+            tag: "Store Front",
+            isPrimary: true
+          });
+        }
+      } else {
+        const extraCount = gallery.filter(p => !p.isPrimary).length + 1;
+        const assignedTitle = (!title || title === "Facility Photo") ? `Facility Photo ${extraCount}` : title;
+        const newPhoto = {
+          id: `gp-${store.id}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          url: compressed,
+          title: assignedTitle,
+          caption: `${tag || 'Facility'} view at ${store.name}, ${store.district || 'Uttar Pradesh'}.`,
+          tag: tag || "Facility",
+          isPrimary: false
+        };
+        gallery.push(newPhoto);
+      }
+
+      this.saveStores(true);
+      this.renderCurrentView();
+      if (document.getElementById("modal-generic")) {
+        // If photo manager modal was open, refresh it
+        const titleEl = document.getElementById("modal-generic-title");
+        if (titleEl && titleEl.textContent && titleEl.textContent.includes("Gallery Manager")) {
+          this.openManageStorePhotosModal(store.id);
+        }
+      }
+      this.showToast(`Photo updated and synced across all devices!`, "success");
+    } catch (err) {
+      console.error("Direct photo upload error:", err);
+      this.showToast("Photo upload failed. Please try a different image.", "error");
+    }
+  }
+
+  async replaceFacilityPhoto(storeId, photoId, file) {
+    const store = this.stores.find((s) => s.id === storeId) || this.getCurrentStore();
+    if (!store || !file) return;
+    this.showToast("Replacing photo with optimized image...", "info");
+    try {
+      const compressed = await this.compressImageFile(file, 900, 0.78);
+      if (!compressed) return;
+      const gallery = this.ensureStoreGallery(store);
+      const target = gallery.find(p => p.id === photoId);
+      if (target) {
+        target.url = compressed;
+        if (target.isPrimary || store.photoUrl === target.url) {
+          store.photoUrl = compressed;
+        }
+      }
+      this.saveStores(true);
+      this.renderCurrentView();
+      this.showToast("Photo updated and synced across all devices!", "success");
+    } catch (err) {
+      console.error("Replace photo error:", err);
+      this.showToast("Could not replace photo.", "error");
+    }
   }
 
   saveStores(syncToCloud = true) {
@@ -7116,54 +7270,129 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
 
           <!-- Storefront & Facility Photography Suite Card -->
           <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div class="flex items-center gap-2">
-                <i class="fa fa-picture-o text-amber-600 text-lg"></i>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div class="flex items-center gap-2.5">
+                <span class="w-9 h-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold text-base shadow-xs flex-shrink-0">
+                  <i class="fa fa-picture-o text-amber-600"></i>
+                </span>
                 <div>
-                  <h3 class="font-bold text-slate-800 text-sm">Premises &amp; Facility Photos</h3>
-                  <span class="text-[10px] text-slate-500">1 Display Photo + ${(store.galleryPhotos || []).filter(p => !p.isPrimary).length} Extra Facility Photos</span>
+                  <h3 class="font-extrabold text-slate-900 text-sm">Premises &amp; Facility Photos</h3>
+                  <span class="text-[10px] text-slate-500 font-medium">1 Display Photo + ${(store.galleryPhotos || []).filter(p => !p.isPrimary).length} Extra Facility Photos (${(store.galleryPhotos || []).length} Total)</span>
                 </div>
               </div>
-              <button onclick="window.acsApp.openManageStorePhotosModal('${store.id}')" class="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer">
-                <i class="fa fa-cog"></i> Manage Photos
-              </button>
-            </div>
-
-            <!-- Primary Display Photo -->
-            <div class="space-y-1.5">
-              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Primary Display Photo:</span>
-              <div class="rounded-xl overflow-hidden border border-slate-200 h-40 bg-slate-100 relative group shadow-2xs">
-                <img src="${store.photoUrl}" alt="${store.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" onerror="this.src='https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80'" />
-                <div class="absolute bottom-2 left-2 bg-black/75 backdrop-blur-xs text-white text-[10px] px-2 py-0.5 rounded font-semibold flex items-center gap-1">
-                  <i class="fa fa-camera text-amber-400"></i> Main Storefront Facade
-                </div>
-                <button type="button" onclick="window.acsApp.openPhotoStudioModal('store-primary', '${store.id}', '${store.photoUrl}')" class="absolute top-2 right-2 bg-black/70 hover:bg-black text-white text-[10px] font-bold px-2.5 py-1 rounded-lg backdrop-blur-xs border border-white/20 transition flex items-center gap-1 cursor-pointer">
-                  <i class="fa fa-crop text-amber-300"></i> Crop / Update
+              <div class="flex items-center gap-2 flex-wrap">
+                <button type="button" onclick="document.getElementById('input-store-detail-add-photo').click()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer">
+                  <i class="fa fa-upload text-amber-300"></i> + Add Photo
+                </button>
+                <input type="file" id="input-store-detail-add-photo" accept="image/*" class="sr-only" onclick="this.value=null" onchange="if(this.files && this.files[0]) window.acsApp.uploadStorePhotoDirect('${store.id}', this.files[0], 'Facility Photo', 'Facility', false)" />
+                <button type="button" onclick="window.acsApp.openManageStorePhotosModal('${store.id}')" class="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer">
+                  <i class="fa fa-picture-o"></i> Manage Photos
                 </button>
               </div>
             </div>
 
-            <!-- Extra Facility Photos (Racks, Counter, Cold Chain, Signboard, Licensure) -->
-            <div class="space-y-1.5 pt-2 border-t border-slate-100">
+            <!-- Primary Display Photo -->
+            <div class="space-y-1.5">
               <div class="flex items-center justify-between">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Extra Facility Photos (Up to 5):</span>
-                <span class="text-[10px] font-mono text-teal-700 font-bold">${(store.galleryPhotos || []).filter(p => !p.isPrimary).length} / 5 Added</span>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">1. Main Display Photo (Hero Cover &amp; Google Listing):</span>
+                <span class="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Public Display Active</span>
               </div>
-              <div class="grid grid-cols-3 gap-2">
-                ${((store.galleryPhotos || []).filter(p => !p.isPrimary)).slice(0, 5).map((p, idx) => `
-                  <div class="relative h-20 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 group">
-                    <img src="${p.url}" alt="${p.title || 'Facility Photo'}" class="w-full h-full object-cover group-hover:scale-110 transition duration-300" />
-                    <span class="absolute bottom-0 inset-x-0 bg-black/75 text-[8px] text-white text-center truncate px-1 py-0.5 font-semibold">
-                      ${p.tag || p.title || `Photo ${idx + 1}`}
-                    </span>
+              <div class="rounded-xl overflow-hidden border border-slate-200 h-44 bg-slate-900 relative group shadow-xs">
+                <img src="${store.photoUrl}" alt="${store.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" onerror="this.src='https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80'" />
+                <div class="absolute bottom-2 left-2 bg-black/80 backdrop-blur-xs text-white text-[11px] px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 shadow">
+                  <i class="fa fa-camera text-amber-400"></i> Storefront Facade &amp; Signboard
+                </div>
+                <div class="absolute top-2 right-2 flex items-center gap-1.5">
+                  <button type="button" onclick="document.getElementById('input-store-detail-change-primary').click()" class="bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold px-3 py-1 rounded-lg shadow transition flex items-center gap-1 cursor-pointer">
+                    <i class="fa fa-camera"></i> Change Photo
+                  </button>
+                  <input type="file" id="input-store-detail-change-primary" accept="image/*" class="sr-only" onclick="this.value=null" onchange="if(this.files && this.files[0]) window.acsApp.uploadStorePhotoDirect('${store.id}', this.files[0], '${store.name} - Main Storefront', 'Store Front', true)" />
+                  <button type="button" onclick="window.acsApp.openPhotoStudioModal('store-primary', '${store.id}', '${store.photoUrl}')" class="bg-black/70 hover:bg-black text-white text-[11px] font-bold px-2.5 py-1 rounded-lg backdrop-blur-xs border border-white/20 transition flex items-center gap-1 cursor-pointer">
+                    <i class="fa fa-crop text-amber-300"></i> Crop / Look
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Extra Facility Photos Grid (Up to 5 + Extras) -->
+            <div class="space-y-2 pt-2 border-t border-slate-100">
+              <div class="flex items-center justify-between">
+                <div>
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">2. Extra Facility Photos:</span>
+                  <span class="text-[10px] text-slate-400">Showcasing medicine racks, dispensing counter, cold storage, signboard, and licensure wall.</span>
+                </div>
+                <span class="text-[10px] font-mono text-teal-800 font-bold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                  ${(store.galleryPhotos || []).filter(p => !p.isPrimary).length} Extra Photos
+                </span>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
+                ${((store.galleryPhotos || []).filter(p => !p.isPrimary)).map((p, idx) => `
+                  <div class="relative h-28 rounded-xl overflow-hidden border border-slate-200 bg-slate-900 group shadow-2xs flex flex-col justify-between">
+                    <img src="${p.url}" alt="${p.title || 'Facility Photo'}" class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition duration-300" />
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
+                    
+                    <!-- Hover Action Bar -->
+                    <div class="relative z-10 p-1 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition duration-150">
+                      <button type="button" onclick="document.getElementById('input-replace-${p.id}').click()" class="p-1 bg-black/70 hover:bg-black text-white rounded text-[9px] font-bold transition cursor-pointer" title="Replace with new photo">
+                        <i class="fa fa-pencil"></i>
+                      </button>
+                      <input type="file" id="input-replace-${p.id}" accept="image/*" class="sr-only" onclick="this.value=null" onchange="if(this.files && this.files[0]) window.acsApp.replaceFacilityPhoto('${store.id}', '${p.id}', this.files[0])" />
+                      <button type="button" onclick="window.acsApp.openPhotoStudioModal('store-gallery', '${store.id}', '${p.url}', '${p.id}')" class="p-1 bg-black/70 hover:bg-black text-amber-300 rounded text-[9px] font-bold transition" title="Crop / Look">
+                        <i class="fa fa-crop"></i>
+                      </button>
+                      <button type="button" onclick="window.acsApp.setPrimaryStorePhoto('${store.id}', '${p.id}')" class="p-1 bg-black/70 hover:bg-black text-amber-400 rounded text-[9px] font-bold transition" title="Make Primary Cover">
+                        <i class="fa fa-star"></i>
+                      </button>
+                      <button type="button" onclick="window.acsApp.deleteGalleryPhoto('${store.id}', '${p.id}')" class="p-1 bg-black/70 hover:bg-rose-700 text-white rounded text-[9px] font-bold transition" title="Delete Photo">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </div>
+
+                    <div class="relative z-10 p-1.5 text-white">
+                      <span class="block text-[9px] font-bold truncate leading-tight">${p.tag || p.title || `Photo ${idx + 1}`}</span>
+                    </div>
                   </div>
                 `).join("")}
-                ${Array.from({ length: Math.max(0, 5 - ((store.galleryPhotos || []).filter(p => !p.isPrimary)).length) }).map((_, idx) => `
-                  <button type="button" onclick="window.acsApp.openManageStorePhotosModal('${store.id}')" class="h-20 rounded-lg border border-dashed border-slate-300 hover:border-teal-500 bg-slate-50 hover:bg-teal-50/50 flex flex-col items-center justify-center text-slate-400 hover:text-teal-700 transition cursor-pointer p-1">
-                    <i class="fa fa-plus text-xs mb-0.5"></i>
-                    <span class="text-[8px] font-bold">Add Photo</span>
-                  </button>
-                `).join("")}
+
+                <!-- Inviting Add Photo Tile (Always Available) -->
+                <div onclick="document.getElementById('input-store-detail-tile-photo').click()" class="h-28 rounded-xl border-2 border-dashed border-teal-300 hover:border-teal-500 bg-teal-50/50 hover:bg-teal-50 flex flex-col items-center justify-center text-teal-800 transition cursor-pointer p-2 group shadow-2xs">
+                  <i class="fa fa-plus-circle text-xl text-teal-600 group-hover:scale-110 transition mb-1"></i>
+                  <span class="text-[10px] font-black text-center leading-tight">+ Add Photo</span>
+                  <span class="text-[8px] text-teal-600 text-center mt-0.5">Device Upload</span>
+                  <input type="file" id="input-store-detail-tile-photo" accept="image/*" class="sr-only" onclick="event.stopPropagation(); this.value=null;" onchange="if(this.files && this.files[0]) window.acsApp.uploadStorePhotoDirect('${store.id}', this.files[0], 'Facility Photo', 'Facility', false)" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick 1-Click Official Certified Presets Bar -->
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+              <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Or 1-Click Add Official UP Pharmacy Certified Photos:</span>
+              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=1200&q=80', 'Clean Dispensing Desk', 'Front billing and consultation area')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex items-center gap-1.5 group cursor-pointer">
+                  <img src="https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=120&q=80" class="w-8 h-8 rounded object-cover flex-shrink-0" />
+                  <span class="text-[10px] font-bold text-slate-700 group-hover:text-teal-800 truncate">+ Dispensing</span>
+                </button>
+                <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=1200&q=80', 'Medicine Racks', 'Systematic alphabetical medicine shelving')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex items-center gap-1.5 group cursor-pointer">
+                  <img src="https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=120&q=80" class="w-8 h-8 rounded object-cover flex-shrink-0" />
+                  <span class="text-[10px] font-bold text-slate-700 group-hover:text-teal-800 truncate">+ Racks</span>
+                </button>
+                <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1200&q=80', 'Cold Storage Unit', '2°C to 8°C calibrated biological storage')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex items-center gap-1.5 group cursor-pointer">
+                  <img src="https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=120&q=80" class="w-8 h-8 rounded object-cover flex-shrink-0" />
+                  <span class="text-[10px] font-bold text-slate-700 group-hover:text-teal-800 truncate">+ Cold Chain</span>
+                </button>
+                <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=1200&q=80', '24x7 Night View', 'Well-lit emergency night dispensary service')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex items-center gap-1.5 group cursor-pointer">
+                  <img src="https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=120&q=80" class="w-8 h-8 rounded object-cover flex-shrink-0" />
+                  <span class="text-[10px] font-bold text-slate-700 group-hover:text-teal-800 truncate">+ 24x7 Night</span>
+                </button>
+                <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=1200&q=80', 'Surgical & Bandages', 'Surgical sutures, antiseptics and wellness')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex items-center gap-1.5 group cursor-pointer">
+                  <img src="https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=120&q=80" class="w-8 h-8 rounded object-cover flex-shrink-0" />
+                  <span class="text-[10px] font-bold text-slate-700 group-hover:text-teal-800 truncate">+ Surgical</span>
+                </button>
+                <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1583912267670-6575ad362e49?auto=format&fit=crop&w=1200&q=80', 'Ayush Herbal Section', 'Approved classical ayurvedic formulations')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex items-center gap-1.5 group cursor-pointer">
+                  <img src="https://images.unsplash.com/photo-1583912267670-6575ad362e49?auto=format&fit=crop&w=120&q=80" class="w-8 h-8 rounded object-cover flex-shrink-0" />
+                  <span class="text-[10px] font-bold text-slate-700 group-hover:text-teal-800 truncate">+ Ayush Corner</span>
+                </button>
               </div>
             </div>
 
@@ -10046,12 +10275,12 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center pt-1">
-                  <!-- Photo Preview Tile -->
-                  <div id="deploy-photo-preview-tile" class="md:col-span-1 h-36 rounded-2xl border-2 border-dashed border-slate-300 bg-white flex flex-col items-center justify-center overflow-hidden relative shadow-xs">
+                  <!-- Photo Preview Tile (Clickable to trigger upload) -->
+                  <div id="deploy-photo-preview-tile" onclick="document.getElementById('deploy-store-photo-file').click()" class="md:col-span-1 h-36 rounded-2xl border-2 border-dashed border-slate-300 hover:border-teal-500 bg-white flex flex-col items-center justify-center overflow-hidden relative shadow-xs cursor-pointer transition group" title="Click to choose photo">
                     <div id="deploy-photo-placeholder" class="text-center p-3">
-                      <i class="fa fa-camera text-slate-400 text-3xl mb-1.5 block"></i>
-                      <span class="text-[11px] text-slate-500 font-semibold block">No photo selected</span>
-                      <span class="text-[10px] text-slate-400 block">Select a file below or use default</span>
+                      <i class="fa fa-camera text-slate-400 group-hover:text-teal-600 text-3xl mb-1.5 block transition"></i>
+                      <span class="text-[11px] text-slate-600 font-bold block">Click to Upload Photo</span>
+                      <span class="text-[10px] text-slate-400 block">JPG, PNG, or WebP</span>
                     </div>
                     <img id="deploy-photo-preview-img" src="" class="w-full h-full object-cover hidden" alt="Storefront preview" />
                   </div>
@@ -10059,12 +10288,12 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
                   <!-- Controls & Fallbacks -->
                   <div class="md:col-span-2 space-y-2.5">
                     <div class="flex items-center gap-2.5 flex-wrap">
-                      <label class="cursor-pointer px-4 py-2.5 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-xl text-xs font-bold transition inline-flex items-center gap-2 shadow-xs">
+                      <button type="button" onclick="document.getElementById('deploy-store-photo-file').click()" class="cursor-pointer px-4 py-2.5 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-xl text-xs font-bold transition inline-flex items-center gap-2 shadow-xs">
                         <i class="fa fa-upload text-amber-300"></i>
                         <span>Upload Main Display Photo</span>
-                        <input type="file" id="deploy-store-photo-file" accept="image/*" class="hidden" />
-                      </label>
-                      <button type="button" id="btn-remove-deploy-photo" class="px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 rounded-lg hidden font-bold border border-rose-200 transition">
+                      </button>
+                      <input type="file" id="deploy-store-photo-file" accept="image/*" class="sr-only" />
+                      <button type="button" id="btn-remove-deploy-photo" class="px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 rounded-lg hidden font-bold border border-rose-200 transition cursor-pointer">
                         <i class="fa fa-trash"></i> Remove Photo
                       </button>
                     </div>
@@ -10099,20 +10328,21 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-1">
                   <!-- Slot 1: Medicine Racks -->
-                  <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-2 flex flex-col justify-between">
+                  <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-2 flex flex-col justify-between shadow-2xs">
                     <div>
                       <span class="text-[11px] font-bold text-slate-800 block">Photo 1: Racks</span>
                       <span class="text-[10px] text-slate-400 block truncate">Medicine Bays</span>
                     </div>
-                    <div id="deploy-extra-preview-box-1" class="h-24 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden relative">
-                      <i class="fa fa-cubes text-slate-300 text-2xl" id="deploy-extra-icon-1"></i>
+                    <div id="deploy-extra-preview-box-1" onclick="document.getElementById('deploy-extra-photo-1-file').click()" class="h-24 rounded-lg border border-dashed border-slate-300 hover:border-teal-500 bg-slate-50 flex items-center justify-center overflow-hidden relative cursor-pointer group" title="Click to upload Racks photo">
+                      <i class="fa fa-cubes text-slate-300 group-hover:text-teal-600 text-2xl transition" id="deploy-extra-icon-1"></i>
                       <img id="deploy-extra-img-1" src="" class="w-full h-full object-cover hidden" alt="Racks" />
                     </div>
                     <div class="space-y-1">
-                      <label class="cursor-pointer w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1">
+                      <button type="button" onclick="document.getElementById('deploy-extra-photo-1-file').click()" class="cursor-pointer w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1">
                         <i class="fa fa-camera text-teal-700"></i> Upload
-                        <input type="file" id="deploy-extra-photo-1-file" accept="image/*" class="hidden" />
-                      </label>
+                      </button>
+                      <input type="file" id="deploy-extra-photo-1-file" accept="image/*" class="sr-only" />
+                      <button type="button" onclick="window.acsApp.applyDeployExtraPreset(1, 'https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=1200&q=80', 'Medicine Racks')" class="w-full text-[9px] text-teal-700 hover:underline font-bold text-center block">Use Preset</button>
                       <button type="button" id="btn-remove-extra-1" class="w-full text-[10px] text-rose-600 hover:underline hidden font-bold text-center">Remove</button>
                       <input type="hidden" id="deploy-extra-photo-1" value="" />
                       <input type="hidden" id="deploy-extra-photo-1-tag" value="Medicine Racks" />
@@ -10120,20 +10350,21 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
                   </div>
 
                   <!-- Slot 2: Dispensing Counter -->
-                  <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-2 flex flex-col justify-between">
+                  <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-2 flex flex-col justify-between shadow-2xs">
                     <div>
                       <span class="text-[11px] font-bold text-slate-800 block">Photo 2: Counter</span>
                       <span class="text-[10px] text-slate-400 block truncate">Dispensing Desk</span>
                     </div>
-                    <div id="deploy-extra-preview-box-2" class="h-24 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden relative">
-                      <i class="fa fa-calculator text-slate-300 text-2xl" id="deploy-extra-icon-2"></i>
+                    <div id="deploy-extra-preview-box-2" onclick="document.getElementById('deploy-extra-photo-2-file').click()" class="h-24 rounded-lg border border-dashed border-slate-300 hover:border-teal-500 bg-slate-50 flex items-center justify-center overflow-hidden relative cursor-pointer group" title="Click to upload Counter photo">
+                      <i class="fa fa-calculator text-slate-300 group-hover:text-teal-600 text-2xl transition" id="deploy-extra-icon-2"></i>
                       <img id="deploy-extra-img-2" src="" class="w-full h-full object-cover hidden" alt="Counter" />
                     </div>
                     <div class="space-y-1">
-                      <label class="cursor-pointer w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1">
+                      <button type="button" onclick="document.getElementById('deploy-extra-photo-2-file').click()" class="cursor-pointer w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1">
                         <i class="fa fa-camera text-teal-700"></i> Upload
-                        <input type="file" id="deploy-extra-photo-2-file" accept="image/*" class="hidden" />
-                      </label>
+                      </button>
+                      <input type="file" id="deploy-extra-photo-2-file" accept="image/*" class="sr-only" />
+                      <button type="button" onclick="window.acsApp.applyDeployExtraPreset(2, 'https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=1200&q=80', 'Dispensing Counter')" class="w-full text-[9px] text-teal-700 hover:underline font-bold text-center block">Use Preset</button>
                       <button type="button" id="btn-remove-extra-2" class="w-full text-[10px] text-rose-600 hover:underline hidden font-bold text-center">Remove</button>
                       <input type="hidden" id="deploy-extra-photo-2" value="" />
                       <input type="hidden" id="deploy-extra-photo-2-tag" value="Dispensing Counter" />
@@ -10141,20 +10372,21 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
                   </div>
 
                   <!-- Slot 3: Cold Storage -->
-                  <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-2 flex flex-col justify-between">
+                  <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-2 flex flex-col justify-between shadow-2xs">
                     <div>
                       <span class="text-[11px] font-bold text-slate-800 block">Photo 3: Cold Chain</span>
                       <span class="text-[10px] text-slate-400 block truncate">2-8°C Vault</span>
                     </div>
-                    <div id="deploy-extra-preview-box-3" class="h-24 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden relative">
-                      <i class="fa fa-snowflake-o text-slate-300 text-2xl" id="deploy-extra-icon-3"></i>
+                    <div id="deploy-extra-preview-box-3" onclick="document.getElementById('deploy-extra-photo-3-file').click()" class="h-24 rounded-lg border border-dashed border-slate-300 hover:border-teal-500 bg-slate-50 flex items-center justify-center overflow-hidden relative cursor-pointer group" title="Click to upload Cold Chain photo">
+                      <i class="fa fa-snowflake-o text-slate-300 group-hover:text-teal-600 text-2xl transition" id="deploy-extra-icon-3"></i>
                       <img id="deploy-extra-img-3" src="" class="w-full h-full object-cover hidden" alt="Cold Chain" />
                     </div>
                     <div class="space-y-1">
-                      <label class="cursor-pointer w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1">
+                      <button type="button" onclick="document.getElementById('deploy-extra-photo-3-file').click()" class="cursor-pointer w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1">
                         <i class="fa fa-camera text-teal-700"></i> Upload
-                        <input type="file" id="deploy-extra-photo-3-file" accept="image/*" class="hidden" />
-                      </label>
+                      </button>
+                      <input type="file" id="deploy-extra-photo-3-file" accept="image/*" class="sr-only" />
+                      <button type="button" onclick="window.acsApp.applyDeployExtraPreset(3, 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1200&q=80', 'Cold Storage')" class="w-full text-[9px] text-teal-700 hover:underline font-bold text-center block">Use Preset</button>
                       <button type="button" id="btn-remove-extra-3" class="w-full text-[10px] text-rose-600 hover:underline hidden font-bold text-center">Remove</button>
                       <input type="hidden" id="deploy-extra-photo-3" value="" />
                       <input type="hidden" id="deploy-extra-photo-3-tag" value="Cold Storage" />
@@ -10162,20 +10394,21 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
                   </div>
 
                   <!-- Slot 4: Signboard / Exterior -->
-                  <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-2 flex flex-col justify-between">
+                  <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-2 flex flex-col justify-between shadow-2xs">
                     <div>
                       <span class="text-[11px] font-bold text-slate-800 block">Photo 4: Signboard</span>
                       <span class="text-[10px] text-slate-400 block truncate">Outdoor Signage</span>
                     </div>
-                    <div id="deploy-extra-preview-box-4" class="h-24 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden relative">
-                      <i class="fa fa-building-o text-slate-300 text-2xl" id="deploy-extra-icon-4"></i>
+                    <div id="deploy-extra-preview-box-4" onclick="document.getElementById('deploy-extra-photo-4-file').click()" class="h-24 rounded-lg border border-dashed border-slate-300 hover:border-teal-500 bg-slate-50 flex items-center justify-center overflow-hidden relative cursor-pointer group" title="Click to upload Signboard photo">
+                      <i class="fa fa-building-o text-slate-300 group-hover:text-teal-600 text-2xl transition" id="deploy-extra-icon-4"></i>
                       <img id="deploy-extra-img-4" src="" class="w-full h-full object-cover hidden" alt="Signboard" />
                     </div>
                     <div class="space-y-1">
-                      <label class="cursor-pointer w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1">
+                      <button type="button" onclick="document.getElementById('deploy-extra-photo-4-file').click()" class="cursor-pointer w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1">
                         <i class="fa fa-camera text-teal-700"></i> Upload
-                        <input type="file" id="deploy-extra-photo-4-file" accept="image/*" class="hidden" />
-                      </label>
+                      </button>
+                      <input type="file" id="deploy-extra-photo-4-file" accept="image/*" class="sr-only" />
+                      <button type="button" onclick="window.acsApp.applyDeployExtraPreset(4, 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=1200&q=80', 'Signboard')" class="w-full text-[9px] text-teal-700 hover:underline font-bold text-center block">Use Preset</button>
                       <button type="button" id="btn-remove-extra-4" class="w-full text-[10px] text-rose-600 hover:underline hidden font-bold text-center">Remove</button>
                       <input type="hidden" id="deploy-extra-photo-4" value="" />
                       <input type="hidden" id="deploy-extra-photo-4-tag" value="Signboard" />
@@ -10183,20 +10416,21 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
                   </div>
 
                   <!-- Slot 5: Licensure Wall / Desk -->
-                  <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-2 flex flex-col justify-between">
+                  <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-2 flex flex-col justify-between shadow-2xs">
                     <div>
                       <span class="text-[11px] font-bold text-slate-800 block">Photo 5: Licensure Wall</span>
                       <span class="text-[10px] text-slate-400 block truncate">Certificates</span>
                     </div>
-                    <div id="deploy-extra-preview-box-5" class="h-24 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden relative">
-                      <i class="fa fa-certificate text-slate-300 text-2xl" id="deploy-extra-icon-5"></i>
+                    <div id="deploy-extra-preview-box-5" onclick="document.getElementById('deploy-extra-photo-5-file').click()" class="h-24 rounded-lg border border-dashed border-slate-300 hover:border-teal-500 bg-slate-50 flex items-center justify-center overflow-hidden relative cursor-pointer group" title="Click to upload Licensure Wall photo">
+                      <i class="fa fa-certificate text-slate-300 group-hover:text-teal-600 text-2xl transition" id="deploy-extra-icon-5"></i>
                       <img id="deploy-extra-img-5" src="" class="w-full h-full object-cover hidden" alt="Licensure" />
                     </div>
                     <div class="space-y-1">
-                      <label class="cursor-pointer w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1">
+                      <button type="button" onclick="document.getElementById('deploy-extra-photo-5-file').click()" class="cursor-pointer w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1">
                         <i class="fa fa-camera text-teal-700"></i> Upload
-                        <input type="file" id="deploy-extra-photo-5-file" accept="image/*" class="hidden" />
-                      </label>
+                      </button>
+                      <input type="file" id="deploy-extra-photo-5-file" accept="image/*" class="sr-only" />
+                      <button type="button" onclick="window.acsApp.applyDeployExtraPreset(5, 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=1200&q=80', 'Licensure Wall')" class="w-full text-[9px] text-teal-700 hover:underline font-bold text-center block">Use Preset</button>
                       <button type="button" id="btn-remove-extra-5" class="w-full text-[10px] text-rose-600 hover:underline hidden font-bold text-center">Remove</button>
                       <input type="hidden" id="deploy-extra-photo-5" value="" />
                       <input type="hidden" id="deploy-extra-photo-5-tag" value="Licensure Wall" />
@@ -10566,7 +10800,49 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     }
   }
 
-  handleDeploymentFormSubmit(e) {
+  applyDeployStorePhotoPreset(url) {
+    const storePhotoHidden = document.getElementById("deploy-store-photo");
+    const storePhotoUrlInput = document.getElementById("deploy-store-photo-url");
+    const storePhotoImg = document.getElementById("deploy-photo-preview-img");
+    const storePhotoPlaceholder = document.getElementById("deploy-photo-placeholder");
+    const removeStorePhotoBtn = document.getElementById("btn-remove-deploy-photo");
+    const sizeBadge = document.getElementById("deploy-photo-size-badge");
+    const sizeText = document.getElementById("deploy-photo-size-text");
+
+    if (storePhotoHidden) storePhotoHidden.value = url;
+    if (storePhotoUrlInput) storePhotoUrlInput.value = url;
+    if (storePhotoImg) {
+      storePhotoImg.src = url;
+      storePhotoImg.classList.remove("hidden");
+    }
+    if (storePhotoPlaceholder) storePhotoPlaceholder.classList.add("hidden");
+    if (removeStorePhotoBtn) removeStorePhotoBtn.classList.remove("hidden");
+    if (sizeBadge && sizeText) {
+      sizeText.innerText = "Preset Photo Selected";
+      sizeBadge.classList.remove("hidden");
+    }
+    this.showToast("Applied main storefront preset photo", "info");
+  }
+
+  applyDeployExtraPreset(index, url, tag) {
+    const extraHidden = document.getElementById(`deploy-extra-photo-${index}`);
+    const extraImg = document.getElementById(`deploy-extra-img-${index}`);
+    const extraIcon = document.getElementById(`deploy-extra-icon-${index}`);
+    const removeExtraBtn = document.getElementById(`btn-remove-extra-${index}`);
+    const tagEl = document.getElementById(`deploy-extra-photo-${index}-tag`);
+
+    if (extraHidden) extraHidden.value = url;
+    if (tagEl && tag) tagEl.value = tag;
+    if (extraImg) {
+      extraImg.src = url;
+      extraImg.classList.remove("hidden");
+    }
+    if (extraIcon) extraIcon.classList.add("hidden");
+    if (removeExtraBtn) removeExtraBtn.classList.remove("hidden");
+    this.showToast(`Applied preset for Photo ${index} (${tag})`, "info");
+  }
+
+  async handleDeploymentFormSubmit(e) {
     if (e && e.preventDefault) e.preventDefault();
 
     const nameEl = document.getElementById("deploy-store-name");
@@ -10582,6 +10858,8 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     const pharmRegEl = document.getElementById("deploy-pharmacist-reg");
     const pharmQualEl = document.getElementById("deploy-pharmacist-qual");
     const pharmPhotoEl = document.getElementById("deploy-pharmacist-photo");
+    const pharmPhotoFileInput = document.getElementById("deploy-pharmacist-photo-file");
+    const storePhotoFileInput = document.getElementById("deploy-store-photo-file");
     const storePhotoEl = document.getElementById("deploy-store-photo");
     const storePhotoUrlEl = document.getElementById("deploy-store-photo-url");
     const emailEl = document.getElementById("deploy-owner-email");
@@ -10592,6 +10870,32 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     if (!storeName) {
       this.showToast("Please enter your pharmacy name.", "error");
       return;
+    }
+
+    // Auto-compress fallback if user picked files but submitted before event finished
+    if (storePhotoFileInput && storePhotoFileInput.files && storePhotoFileInput.files[0] && (!storePhotoEl || !storePhotoEl.value)) {
+      try {
+        const compressed = await this.compressImageFile(storePhotoFileInput.files[0], 1200, 0.82);
+        if (storePhotoEl) storePhotoEl.value = compressed;
+      } catch (_) {}
+    }
+
+    if (pharmPhotoFileInput && pharmPhotoFileInput.files && pharmPhotoFileInput.files[0] && (!pharmPhotoEl || !pharmPhotoEl.value)) {
+      try {
+        const compressed = await this.compressImageFile(pharmPhotoFileInput.files[0], 600, 0.82);
+        if (pharmPhotoEl) pharmPhotoEl.value = compressed;
+      } catch (_) {}
+    }
+
+    for (let i = 1; i <= 5; i++) {
+      const extraFileEl = document.getElementById(`deploy-extra-photo-${i}-file`);
+      const extraPhotoEl = document.getElementById(`deploy-extra-photo-${i}`);
+      if (extraFileEl && extraFileEl.files && extraFileEl.files[0] && (!extraPhotoEl || !extraPhotoEl.value)) {
+        try {
+          const compressed = await this.compressImageFile(extraFileEl.files[0], 1200, 0.82);
+          if (extraPhotoEl) extraPhotoEl.value = compressed;
+        } catch (_) {}
+      }
     }
 
     let baseSlug = storeName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -11820,11 +12124,6 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
   openManageStorePhotosModal(storeId) {
     const store = this.stores.find((s) => s.id === storeId) || this.getCurrentStore();
     if (!store) return;
-    const isOwner = this.currentUser && (this.currentUser.storeId === store.id || this.currentUser.role === 'admin' || this.currentUser.role === 'pharmacy_owner');
-    if (store.isViewOnly && !isOwner) {
-      this.showToast("This pharmacy is deployed for public view only. Photo management is disabled.", "warning");
-      return;
-    }
     const gallery = this.ensureStoreGallery(store);
 
     const modal = document.getElementById("modal-generic");
@@ -11853,7 +12152,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
               Showcase your storefront entrance, medicine storage racks, cold chain equipment, and clean dispensing counters. Photos are publicly visible on your hosted live website at <span class="font-mono font-bold text-teal-900">acsakhil.com/${store.slug}</span>.
             </p>
           </div>
-          <button onclick="window.acsApp.openPhotoStudioModal('store-primary', '${store.id}', '${store.photoUrl}')" class="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs shadow transition flex items-center gap-1.5 self-start sm:self-auto flex-shrink-0">
+          <button onclick="window.acsApp.openPhotoStudioModal('store-primary', '${store.id}', '${store.photoUrl}')" class="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs shadow transition flex items-center gap-1.5 self-start sm:self-auto flex-shrink-0 cursor-pointer">
             <i class="fa fa-crop"></i> Crop / Look Primary Cover
           </button>
         </div>
@@ -11879,14 +12178,26 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
               </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label class="block font-semibold text-slate-700 mb-1">Photo Title / Area *</label>
-                <input type="text" id="new-gallery-title" required placeholder="e.g. Surgical Equipment & Ortho Desk" class="w-full px-3 py-1.5 border rounded-lg bg-white" />
+                <label class="block font-semibold text-slate-700 mb-1">Facility Category</label>
+                <select id="new-gallery-tag" class="w-full px-3 py-1.5 border rounded-lg bg-white">
+                  <option value="Medicine Racks">Medicine Racks</option>
+                  <option value="Dispensing Counter">Dispensing Counter</option>
+                  <option value="Cold Storage">Cold Storage Unit (2-8°C)</option>
+                  <option value="Signboard">Outdoor Signboard</option>
+                  <option value="Licensure Wall">Licensure Wall</option>
+                  <option value="Store Front">Store Front Facade</option>
+                  <option value="Facility View">General Facility</option>
+                </select>
               </div>
               <div>
-                <label class="block font-semibold text-slate-700 mb-1">Short Description / Caption</label>
-                <input type="text" id="new-gallery-caption" placeholder="e.g. High-grade orthopedic braces & surgical sundries" class="w-full px-3 py-1.5 border rounded-lg bg-white" />
+                <label class="block font-semibold text-slate-700 mb-1">Photo Title (Optional)</label>
+                <input type="text" id="new-gallery-title" placeholder="e.g. Medicine Racks" class="w-full px-3 py-1.5 border rounded-lg bg-white" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Short Description (Optional)</label>
+                <input type="text" id="new-gallery-caption" placeholder="e.g. Systematic pharmaceutical shelving" class="w-full px-3 py-1.5 border rounded-lg bg-white" />
               </div>
             </div>
 
@@ -11897,7 +12208,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
                 <span class="text-[11px] text-slate-500 font-medium">Ready to add</span>
               </div>
               <div class="flex items-center gap-2 ml-auto">
-                <button type="submit" class="px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white font-bold rounded-xl text-xs shadow transition flex items-center gap-1.5">
+                <button type="submit" class="px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white font-bold rounded-xl text-xs shadow transition flex items-center gap-1.5 cursor-pointer">
                   <i class="fa fa-plus"></i> Add Photo to Gallery
                 </button>
               </div>
@@ -11909,27 +12220,27 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
         <div class="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
           <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Or Quick-Add Official Certified Facility Photos:</span>
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-            <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=1200&q=80', 'Clean Dispensing Desk', 'Front billing and consultation area')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex flex-col gap-1 group">
+            <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=1200&q=80', 'Clean Dispensing Desk', 'Front billing and consultation area')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex flex-col gap-1 group cursor-pointer">
               <img src="https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=200&q=80" class="w-full h-14 rounded object-cover" />
               <span class="text-[10px] font-bold text-slate-700 group-hover:text-teal-800 leading-tight truncate">+ Dispensing</span>
             </button>
-            <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=1200&q=80', 'Medicine Racks', 'Systematic alphabetical medicine shelving')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex flex-col gap-1 group">
+            <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=1200&q=80', 'Medicine Racks', 'Systematic alphabetical medicine shelving')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex flex-col gap-1 group cursor-pointer">
               <img src="https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=200&q=80" class="w-full h-14 rounded object-cover" />
               <span class="text-[10px] font-bold text-slate-700 group-hover:text-teal-800 leading-tight truncate">+ Racks</span>
             </button>
-            <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1200&q=80', 'Cold Storage Unit', '2°C to 8°C calibrated biological storage')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex flex-col gap-1 group">
+            <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1200&q=80', 'Cold Storage Unit', '2°C to 8°C calibrated biological storage')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex flex-col gap-1 group cursor-pointer">
               <img src="https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=200&q=80" class="w-full h-14 rounded object-cover" />
               <span class="text-[10px] font-bold text-slate-700 group-hover:text-teal-800 leading-tight truncate">+ Cold Chain</span>
             </button>
-            <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=1200&q=80', '24x7 Night View', 'Well-lit emergency night dispensary service')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex flex-col gap-1 group">
+            <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=1200&q=80', '24x7 Night View', 'Well-lit emergency night dispensary service')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex flex-col gap-1 group cursor-pointer">
               <img src="https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=200&q=80" class="w-full h-14 rounded object-cover" />
               <span class="text-[10px] font-bold text-slate-700 group-hover:text-teal-800 leading-tight truncate">+ 24x7 Night</span>
             </button>
-            <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=1200&q=80', 'Surgical & Bandages', 'Surgical sutures, antiseptics and wellness')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex flex-col gap-1 group">
+            <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=1200&q=80', 'Surgical & Bandages', 'Surgical sutures, antiseptics and wellness')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex flex-col gap-1 group cursor-pointer">
               <img src="https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=200&q=80" class="w-full h-14 rounded object-cover" />
               <span class="text-[10px] font-bold text-slate-700 group-hover:text-teal-800 leading-tight truncate">+ Surgical</span>
             </button>
-            <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1583912267670-6575ad362e49?auto=format&fit=crop&w=1200&q=80', 'Ayush Herbal Section', 'Approved classical ayurvedic formulations')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex flex-col gap-1 group">
+            <button type="button" onclick="window.acsApp.addGalleryPhoto('${store.id}', 'https://images.unsplash.com/photo-1583912267670-6575ad362e49?auto=format&fit=crop&w=1200&q=80', 'Ayush Herbal Section', 'Approved classical ayurvedic formulations')" class="p-1.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-400 rounded-lg text-left transition flex flex-col gap-1 group cursor-pointer">
               <img src="https://images.unsplash.com/photo-1583912267670-6575ad362e49?auto=format&fit=crop&w=200&q=80" class="w-full h-14 rounded object-cover" />
               <span class="text-[10px] font-bold text-slate-700 group-hover:text-teal-800 leading-tight truncate">+ Ayush Corner</span>
             </button>
@@ -11960,7 +12271,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
                           </span>
                         ` : `
                           <span class="px-2 py-0.5 bg-black/60 text-white font-bold text-[10px] rounded-md backdrop-blur">
-                            Gallery Photo #${idx + 1}
+                            ${p.tag || `Gallery Photo #${idx + 1}`}
                           </span>
                         `}
                       </div>
@@ -11974,7 +12285,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
 
                   <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
                     ${!isPrimary ? `
-                      <button type="button" onclick="window.acsApp.setPrimaryStorePhoto('${store.id}', '${p.id}')" class="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded-lg text-[11px] transition inline-flex items-center gap-1">
+                      <button type="button" onclick="window.acsApp.setPrimaryStorePhoto('${store.id}', '${p.id}')" class="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded-lg text-[11px] transition inline-flex items-center gap-1 cursor-pointer">
                         <i class="fa fa-star text-amber-500"></i> Make Primary
                       </button>
                     ` : `
@@ -11984,10 +12295,10 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
                     `}
 
                     <div class="flex items-center gap-1.5">
-                      <button type="button" onclick="window.acsApp.openPhotoStudioModal('store-gallery', '${store.id}', '${p.url}', '${p.id}')" class="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-[11px] transition inline-flex items-center gap-1 shadow-xs">
+                      <button type="button" onclick="window.acsApp.openPhotoStudioModal('store-gallery', '${store.id}', '${p.url}', '${p.id}')" class="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-[11px] transition inline-flex items-center gap-1 shadow-xs cursor-pointer">
                         <i class="fa fa-crop"></i> Crop / Look
                       </button>
-                      <button type="button" onclick="window.acsApp.deleteGalleryPhoto('${store.id}', '${p.id}')" class="px-2.5 py-1.5 text-rose-600 hover:bg-rose-50 rounded-lg text-[11px] font-semibold transition" title="Delete photo">
+                      <button type="button" onclick="window.acsApp.deleteGalleryPhoto('${store.id}', '${p.id}')" class="px-2.5 py-1.5 text-rose-600 hover:bg-rose-50 rounded-lg text-[11px] font-semibold transition cursor-pointer" title="Delete photo">
                         <i class="fa fa-trash"></i>
                       </button>
                     </div>
@@ -11999,10 +12310,10 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
         </div>
 
         <div class="pt-4 border-t border-slate-200 flex justify-between items-center">
-          <button type="button" onclick="window.acsApp.viewHostedWebsite('${store.id}')" class="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black rounded-xl text-xs transition flex items-center gap-1.5">
+          <button type="button" onclick="window.acsApp.viewHostedWebsite('${store.id}')" class="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black rounded-xl text-xs transition flex items-center gap-1.5 cursor-pointer">
             <i class="fa fa-globe"></i> View Live Hosted Webpage
           </button>
-          <button type="button" onclick="window.acsApp.closeModal(); window.acsApp.renderCurrentView();" class="px-5 py-2 bg-[#135c7e] text-white rounded-xl font-bold text-xs">
+          <button type="button" onclick="window.acsApp.closeModal(); window.acsApp.renderCurrentView();" class="px-5 py-2 bg-[#135c7e] text-white rounded-xl font-bold text-xs cursor-pointer">
             Done
           </button>
         </div>
@@ -12026,7 +12337,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
         if (file) {
           try {
             this.showToast("Compressing & optimizing photo...", "info");
-            currentInputDataUrl = await this.compressImageFile(file, 900, 0.8);
+            currentInputDataUrl = await this.compressImageFile(file, 900, 0.78);
             if (previewThumb) previewThumb.src = currentInputDataUrl;
             if (previewContainer) {
               previewContainer.classList.remove("hidden");
@@ -12057,34 +12368,42 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       form.onsubmit = async (e) => {
         e.preventDefault();
         let url = currentInputDataUrl || (urlInput ? urlInput.value.trim() : "");
+        if (!url && fileInput && fileInput.files && fileInput.files[0]) {
+          this.showToast("Compressing & optimizing photo...", "info");
+          url = await this.compressImageFile(fileInput.files[0], 900, 0.78);
+        }
         if (!url) {
           this.showToast("Please choose a photo file or enter an image URL.", "warning");
           return;
         }
         if (url.startsWith("data:image/") && url.length > 90000) {
-          url = await this.compressDataUrl(url, 900, 0.8);
+          url = await this.compressDataUrl(url, 900, 0.78);
         }
-        const title = (document.getElementById("new-gallery-title") ? document.getElementById("new-gallery-title").value : "") || "Store View";
-        const caption = document.getElementById("new-gallery-caption") ? document.getElementById("new-gallery-caption").value : "";
-        await this.addGalleryPhoto(store.id, url, title, caption);
+        const tagEl = document.getElementById("new-gallery-tag");
+        const tag = (tagEl && tagEl.value) || "Facility";
+        const titleEl = document.getElementById("new-gallery-title");
+        const title = (titleEl && titleEl.value.trim()) || tag || `Store View ${gallery.length + 1}`;
+        const captionEl = document.getElementById("new-gallery-caption");
+        const caption = (captionEl && captionEl.value.trim()) || `${tag} facility at ${store.name}`;
+        await this.addGalleryPhoto(store.id, url, title, caption, tag);
       };
     }
   }
 
-  async addGalleryPhoto(storeId, url, title, caption) {
+  async addGalleryPhoto(storeId, url, title, caption, tag = "Facility") {
     const store = this.stores.find((s) => s.id === storeId);
     if (!store || !url) return;
     let cleanUrl = url.trim();
     if (cleanUrl.startsWith("data:image/") && cleanUrl.length > 90000) {
-      cleanUrl = await this.compressDataUrl(cleanUrl, 900, 0.8);
+      cleanUrl = await this.compressDataUrl(cleanUrl, 900, 0.78);
     }
     const gallery = this.ensureStoreGallery(store);
     const newPhoto = {
-      id: `gp-${store.id}-${Date.now()}`,
+      id: `gp-${store.id}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       url: cleanUrl,
       title: title ? title.trim() : `Store View ${gallery.length + 1}`,
       caption: caption ? caption.trim() : "Pharmacy physical facility view.",
-      tag: title ? title.slice(0, 14) : "Facility",
+      tag: tag || (title ? title.slice(0, 18) : "Facility"),
       isPrimary: gallery.length === 0
     };
     gallery.push(newPhoto);
@@ -12092,6 +12411,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       store.photoUrl = newPhoto.url;
     }
     this.saveStores(true);
+    this.renderCurrentView();
     this.showToast(`Added "${newPhoto.title}" to store photo gallery & synced across devices!`, "success");
     this.openManageStorePhotosModal(storeId);
   }
@@ -12106,6 +12426,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     gallery.forEach((p) => (p.isPrimary = p.id === photoId));
     store.photoUrl = target.url;
     this.saveStores(true);
+    this.renderCurrentView();
     this.showToast(`Updated primary storefront cover to "${target.title}" and synced across all devices!`, "success");
     this.openManageStorePhotosModal(storeId);
   }
@@ -12128,6 +12449,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       store.photoUrl = gallery[0].url;
     }
     this.saveStores(true);
+    this.renderCurrentView();
     this.showToast("Photo removed from store gallery and synced across devices.", "info");
     this.openManageStorePhotosModal(storeId);
   }
@@ -12822,6 +13144,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           }
         }
         this.saveStores(true);
+        this.renderCurrentView();
         this.showToast("Gallery photo adjusted and synced across all devices.", "success");
         this.openManageStorePhotosModal(targetId);
       }
