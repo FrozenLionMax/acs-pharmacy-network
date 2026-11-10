@@ -12984,6 +12984,32 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           <span class="text-[11px] text-teal-800">Badge shown on Google & storefront</span>
         </div>
 
+        <!-- Web Address, Subdomain & Short Aliases -->
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
+              <i class="fa fa-globe text-[#135c7e]"></i> Web Address, Subdomain &amp; Clean Short Aliases
+            </span>
+            <span class="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Editable Anytime</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Branded Subdomain</label>
+              <div class="flex items-center">
+                <span class="px-2.5 py-1.5 bg-slate-200 border border-r-0 rounded-l-lg text-slate-600 font-mono text-[11px]">https://</span>
+                <input type="text" id="edit-store-subdomain" value="${(store.slugAliases && store.slugAliases.find(a => a && a.length <= 15 && !a.startsWith('pharmacy-') && a !== store.slug)) || (store.slug && store.slug.split('-')[0]) || 'store'}" placeholder="ajay" class="w-full px-2.5 py-1.5 border font-mono text-[11px] text-[#135c7e] font-bold" />
+                <span class="px-2.5 py-1.5 bg-slate-200 border border-l-0 rounded-r-lg text-slate-600 font-mono text-[11px]">.drugs.systems</span>
+              </div>
+              <span class="text-[10px] text-slate-400 mt-0.5 block">Subdomain routes directly to your store. Change whenever you like!</span>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Short Path Aliases (Comma-separated)</label>
+              <input type="text" id="edit-store-aliases" value="${(store.slugAliases || []).filter(a => a && a !== store.slug).join(', ')}" placeholder="ajay, ajay-medicines, ajay-deoria" class="w-full px-3 py-1.5 border rounded-lg font-mono text-[11px]" />
+              <span class="text-[10px] text-slate-400 mt-0.5 block">Accessible via drugs.systems/<strong>alias</strong>. Old links never 404.</span>
+            </div>
+          </div>
+        </div>
+
         <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
           <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-2 border rounded-lg text-slate-600 hover:bg-slate-50">Cancel</button>
           <button type="submit" class="px-6 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-lg font-bold shadow-md transition flex items-center gap-2">
@@ -13071,6 +13097,24 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
         store.slugAliases.push(newSlug);
       }
       store.slug = newSlug || store.slug;
+
+      // Custom Subdomain & Aliases from input
+      const subEl = document.getElementById("edit-store-subdomain");
+      const aliasesEl = document.getElementById("edit-store-aliases");
+      if (subEl) {
+        const subVal = subEl.value.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+        if (subVal && !store.slugAliases.includes(subVal)) {
+          store.slugAliases.unshift(subVal);
+        }
+      }
+      if (aliasesEl) {
+        const extraAliases = aliasesEl.value.split(",").map(a => a.trim().toLowerCase().replace(/[^a-z0-9-]/g, "")).filter(Boolean);
+        extraAliases.forEach(a => {
+          if (!store.slugAliases.includes(a)) {
+            store.slugAliases.push(a);
+          }
+        });
+      }
 
       // Keep user session store name in sync if logged-in owner
       if (this.currentUser && this.currentUser.storeId === store.id) {
