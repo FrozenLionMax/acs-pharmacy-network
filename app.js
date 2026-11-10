@@ -79,6 +79,7 @@ class ACSApp {
     this.renderCurrentView();
     this.initCloudSync();
     this.initSupabase();
+    this.flushOfflineOutbox();
     this.initPwaInstallation();
     this.handleUrlActionParams();
 
@@ -1037,7 +1038,17 @@ class ACSApp {
   updateCloudSyncBadge(status, message) {
     if (typeof document === "undefined" || !document.querySelectorAll) return;
     const badges = document.querySelectorAll(".cloud-sync-indicator");
+    const outbox = typeof this.getOfflineOutbox === "function" ? this.getOfflineOutbox() : [];
+    const isOnline = typeof navigator === "undefined" || navigator.onLine !== false;
+
     badges.forEach((el) => {
+      if (!isOnline || outbox.length > 0) {
+        el.className = "cloud-sync-indicator inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-300 shadow-2xs cursor-pointer";
+        el.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> <i class="fa ${!isOnline ? 'fa-plane' : 'fa-clock-o'} text-amber-700"></i> ${!isOnline ? 'Offline POS' : 'Syncing'} (${outbox.length} Queued)`;
+        el.title = !isOnline ? "Operating offline. Sales and edits will auto-sync when connection restores." : `${outbox.length} pending mutations queued in local outbox. Click to flush now.`;
+        el.onclick = () => window.acsApp && window.acsApp.flushOfflineOutbox();
+        return;
+      }
       if (this.isSupabaseConnected) {
         el.className = "cloud-sync-indicator inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-900 border border-emerald-300 shadow-2xs cursor-pointer";
         el.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> <i class="fa fa-database text-emerald-700"></i> PostgreSQL (Supabase) Live`;
@@ -7020,10 +7031,94 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
   }
 
   // ==========================================
-  // ATOMIC SINGLE-ROW TARGETED MUTATIONS
+  // ATOMIC SINGLE-ROW TARGETED MUTATIONS & OFFLINE OUTBOX
   // ==========================================
-  async pushSingleStockToSupabase(storeId, medicine) {
-    if (!this.supabase || !this.isSupabaseConnected || !medicine) return;
+  getOfflineOutbox() {
+    if (typeof localStorage === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("ACS_OFFLINE_OUTBOX");
+      return raw ? JSON.parse(raw) : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  enqueueOfflineMutation(mutation) {
+    if (typeof localStorage === "undefined") return;
+    try {
+      const queue = this.getOfflineOutbox();
+      mutation.id = mutation.id || `mut-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      mutation.queuedAt = Date.now();
+      queue.push(mutation);
+      localStorage.setItem("ACS_OFFLINE_OUTBOX", JSON.stringify(queue));
+      this.updateCloudSyncBadge();
+    } catch (err) {
+      console.warn("Failed to queue offline mutation:", err);
+    }
+  }
+
+  async flushOfflineOutbox() {
+    const queue = this.getOfflineOutbox();
+    if (!queue.length) return;
+    if (!this.supabase || !this.isSupabaseConnected) {
+      this.initSupabase();
+      if (!this.supabase || !this.isSupabaseConnected) return;
+    }
+
+    const remaining = [];
+    let syncedCount = 0;
+
+    for (const item of queue) {
+      try {
+        if (item.type === "UPSERT_STOCK") {
+          await this.pushSingleStockToSupabase(item.storeId, item.data, false);
+        } else if (item.type === "DELETE_STOCK") {
+          await this.deleteSingleStockFromSupabase(item.storeId, item.data.id, false);
+        } else if (item.type === "UPSERT_STAFF") {
+          await this.pushSingleStaffToSupabase(item.storeId, item.data, "upsert", false);
+        } else if (item.type === "DELETE_STAFF") {
+          await this.pushSingleStaffToSupabase(item.storeId, item.data, "delete", false);
+        } else if (item.type === "UPSERT_STORE") {
+          await this.pushSingleStoreToSupabase(item.data, false);
+        } else if (item.type === "TRANSACTION") {
+          await this.pushSingleTransactionToSupabase(item.storeId, item.data, false);
+        }
+        syncedCount++;
+      } catch (err) {
+        console.warn("Failed to replay mutation, retaining in outbox:", item, err);
+        remaining.push(item);
+      }
+    }
+
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("ACS_OFFLINE_OUTBOX", JSON.stringify(remaining));
+    }
+    this.updateCloudSyncBadge();
+
+    if (syncedCount > 0) {
+      this.showToast(`Offline POS Sync: Replayed ${syncedCount} queued change(s) to live PostgreSQL!`, "success");
+    }
+  }
+
+  handleNetworkOnline() {
+    this.showToast("Network restored: Reconnecting live PostgreSQL database...", "info");
+    this.initSupabase();
+    this.flushOfflineOutbox();
+    this.updateCloudSyncBadge();
+  }
+
+  handleNetworkOffline() {
+    this.showToast("Offline POS Mode Active: All transactions & edits are safely queued locally.", "warning");
+    this.updateCloudSyncBadge();
+  }
+
+  async pushSingleStockToSupabase(storeId, medicine, allowEnqueue = true) {
+    if (!this.supabase || !this.isSupabaseConnected || !medicine) {
+      if (allowEnqueue && medicine) {
+        this.enqueueOfflineMutation({ type: "UPSERT_STOCK", storeId, data: medicine });
+      }
+      return;
+    }
     try {
       const row = {
         id: medicine.id,
@@ -7047,11 +7142,19 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       this.updateCloudSyncBadge("synced", "PostgreSQL: Stock SKU updated");
     } catch (err) {
       console.warn("Atomic pushSingleStock error:", err.message || err);
+      if (allowEnqueue) {
+        this.enqueueOfflineMutation({ type: "UPSERT_STOCK", storeId, data: medicine });
+      }
     }
   }
 
-  async deleteSingleStockFromSupabase(storeId, medicineId) {
-    if (!this.supabase || !this.isSupabaseConnected || !medicineId) return;
+  async deleteSingleStockFromSupabase(storeId, medicineId, allowEnqueue = true) {
+    if (!this.supabase || !this.isSupabaseConnected || !medicineId) {
+      if (allowEnqueue && medicineId) {
+        this.enqueueOfflineMutation({ type: "DELETE_STOCK", storeId, data: { id: medicineId } });
+      }
+      return;
+    }
     try {
       const { error } = await this.supabase
         .from("medicine_stocks")
@@ -7061,11 +7164,19 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       this.updateCloudSyncBadge("synced", "PostgreSQL: Stock SKU deleted");
     } catch (err) {
       console.warn("Atomic deleteSingleStock error:", err.message || err);
+      if (allowEnqueue) {
+        this.enqueueOfflineMutation({ type: "DELETE_STOCK", storeId, data: { id: medicineId } });
+      }
     }
   }
 
-  async pushSingleStoreToSupabase(store) {
-    if (!this.supabase || !this.isSupabaseConnected || !store) return;
+  async pushSingleStoreToSupabase(store, allowEnqueue = true) {
+    if (!this.supabase || !this.isSupabaseConnected || !store) {
+      if (allowEnqueue && store) {
+        this.enqueueOfflineMutation({ type: "UPSERT_STORE", storeId: store.id, data: store });
+      }
+      return;
+    }
     try {
       const row = {
         id: store.id,
@@ -7097,11 +7208,19 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       this.updateCloudSyncBadge("synced", "PostgreSQL: Store profile updated");
     } catch (err) {
       console.warn("Atomic pushSingleStore error:", err.message || err);
+      if (allowEnqueue) {
+        this.enqueueOfflineMutation({ type: "UPSERT_STORE", storeId: store.id, data: store });
+      }
     }
   }
 
-  async pushSingleStaffToSupabase(storeId, staff, action = "upsert") {
-    if (!this.supabase || !this.isSupabaseConnected || !staff) return;
+  async pushSingleStaffToSupabase(storeId, staff, action = "upsert", allowEnqueue = true) {
+    if (!this.supabase || !this.isSupabaseConnected || !staff) {
+      if (allowEnqueue && staff) {
+        this.enqueueOfflineMutation({ type: action === "delete" ? "DELETE_STAFF" : "UPSERT_STAFF", storeId, data: staff });
+      }
+      return;
+    }
     try {
       if (action === "delete") {
         await this.supabase.from("staff_members").delete().match({ id: staff.id, store_id: storeId });
@@ -7127,11 +7246,19 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       this.updateCloudSyncBadge("synced", "PostgreSQL: Staff roster updated");
     } catch (err) {
       console.warn("Atomic pushSingleStaff error:", err.message || err);
+      if (allowEnqueue) {
+        this.enqueueOfflineMutation({ type: action === "delete" ? "DELETE_STAFF" : "UPSERT_STAFF", storeId, data: staff });
+      }
     }
   }
 
-  async pushSingleTransactionToSupabase(storeId, transaction) {
-    if (!this.supabase || !this.isSupabaseConnected || !transaction) return;
+  async pushSingleTransactionToSupabase(storeId, transaction, allowEnqueue = true) {
+    if (!this.supabase || !this.isSupabaseConnected || !transaction) {
+      if (allowEnqueue && transaction) {
+        this.enqueueOfflineMutation({ type: "TRANSACTION", storeId, data: transaction });
+      }
+      return;
+    }
     try {
       const row = {
         id: transaction.id,
@@ -7146,6 +7273,9 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       await this.supabase.from("transactions").upsert(row);
     } catch (err) {
       console.warn("Atomic pushSingleTransaction error:", err.message || err);
+      if (allowEnqueue) {
+        this.enqueueOfflineMutation({ type: "TRANSACTION", storeId, data: transaction });
+      }
     }
   }
 
@@ -15896,6 +16026,12 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
   }
 
   setupEventListeners() {
+    // Network online/offline event listeners for resilient POS outbox sync
+    if (typeof window !== "undefined") {
+      window.addEventListener("online", () => this.handleNetworkOnline());
+      window.addEventListener("offline", () => this.handleNetworkOffline());
+    }
+
     // Cross-tab reactive synchronization
     window.addEventListener("storage", (e) => {
       if (

@@ -1357,6 +1357,23 @@ try {
   await app.pushSingleTransactionToSupabase('store-up-001', { id: 'txn-test', totalBill: 150 });
   console.log('Atomic targeted single-row mutation methods verified successfully!');
 
+  // --- Testing Offline Outbox Queue & Replay Suite ---
+  if (typeof app.getOfflineOutbox !== 'function' ||
+      typeof app.enqueueOfflineMutation !== 'function' ||
+      typeof app.flushOfflineOutbox !== 'function') {
+    throw new Error('Offline outbox queue methods missing!');
+  }
+  mockLocalStorage.removeItem('ACS_OFFLINE_OUTBOX');
+  app.enqueueOfflineMutation({ type: 'UPSERT_STOCK', storeId: 'store-up-001', data: { id: 'queued-med-1', name: 'Offline Pan-D', quantity: 99 } });
+  const outbox = app.getOfflineOutbox();
+  if (!outbox || !outbox.some(m => m.data && m.data.id === 'queued-med-1')) {
+    throw new Error('Offline outbox enqueue failed to record mutation!');
+  }
+  app.handleNetworkOffline();
+  app.handleNetworkOnline();
+  await app.flushOfflineOutbox();
+  console.log('Offline Outbox Queue & Replay Suite verified successfully!');
+
   console.log('Supabase Cloud Database integration suite verified successfully!');
 
   console.log('ALL CONNECTION TESTS VERIFIED AND PASSED 100%!');
