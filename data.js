@@ -2229,6 +2229,371 @@ const INITIAL_STORES_DATA = [
       "paymentChannels": { "upi": 62, "cards": 10, "cash": 28 },
       "transactions": []
     }
+  },
+  {
+    "id": "store-up-2112",
+    "slug": "ajay-medicines-deoria",
+    "slugAliases": [
+      "ajay",
+      "ajay-medicines",
+      "ajay-deoria",
+      "ajay-medicines-deoria",
+      "pharmacy-ajay-medicines-deoria"
+    ],
+    "name": "Ajay Medicines, Deoria",
+    "district": "Deoria",
+    "city": "Deoria",
+    "address": "Civil Lines, Deoria, Uttar Pradesh - 274001",
+    "mapsUrl": "",
+    "phone": "+91 85967 49685",
+    "whatsapp": "+918596749685",
+    "email": "akhilenterprises146@gmail.com",
+    "ownerName": "Abhijit",
+    "license20": "UP/DEO/2026/20/1203",
+    "license21": "UP/DEO/2026/21/1203",
+    "gstin": "09AABCT8192M1Z5",
+    "establishedYear": "2026",
+    "operatingHours": "08:00 AM - 10:30 PM",
+    "is24x7": false,
+    "photoUrl": "https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80",
+    "galleryPhotos": [
+      {
+        "id": "gp-1794331622112-1",
+        "tag": "Store Front",
+        "url": "https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80",
+        "title": "Storefront & Main Signboard",
+        "caption": "Ajay Medicines, Deoria, Deoria",
+        "isPrimary": true
+      }
+    ],
+    "pin": "1998",
+    "status": "Verified",
+    "rating": 4.9,
+    "staff": [
+      {
+        "id": "st-1794331622112-1",
+        "name": "Abhijit",
+        "role": "Registered Pharmacist & Incharge",
+        "uppcRegNo": "UPPC-PH-5269131",
+        "qualification": "B.Pharm, R.Ph (UP)",
+        "regDate": "2022-04-12",
+        "validUpto": "2032-12-31",
+        "phone": "+91 85967 49685",
+        "shift": "General Shift / 24x7 Emergency",
+        "isAadhaarVerified": true,
+        "isOnDuty": true,
+        "status": "Active"
+      }
+    ],
+    "stocks": [
+      {
+        "id": "med-1794331622112-1",
+        "name": "Augmentin 625 Duo Tablet",
+        "saltName": "Amoxicillin 500mg + Potassium Clavulanate 125mg",
+        "manufacturer": "GlaxoSmithKline Pharmaceuticals",
+        "batchNo": "BAT-AUG-5501",
+        "expiryDate": "2027-08-31",
+        "schedule": "Schedule H",
+        "quantity": 80,
+        "unit": "Strips (10 tabs)",
+        "mrp": 220.00,
+        "purchaseRate": 165.00,
+        "rackLocation": "Rack A-01",
+        "minAlertThreshold": 25,
+        "freeScheme": ""
+      },
+      {
+        "id": "med-1794331622112-2",
+        "name": "Paracetamol 650mg",
+        "saltName": "Paracetamol IP 650mg",
+        "manufacturer": "Generic Pharma",
+        "batchNo": "BAT-GEN-101",
+        "expiryDate": "2028-12-31",
+        "schedule": "OTC",
+        "quantity": 100,
+        "unit": "Strips (10 tabs)",
+        "mrp": 30.00,
+        "purchaseRate": 20.00,
+        "rackLocation": "Rack A-02",
+        "minAlertThreshold": 20,
+        "freeScheme": ""
+      },
+      {
+        "id": "med-1794331622112-3",
+        "name": "Azithromycin 500mg Tablet",
+        "saltName": "Azithromycin IP 500mg",
+        "manufacturer": "Cipla Ltd",
+        "batchNo": "BAT-AZI-901",
+        "expiryDate": "2027-11-30",
+        "schedule": "Schedule H",
+        "quantity": 60,
+        "unit": "Strips (5 tabs)",
+        "mrp": 115.00,
+        "purchaseRate": 85.00,
+        "rackLocation": "Rack A-03",
+        "minAlertThreshold": 15,
+        "freeScheme": ""
+      },
+      {
+        "id": "med-1794331622112-4",
+        "name": "ORS Electrolyte Powder",
+        "saltName": "Oral Rehydration Salts WHO Formula",
+        "manufacturer": "FDC Ltd",
+        "batchNo": "BAT-ORS-304",
+        "expiryDate": "2028-06-30",
+        "schedule": "OTC",
+        "quantity": 150,
+        "unit": "Sachets (21.8g)",
+        "mrp": 21.50,
+        "purchaseRate": 14.00,
+        "rackLocation": "Rack B-01",
+        "minAlertThreshold": 30,
+        "freeScheme": ""
+      }
+    ],
+    "revenueData": {
+      "todaySales": 18500,
+      "monthlyGross": 420000,
+      "lastMonthGross": 390000,
+      "avgGrossMarginPercent": 24.0,
+      "totalOrdersThisMonth": 510,
+      "digitalSplitPercent": 68,
+      "cashSplitPercent": 32,
+      "gstCollectedMonthly": 50400,
+      "monthlyHistory": [
+        { "month": "Aug", "revenue": 370000, "digital": 250000, "cash": 120000 },
+        { "month": "Sep", "revenue": 390000, "digital": 265000, "cash": 125000 },
+        { "month": "Oct (Current)", "revenue": 420000, "digital": 285600, "cash": 134400 }
+      ],
+      "paymentChannels": { "upi": 60, "cards": 8, "cash": 32 },
+      "transactions": []
+    }
+  },
+  {
+    "id": "store-up-6434",
+    "slug": "rajeev-medicos",
+    "slugAliases": [
+      "rajeev-medicos",
+      "rajeev-medicos-deoria",
+      "pharmacy-rajeev-medicos"
+    ],
+    "name": "Rajeev medicos",
+    "district": "Deoria",
+    "city": "Deoria",
+    "address": "Kasia Road, Deoria, Uttar Pradesh - 274001",
+    "mapsUrl": "",
+    "phone": "+91 78977 88888",
+    "whatsapp": "+917897788888",
+    "email": "rajeev@medicos.com",
+    "ownerName": "Anil Verma",
+    "license20": "UP/KUS/2024/20/1212",
+    "license21": "UP/KUS/2024/21/1212",
+    "gstin": "09BBZPV1920K1ZX",
+    "establishedYear": "2024",
+    "operatingHours": "08:00 AM - 10:30 PM",
+    "is24x7": true,
+    "photoUrl": "https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80",
+    "galleryPhotos": [
+      {
+        "id": "gp-1794329306435-1",
+        "tag": "Store Front",
+        "url": "https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80",
+        "title": "Storefront & Main Signboard",
+        "caption": "Rajeev medicos, Deoria",
+        "isPrimary": true
+      }
+    ],
+    "pin": "1998",
+    "status": "Verified",
+    "rating": 4.9,
+    "staff": [
+      {
+        "id": "st-1794329306435-1",
+        "name": "Anil Verma",
+        "role": "Registered Pharmacist & Incharge",
+        "uppcRegNo": "UPPC-PH-49210",
+        "qualification": "D.Pharm, R.Ph (UP)",
+        "regDate": "2022-04-12",
+        "validUpto": "2032-12-31",
+        "phone": "+91 78977 88888",
+        "shift": "General Shift / 24x7 Emergency",
+        "isAadhaarVerified": true,
+        "isOnDuty": true,
+        "status": "Active"
+      }
+    ],
+    "stocks": [
+      {
+        "id": "med-1794329306435-1",
+        "name": "Augmentin 625 Duo Tablet",
+        "saltName": "Amoxicillin 500mg + Potassium Clavulanate 125mg",
+        "manufacturer": "GlaxoSmithKline Pharmaceuticals",
+        "batchNo": "BAT-AUG-5501",
+        "expiryDate": "2027-08-31",
+        "schedule": "Schedule H",
+        "quantity": 80,
+        "unit": "Strips (10 tabs)",
+        "mrp": 220.00,
+        "purchaseRate": 165.00,
+        "rackLocation": "Rack A-01",
+        "minAlertThreshold": 25,
+        "freeScheme": ""
+      },
+      {
+        "id": "med-1794329306435-2",
+        "name": "Paracetamol 650mg",
+        "saltName": "Paracetamol IP 650mg",
+        "manufacturer": "Generic Pharma",
+        "batchNo": "BAT-GEN-101",
+        "expiryDate": "2028-12-31",
+        "schedule": "OTC",
+        "quantity": 100,
+        "unit": "Strips (10 tabs)",
+        "mrp": 30.00,
+        "purchaseRate": 20.00,
+        "rackLocation": "Rack A-02",
+        "minAlertThreshold": 20,
+        "freeScheme": ""
+      },
+      {
+        "id": "med-1794329306435-3",
+        "name": "Azithromycin 500mg Tablet",
+        "saltName": "Azithromycin IP 500mg",
+        "manufacturer": "Cipla Ltd",
+        "batchNo": "BAT-AZI-901",
+        "expiryDate": "2027-11-30",
+        "schedule": "Schedule H",
+        "quantity": 60,
+        "unit": "Strips (5 tabs)",
+        "mrp": 115.00,
+        "purchaseRate": 85.00,
+        "rackLocation": "Rack A-03",
+        "minAlertThreshold": 15,
+        "freeScheme": ""
+      },
+      {
+        "id": "med-1794329306435-4",
+        "name": "ORS Electrolyte Powder",
+        "saltName": "Oral Rehydration Salts WHO Formula",
+        "manufacturer": "FDC Ltd",
+        "batchNo": "BAT-ORS-304",
+        "expiryDate": "2028-06-30",
+        "schedule": "OTC",
+        "quantity": 150,
+        "unit": "Sachets (21.8g)",
+        "mrp": 21.50,
+        "purchaseRate": 14.00,
+        "rackLocation": "Rack B-01",
+        "minAlertThreshold": 30,
+        "freeScheme": ""
+      }
+    ],
+    "revenueData": {
+      "todaySales": 16500,
+      "monthlyGross": 380000,
+      "lastMonthGross": 350000,
+      "avgGrossMarginPercent": 23.0,
+      "totalOrdersThisMonth": 460,
+      "digitalSplitPercent": 65,
+      "cashSplitPercent": 35,
+      "gstCollectedMonthly": 45600,
+      "monthlyHistory": [
+        { "month": "Aug", "revenue": 330000, "digital": 215000, "cash": 115000 },
+        { "month": "Sep", "revenue": 350000, "digital": 230000, "cash": 120000 },
+        { "month": "Oct (Current)", "revenue": 380000, "digital": 247000, "cash": 133000 }
+      ],
+      "paymentChannels": { "upi": 58, "cards": 7, "cash": 35 },
+      "transactions": []
+    }
+  },
+  {
+    "id": "store-up-5908",
+    "slug": "tech",
+    "slugAliases": [
+      "tech",
+      "tech-deoria",
+      "pharmacy-tech"
+    ],
+    "name": "Tech",
+    "district": "Agra",
+    "city": "Agra",
+    "address": "Tech, Agra, Uttar Pradesh",
+    "mapsUrl": "",
+    "phone": "+91 85858 58585",
+    "whatsapp": "+918585858585",
+    "email": "contact@tech.com",
+    "ownerName": "UP",
+    "license20": "UP/AGR/2026/20/5501",
+    "license21": "UP/AGR/2026/21/5501",
+    "gstin": "09AAACH5501M1Z1",
+    "establishedYear": "2026",
+    "operatingHours": "08:00 AM - 10:30 PM",
+    "is24x7": true,
+    "photoUrl": "https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80",
+    "galleryPhotos": [
+      {
+        "id": "gp-1793788765912-1",
+        "tag": "Store Front",
+        "url": "https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80",
+        "title": "Storefront & Main Signboard",
+        "caption": "Tech, Agra",
+        "isPrimary": true
+      }
+    ],
+    "pin": "1998",
+    "status": "Verified",
+    "rating": 4.9,
+    "staff": [
+      {
+        "id": "st-1793788765912-1",
+        "name": "UP",
+        "role": "Registered Pharmacist & Incharge",
+        "uppcRegNo": "UPPC-PH-55580",
+        "qualification": "B.Pharm, R.Ph (UP)",
+        "regDate": "2021-04-12",
+        "validUpto": "2031-12-31",
+        "phone": "+91 85858 58585",
+        "shift": "General Shift / 24x7 Emergency",
+        "isAadhaarVerified": true,
+        "isOnDuty": true,
+        "status": "Active"
+      }
+    ],
+    "stocks": [
+      {
+        "id": "med-1793788765912-1",
+        "name": "Augmentin 625 Duo Tablet",
+        "saltName": "Amoxicillin 500mg + Potassium Clavulanate 125mg",
+        "manufacturer": "GlaxoSmithKline Pharmaceuticals",
+        "batchNo": "BAT-AUG-5501",
+        "expiryDate": "2027-08-31",
+        "schedule": "Schedule H",
+        "quantity": 80,
+        "unit": "Strips (10 tabs)",
+        "mrp": 220.00,
+        "purchaseRate": 165.00,
+        "rackLocation": "Rack A-01",
+        "minAlertThreshold": 25,
+        "freeScheme": ""
+      }
+    ],
+    "revenueData": {
+      "todaySales": 14000,
+      "monthlyGross": 320000,
+      "lastMonthGross": 300000,
+      "avgGrossMarginPercent": 22.0,
+      "totalOrdersThisMonth": 380,
+      "digitalSplitPercent": 70,
+      "cashSplitPercent": 30,
+      "gstCollectedMonthly": 38400,
+      "monthlyHistory": [
+        { "month": "Aug", "revenue": 290000, "digital": 200000, "cash": 90000 },
+        { "month": "Sep", "revenue": 300000, "digital": 210000, "cash": 90000 },
+        { "month": "Oct (Current)", "revenue": 320000, "digital": 224000, "cash": 96000 }
+      ],
+      "paymentChannels": { "upi": 65, "cards": 5, "cash": 30 },
+      "transactions": []
+    }
   }
 ];
 

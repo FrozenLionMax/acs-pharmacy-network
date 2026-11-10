@@ -327,6 +327,17 @@ class ACSApp {
     let slug = null;
     let isAudit = false;
 
+    // Subdomain-based short routing (e.g. https://ajay.drugs.systems/)
+    if (typeof window !== "undefined" && window.location && window.location.hostname) {
+      const hostname = window.location.hostname.toLowerCase();
+      if (hostname.endsWith("drugs.systems") && hostname !== "drugs.systems" && hostname !== "www.drugs.systems") {
+        const sub = hostname.replace(".drugs.systems", "").trim();
+        if (sub && !["api", "admin", "app", "mail", "ftp", "cname"].includes(sub)) {
+          slug = sub;
+        }
+      }
+    }
+
     if (path.includes("/pharmacy/")) {
       const parts = path.split("/pharmacy/");
       if (parts[1]) {
@@ -811,6 +822,9 @@ class ACSApp {
 
     if (typeof window === "undefined") return;
 
+    // PostgreSQL (Supabase) handles live realtime updates via WebSockets when connected
+    if (this.isSupabaseConnected) return;
+
     // 1. Initial Cloud Pull on page load to immediately load latest edits made from other devices
     this.pullFromCloud(true);
 
@@ -823,6 +837,11 @@ class ACSApp {
     if (window.setInterval) {
       if (this.cloudSyncInterval) clearInterval(this.cloudSyncInterval);
       this.cloudSyncInterval = setInterval(() => {
+        if (this.isSupabaseConnected) {
+          clearInterval(this.cloudSyncInterval);
+          this.cloudSyncInterval = null;
+          return;
+        }
         if (typeof document !== "undefined" && !document.hidden) {
           this.pullFromCloud(false);
         }
@@ -832,7 +851,7 @@ class ACSApp {
     // 4. Instant sync check when switching tabs or unlocking mobile screen
     if (typeof document !== "undefined" && document.addEventListener) {
       document.addEventListener("visibilitychange", () => {
-        if (!document.hidden) {
+        if (!document.hidden && !this.isSupabaseConnected) {
           this.pullFromCloud(false);
         }
       });
@@ -840,6 +859,7 @@ class ACSApp {
   }
 
   async pullFromCloud(isInitial = false) {
+    if (this.isSupabaseConnected) return;
     if (typeof fetch === "undefined" || this.isPushingToCloud) return;
     try {
       let cloudPayload = null;
@@ -2572,19 +2592,26 @@ class ACSApp {
                     </div>
 
                     <!-- Live Public URL Pill -->
-                    <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-2 text-xs">
-                      <div class="flex items-center gap-1.5 min-w-0">
-                        <i class="fa fa-link text-[#135c7e] text-xs flex-shrink-0"></i>
-                        <span class="font-mono text-[11px] text-[#135c7e] font-bold truncate">/pharmacy/${s.slug}</span>
-                      </div>
-                      <button 
-                        onclick="window.acsApp.copyStoreLink('/pharmacy/${s.slug}')" 
-                        class="bg-white hover:bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200 font-bold text-[10px] transition flex-shrink-0 flex items-center gap-1"
-                        title="Copy direct live webpage link"
-                      >
-                        <i class="fa fa-copy"></i> Copy
-                      </button>
-                    </div>
+                    ${(() => {
+                      const shortAlias = (s.slugAliases && s.slugAliases.find(a => a && a.length <= 15 && !a.startsWith("pharmacy-") && a !== s.slug)) || null;
+                      const primaryPath = shortAlias ? `/${shortAlias}` : `/pharmacy/${s.slug}`;
+                      return `
+                        <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-2 text-xs">
+                          <div class="flex items-center gap-1.5 min-w-0">
+                            <i class="fa fa-link text-[#135c7e] text-xs flex-shrink-0"></i>
+                            <span class="font-mono text-[11px] text-[#135c7e] font-bold truncate">${primaryPath}</span>
+                            ${shortAlias ? `<span class="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.2 rounded uppercase">Short URL</span>` : ''}
+                          </div>
+                          <button 
+                            onclick="window.acsApp.copyStoreLink('${primaryPath}')" 
+                            class="bg-white hover:bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200 font-bold text-[10px] transition flex-shrink-0 flex items-center gap-1"
+                            title="Copy direct live webpage link"
+                          >
+                            <i class="fa fa-copy"></i> Copy
+                          </button>
+                        </div>
+                      `;
+                    })()}
 
                     <!-- License & Pharmacist Snapshot -->
                     <div class="grid grid-cols-2 gap-2 text-[11px] border-t border-slate-100 pt-3">
@@ -3250,9 +3277,15 @@ class ACSApp {
               <button onclick="window.acsApp.openStoreCertificateModal('${store.id}')" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs text-[11px] whitespace-nowrap">
                 <i class="fa fa-certificate text-amber-600"></i> UP License Certificate
               </button>
-              <button onclick="window.acsApp.copyStoreLink('/pharmacy/${store.slug}')" class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs text-[11px] whitespace-nowrap" title="Copy website link to share">
-                <i class="fa fa-clone text-[#135c7e]"></i> Copy Link
-              </button>
+              ${(() => {
+                const shortAlias = (store.slugAliases && store.slugAliases.find(a => a && a.length <= 15 && !a.startsWith("pharmacy-") && a !== store.slug)) || null;
+                const linkPath = shortAlias ? `/${shortAlias}` : `/pharmacy/${store.slug}`;
+                return `
+                  <button onclick="window.acsApp.copyStoreLink('${linkPath}')" class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs text-[11px] whitespace-nowrap" title="Copy website link to share: ${linkPath}">
+                    <i class="fa fa-clone text-[#135c7e]"></i> Copy Link ${shortAlias ? `(${linkPath})` : ''}
+                  </button>
+                `;
+              })()}
               <a href="https://www.google.com/search?q=${encodeURIComponent(store.name + ' ' + (store.district || '') + ' ' + (store.ownerName || ''))}" target="_blank" rel="noopener noreferrer" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs hidden lg:inline-flex text-[11px] whitespace-nowrap" title="Search pharmacy on Google">
                 <i class="fa fa-search text-teal-700"></i> Google Test
               </a>
@@ -6775,6 +6808,11 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
         });
         this.isSupabaseConnected = true;
 
+        if (this.cloudSyncInterval) {
+          clearInterval(this.cloudSyncInterval);
+          this.cloudSyncInterval = null;
+        }
+
         this.subscribeToSupabaseRealtime();
         this.pullFromSupabase(true);
       } catch (err) {
@@ -6915,13 +6953,27 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
         };
       });
 
-      this.stores = mappedStores;
-      this.saveStores(false);
-      this.renderHeaderBar();
-      this.renderCurrentView();
+      // Sort stores stably by ID so layout does not oscillate
+      mappedStores.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
+
+      // Only re-render when store data actually differs to eliminate screen flicker
+      const currentSignature = (this.stores || []).map(s => `${s.id}:${(s.stocks||[]).length}:${(s.staff||[]).length}`).join(';');
+      const newSignature = mappedStores.map(s => `${s.id}:${(s.stocks||[]).length}:${(s.staff||[]).length}`).join(';');
+      const isDiff = currentSignature !== newSignature;
+
+      if (isDiff || isInitial) {
+        const prevStoreId = this.currentStoreId;
+        this.stores = mappedStores;
+        if (prevStoreId && this.stores.some(st => st.id === prevStoreId)) {
+          this.currentStoreId = prevStoreId;
+        }
+        this.saveStores(false);
+        this.renderHeaderBar();
+        this.renderCurrentView();
+      }
 
       this.updateCloudSyncBadge("synced", "PostgreSQL (Supabase) Database Connected & Live");
-      if (!isInitial) {
+      if (!isInitial && isDiff) {
         this.showToast("PostgreSQL Sync: Synchronized latest records from Supabase.", "info");
       }
     } catch (e) {
