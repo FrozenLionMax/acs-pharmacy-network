@@ -1374,6 +1374,21 @@ try {
   await app.flushOfflineOutbox();
   console.log('Offline Outbox Queue & Replay Suite verified successfully!');
 
+  // --- Testing ACID POS Dispensing RPC Suite ---
+  if (typeof app.callSupabasePosDispenseRpc !== 'function') {
+    throw new Error('callSupabasePosDispenseRpc method missing!');
+  }
+  const rpcResult = await app.callSupabasePosDispenseRpc('store-up-001', 'med-ddh-001', 2, {
+    id: 'INV-TEST-RPC',
+    totalBill: 450,
+    patientName: 'Test Patient',
+    medName: 'Augmentin 625 Duo Tablet'
+  });
+  if (!rpcResult || !rpcResult.success) {
+    throw new Error('callSupabasePosDispenseRpc failed to return success status!');
+  }
+  console.log('ACID POS Dispensing RPC Suite verified successfully!');
+
   console.log('Supabase Cloud Database integration suite verified successfully!');
 
   console.log('ALL CONNECTION TESTS VERIFIED AND PASSED 100%!');

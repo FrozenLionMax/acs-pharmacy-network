@@ -174,3 +174,81 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.staff_members;
   END IF;
 END $$;
+
+-- 10. ATOMIC ACID POS DISPENSING STORED PROCEDURE (RPC)
+CREATE OR REPLACE FUNCTION public.dispense_pos_bill(
+    p_store_id TEXT,
+    p_med_id TEXT,
+    p_quantity INT,
+    p_invoice_no TEXT,
+    p_patient_name TEXT,
+    p_doc_name TEXT,
+    p_items_summary TEXT,
+    p_amount NUMERIC,
+    p_payment_mode TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_current_stock INT;
+    v_new_stock INT;
+BEGIN
+    -- 1. Lock and retrieve current inventory row for atomic consistency
+    SELECT quantity INTO v_current_stock
+    FROM public.medicine_stocks
+    WHERE id = p_med_id AND store_id = p_store_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Medicine SKU % not found in store %', p_med_id, p_store_id;
+    END IF;
+
+    IF v_current_stock < p_quantity THEN
+        RAISE EXCEPTION 'Insufficient stock. Available: %, Requested: %', v_current_stock, p_quantity;
+    END IF;
+
+    -- 2. Decrement stock
+    v_new_stock := v_current_stock - p_quantity;
+    UPDATE public.medicine_stocks
+    SET quantity = v_new_stock, updated_at = NOW()
+    WHERE id = p_med_id AND store_id = p_store_id;
+
+    -- 3. Record itemized transaction cash memo
+    INSERT INTO public.transactions (
+        id,
+        store_id,
+        type,
+        patient_name,
+        doctor_name,
+        items_summary,
+        amount,
+        payment_mode,
+        created_at
+    ) VALUES (
+        p_invoice_no,
+        p_store_id,
+        'cash_memo',
+        p_patient_name,
+        p_doc_name,
+        p_items_summary,
+        p_amount,
+        p_payment_mode,
+        NOW()
+    )
+    ON CONFLICT (id) DO NOTHING;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'invoice_no', p_invoice_no,
+        'medicine_id', p_med_id,
+        'previous_quantity', v_current_stock,
+        'new_quantity', v_new_stock
+    );
+END;
+$$;
+
+-- Grant execution permission to public/anon
+GRANT EXECUTE ON FUNCTION public.dispense_pos_bill TO anon, authenticated, service_role;
+

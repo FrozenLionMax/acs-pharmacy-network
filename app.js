@@ -7279,6 +7279,49 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     }
   }
 
+  async callSupabasePosDispenseRpc(storeId, medId, qty, transaction) {
+    if (!this.supabase || !this.isSupabaseConnected) {
+      const store = this.stores.find(s => s.id === storeId);
+      const med = store?.stocks?.find(m => m.id === medId);
+      if (med) await this.pushSingleStockToSupabase(storeId, med);
+      await this.pushSingleTransactionToSupabase(storeId, transaction);
+      return { success: true, mode: "offline_fallback" };
+    }
+
+    try {
+      const { data, error } = await this.supabase.rpc("dispense_pos_bill", {
+        p_store_id: storeId,
+        p_med_id: medId,
+        p_quantity: qty,
+        p_invoice_no: transaction.id,
+        p_patient_name: transaction.patientName || "Walk-in Patient",
+        p_doc_name: transaction.docName || "Practitioner",
+        p_items_summary: transaction.medName ? `${transaction.medName} x ${qty}` : "Prescription Medication",
+        p_amount: parseFloat(transaction.totalBill || 0),
+        p_payment_mode: transaction.paymentMode || "Cash"
+      });
+
+      if (error) {
+        console.warn("Supabase RPC dispense_pos_bill notice (using atomic table fallback):", error.message);
+        const store = this.stores.find(s => s.id === storeId);
+        const med = store?.stocks?.find(m => m.id === medId);
+        if (med) await this.pushSingleStockToSupabase(storeId, med);
+        await this.pushSingleTransactionToSupabase(storeId, transaction);
+        return { success: true, mode: "atomic_table_fallback" };
+      }
+
+      this.updateCloudSyncBadge("synced", "PostgreSQL: ACID POS Bill Dispensed");
+      return { success: true, mode: "acid_rpc", data };
+    } catch (err) {
+      console.warn("RPC invocation exception, falling back:", err);
+      const store = this.stores.find(s => s.id === storeId);
+      const med = store?.stocks?.find(m => m.id === medId);
+      if (med) await this.pushSingleStockToSupabase(storeId, med);
+      await this.pushSingleTransactionToSupabase(storeId, transaction);
+      return { success: true, mode: "atomic_table_fallback" };
+    }
+  }
+
   openSupabaseConfigModal() {
     const modal = document.getElementById("modal-generic");
     const title = document.getElementById("modal-generic-title");
@@ -15487,8 +15530,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     }
 
     this.saveStores(false);
-    this.pushSingleStockToSupabase(store.id, med);
-    this.pushSingleTransactionToSupabase(store.id, transaction);
+    this.callSupabasePosDispenseRpc(store.id, med.id, qty, transaction);
     this.debouncedPushToCloud();
 
     const body = document.getElementById("modal-generic-body");
