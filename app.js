@@ -327,10 +327,47 @@ class ACSApp {
     let slug = null;
     let isAudit = false;
 
-    // Subdomain-based short routing (e.g. https://ajay.drugs.systems/)
+    // Custom domain & Subdomain-based short routing (e.g. https://deoriadrughouse.com/ or https://ajay.drugs.systems/)
     if (typeof window !== "undefined" && window.location && window.location.hostname) {
-      const hostname = window.location.hostname.toLowerCase();
-      if (hostname.endsWith("drugs.systems") && hostname !== "drugs.systems" && hostname !== "www.drugs.systems") {
+      const hostname = window.location.hostname.toLowerCase().trim();
+      const cleanHost = hostname.replace(/^www\./, "");
+
+      // 1. Custom Domain Detection (e.g. deoriadrughouse.com, ajaymedicines.in)
+      if (
+        cleanHost &&
+        !cleanHost.includes("localhost") &&
+        !cleanHost.includes("127.0.0.1") &&
+        !cleanHost.includes("vercel.app") &&
+        cleanHost !== "drugs.systems" &&
+        cleanHost !== "acsakhil.com"
+      ) {
+        const customStore = this.stores.find((s) => {
+          const sCustom = (s.customDomain || "")
+            .toLowerCase()
+            .replace(/^https?:\/\//, "")
+            .replace(/^www\./, "")
+            .replace(/\/.*$/, "")
+            .trim();
+          if (sCustom && (sCustom === cleanHost || sCustom === hostname)) return true;
+          if (
+            s.slugAliases &&
+            s.slugAliases.some((a) => {
+              const cleanA = a.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "").trim();
+              return cleanA && (cleanA === cleanHost || cleanA === hostname);
+            })
+          ) {
+            return true;
+          }
+          return false;
+        });
+
+        if (customStore) {
+          slug = customStore.slug || customStore.id;
+        }
+      }
+
+      // 2. Subdomain-based routing (e.g. https://ajay.drugs.systems/)
+      if (!slug && hostname.endsWith("drugs.systems") && hostname !== "drugs.systems" && hostname !== "www.drugs.systems") {
         const sub = hostname.replace(".drugs.systems", "").trim();
         if (sub && !["api", "admin", "app", "mail", "ftp", "cname"].includes(sub)) {
           slug = sub;
@@ -358,8 +395,10 @@ class ACSApp {
       const cleanPath = path.replace(/^\/+|\/+$/g, "").trim().toLowerCase();
       const parts = cleanPath.split("/").filter(Boolean);
       if (parts.length > 0 && !["directory", "login", "landing", "verify", "staff", "revenue"].includes(parts[0].replace(/\.html$/, ""))) {
-        slug = (parts[0] === "store" || parts[0] === "p") && parts[1] ? parts[1] : parts[0];
-        if (parts[1] === "audit" || parts[1] === "dossier" || parts[2] === "audit") {
+        if (!slug) {
+          slug = (parts[0] === "store" || parts[0] === "p") && parts[1] ? parts[1] : parts[0];
+        }
+        if (parts[0] === "audit" || parts[1] === "audit" || parts[1] === "dossier" || parts[2] === "audit" || parts[0] === "stock" || parts[1] === "stock") {
           isAudit = true;
         }
       }
@@ -459,6 +498,10 @@ class ACSApp {
     // Guarantee data completeness and arrays across all stores
     this.stores.forEach((s) => {
       s.slugAliases = s.slugAliases || (s.slug ? [s.slug] : []);
+      if (!s.customDomain) {
+        const foundDom = s.slugAliases.find((a) => a && a.includes(".") && !a.endsWith(".drugs.systems") && !a.endsWith(".local"));
+        if (foundDom) s.customDomain = foundDom.replace(/^www\./, "");
+      }
       s.prescriptions = s.prescriptions || [];
       s.scheduleH1Register = s.scheduleH1Register || [];
       s.staffDutyLog = s.staffDutyLog || [];
@@ -6930,6 +6973,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
         return {
           id: s.id,
           slug: s.slug,
+          customDomain: s.custom_domain || (s.slug_aliases && s.slug_aliases.find((a) => a && a.includes(".") && !a.endsWith(".drugs.systems") && !a.endsWith(".local"))) || "",
           slugAliases: s.slug_aliases || [],
           name: s.name,
           district: s.district,
@@ -7005,10 +7049,15 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       let staffCount = 0;
 
       for (const s of this.stores) {
+        const finalAliases = Array.from(new Set([
+          ...(s.slugAliases || []),
+          ...(s.customDomain ? [s.customDomain.replace(/^www\./, "").toLowerCase(), `www.${s.customDomain.replace(/^www\./, "").toLowerCase()}`] : [])
+        ])).filter(Boolean);
+
         await this.supabase.from("stores").upsert({
           id: s.id,
           slug: s.slug,
-          slug_aliases: s.slugAliases || [],
+          slug_aliases: finalAliases,
           name: s.name,
           district: s.district,
           city: s.city,
@@ -7234,10 +7283,15 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       return;
     }
     try {
+      const finalAliases = Array.from(new Set([
+        ...(store.slugAliases || []),
+        ...(store.customDomain ? [store.customDomain.replace(/^www\./, "").toLowerCase(), `www.${store.customDomain.replace(/^www\./, "").toLowerCase()}`] : [])
+      ])).filter(Boolean);
+
       const row = {
         id: store.id,
         slug: store.slug,
-        slug_aliases: store.slugAliases || [],
+        slug_aliases: finalAliases,
         name: store.name,
         district: store.district,
         city: store.city,
@@ -7766,6 +7820,9 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
               <button onclick="window.acsApp.openPosDispensingModal('${store.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow backdrop-blur transition flex items-center gap-1.5">
                 <i class="fa fa-calculator"></i> Dispense Rx POS
               </button>
+              <button onclick="window.acsApp.openCustomDomainModal('${store.id}')" class="bg-indigo-600/90 hover:bg-indigo-600 text-white border border-indigo-400 px-3 py-1.5 rounded-lg text-xs font-bold shadow backdrop-blur transition flex items-center gap-1.5">
+                <i class="fa fa-globe text-cyan-200"></i> Custom Domain &amp; DNS
+              </button>
               <button onclick="window.acsApp.viewHostedWebsite('${store.id}')" class="bg-amber-400 hover:bg-amber-500 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-bold shadow backdrop-blur transition flex items-center gap-1.5">
                 <i class="fa fa-globe"></i> View Live Hosted Website
               </button>
@@ -8142,53 +8199,78 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
               </div>
             </div>
 
-            <!-- Live Deployed Web Address & Quick Sharing Strip -->
-            <div class="mt-4 p-4 bg-gradient-to-r from-teal-50 via-slate-50 to-amber-50 rounded-2xl border border-teal-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3.5">
-              <div class="space-y-1">
-                <div class="flex items-center gap-2">
-                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span class="text-[11px] font-black uppercase tracking-wider text-teal-900">Live Deployed Public Web Address</span>
-                  <span class="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded-full border border-emerald-300">Live &amp; Google Ready</span>
-                </div>
-                <div class="flex items-center gap-2 flex-wrap">
-                  <code class="text-xs sm:text-sm font-mono font-black text-[#135c7e] bg-white px-2.5 py-1 rounded-lg border border-teal-200 shadow-2xs select-all">
-                    https://acsakhil.com/pharmacy/${store.slug}
-                  </code>
-                </div>
-                <p class="text-[11px] text-slate-500">
-                  Patients and customers can open this link on phone or PC to view live stock, check prices, and order on WhatsApp.
-                </p>
-              </div>
+            ${(() => {
+              const shortAlias = (store.slugAliases && store.slugAliases.find(a => a && a.length <= 15 && !a.startsWith("pharmacy-") && a !== store.slug && !a.includes("."))) || (store.slug && store.slug.split("-")[0]) || "store";
+              const customDomain = store.customDomain || (store.slugAliases && store.slugAliases.find(a => a && a.includes(".") && !a.endsWith(".drugs.systems")));
+              const primaryUrl = customDomain ? `https://${customDomain}` : `https://${shortAlias}.drugs.systems`;
+              return `
+                <!-- Live Deployed Web Address & Quick Sharing Strip -->
+                <div class="mt-4 p-4 bg-gradient-to-r from-teal-50 via-slate-50 to-indigo-50 rounded-2xl border border-teal-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3.5">
+                  <div class="space-y-1.5">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span class="text-[11px] font-black uppercase tracking-wider text-teal-900">Live Deployed Public Web Address</span>
+                      ${customDomain ? `
+                        <span class="text-[10px] bg-indigo-100 text-indigo-900 font-extrabold px-2 py-0.5 rounded-full border border-indigo-300 flex items-center gap-1">
+                          <i class="fa fa-globe text-indigo-600"></i> Custom Domain: ${customDomain}
+                        </span>
+                      ` : `
+                        <span class="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded-full border border-emerald-300">Live &amp; Google Ready</span>
+                      `}
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <code class="text-xs sm:text-sm font-mono font-black text-[#135c7e] bg-white px-2.5 py-1 rounded-lg border border-teal-200 shadow-2xs select-all">
+                        ${primaryUrl}
+                      </code>
+                      <span class="text-xs text-slate-400">|</span>
+                      <code class="text-xs font-mono text-slate-600 bg-white/70 px-2 py-0.5 rounded border border-slate-200 select-all">
+                        https://www.drugs.systems/pharmacy/${store.slug}
+                      </code>
+                    </div>
+                    <p class="text-[11px] text-slate-500">
+                      Patients and customers can open this link on phone or PC to view live stock, check prices, and order on WhatsApp.
+                    </p>
+                  </div>
 
-              <div class="flex items-center gap-2 flex-wrap self-start md:self-auto">
-                <button 
-                  type="button" 
-                  onclick="window.acsApp.copyStoreLink('/pharmacy/${store.slug}')" 
-                  class="px-3.5 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5 shadow-xs"
-                  title="Copy website link to clipboard"
-                >
-                  <i class="fa fa-clone"></i> Copy Link
-                </button>
-                <a 
-                  href="/pharmacy/${store.slug}" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  class="px-3.5 py-2 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black rounded-xl text-xs transition flex items-center gap-1.5 shadow-xs"
-                  title="Open live hosted website in new tab"
-                >
-                  <i class="fa fa-external-link"></i> Open Webpage
-                </a>
-                <a 
-                  href="https://www.google.com/search?q=${encodeURIComponent(store.name + ' ' + (store.district || '') + ' ' + (store.ownerName || ''))}" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  class="px-3 py-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold rounded-xl text-xs transition flex items-center gap-1.5 shadow-2xs"
-                  title="Search on Google"
-                >
-                  <i class="fa fa-google text-red-500"></i> Google Link
-                </a>
-              </div>
-            </div>
+                  <div class="flex items-center gap-2 flex-wrap self-start md:self-auto">
+                    <button 
+                      type="button" 
+                      onclick="window.acsApp.openCustomDomainModal('${store.id}')" 
+                      class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5 shadow-xs"
+                      title="Edit custom domain and view Hostinger DNS setup"
+                    >
+                      <i class="fa fa-globe text-cyan-200"></i> Domain &amp; DNS
+                    </button>
+                    <button 
+                      type="button" 
+                      onclick="window.acsApp.copyStoreLink('${primaryUrl}')" 
+                      class="px-3.5 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5 shadow-xs"
+                      title="Copy website link to clipboard"
+                    >
+                      <i class="fa fa-clone"></i> Copy Link
+                    </button>
+                    <a 
+                      href="${primaryUrl}" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      class="px-3.5 py-2 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black rounded-xl text-xs transition flex items-center gap-1.5 shadow-xs"
+                      title="Open live hosted website in new tab"
+                    >
+                      <i class="fa fa-external-link"></i> Open Webpage
+                    </a>
+                    <a 
+                      href="https://www.google.com/search?q=${encodeURIComponent(store.name + ' ' + (store.district || '') + ' ' + (store.ownerName || ''))}" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      class="px-3 py-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold rounded-xl text-xs transition flex items-center gap-1.5 shadow-2xs"
+                      title="Search on Google"
+                    >
+                      <i class="fa fa-google text-red-500"></i> Google Link
+                    </a>
+                  </div>
+                </div>
+              `;
+            })()}
 
             <!-- Quick Action Shortcuts -->
             <div class="pt-4 border-t border-slate-100 flex flex-wrap gap-3">
@@ -13864,27 +13946,45 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           <span class="text-[11px] text-teal-800">Badge shown on Google & storefront</span>
         </div>
 
-        <!-- Web Address, Subdomain & Short Aliases -->
-        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+        <!-- Web Address, Custom Domain, Subdomain & Short Aliases -->
+        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
           <div class="flex items-center justify-between">
             <span class="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
-              <i class="fa fa-globe text-[#135c7e]"></i> Web Address, Subdomain &amp; Clean Short Aliases
+              <i class="fa fa-globe text-[#135c7e]"></i> Web Address, Custom Domain &amp; Subdomain
             </span>
             <span class="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Editable Anytime</span>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+          <!-- Custom Domain (Hostinger, GoDaddy, or Own Domain) -->
+          <div class="p-3 bg-white border border-teal-200 rounded-xl shadow-2xs space-y-1.5">
+            <div class="flex items-center justify-between">
+              <label class="block font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                <i class="fa fa-link text-[#135c7e]"></i> Custom Domain Name (Hostinger / Own Domain)
+              </label>
+              <button type="button" onclick="window.acsApp.openCustomDomainModal('${store.id}')" class="text-[10px] text-[#135c7e] hover:underline font-bold flex items-center gap-1 cursor-pointer">
+                <i class="fa fa-server"></i> Hostinger DNS Guide &amp; Records
+              </button>
+            </div>
+            <div class="flex items-center">
+              <span class="px-2.5 py-1.5 bg-slate-200 border border-r-0 rounded-l-lg text-slate-600 font-mono text-[11px]">https://</span>
+              <input type="text" id="edit-store-custom-domain" value="${store.customDomain || ''}" placeholder="deoriadrughouse.com or ajaymedicines.in" class="w-full px-2.5 py-1.5 border rounded-r-lg font-mono text-[11px] text-[#135c7e] font-bold" />
+            </div>
+            <span class="text-[10px] text-slate-500 block">Point Hostinger CNAME to <code>cname.vercel-dns.com</code> &amp; A to <code>76.76.21.21</code>. Then save here to route automatically.</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             <div>
               <label class="block font-semibold text-slate-700 mb-1">Branded Subdomain</label>
               <div class="flex items-center">
                 <span class="px-2.5 py-1.5 bg-slate-200 border border-r-0 rounded-l-lg text-slate-600 font-mono text-[11px]">https://</span>
-                <input type="text" id="edit-store-subdomain" value="${(store.slugAliases && store.slugAliases.find(a => a && a.length <= 15 && !a.startsWith('pharmacy-') && a !== store.slug)) || (store.slug && store.slug.split('-')[0]) || 'store'}" placeholder="ajay" class="w-full px-2.5 py-1.5 border font-mono text-[11px] text-[#135c7e] font-bold" />
+                <input type="text" id="edit-store-subdomain" value="${(store.slugAliases && store.slugAliases.find(a => a && a.length <= 15 && !a.startsWith('pharmacy-') && a !== store.slug && !a.includes('.'))) || (store.slug && store.slug.split('-')[0]) || 'store'}" placeholder="ajay" class="w-full px-2.5 py-1.5 border font-mono text-[11px] text-[#135c7e] font-bold" />
                 <span class="px-2.5 py-1.5 bg-slate-200 border border-l-0 rounded-r-lg text-slate-600 font-mono text-[11px]">.drugs.systems</span>
               </div>
               <span class="text-[10px] text-slate-400 mt-0.5 block">Subdomain routes directly to your store. Change whenever you like!</span>
             </div>
             <div>
               <label class="block font-semibold text-slate-700 mb-1">Short Path Aliases (Comma-separated)</label>
-              <input type="text" id="edit-store-aliases" value="${(store.slugAliases || []).filter(a => a && a !== store.slug).join(', ')}" placeholder="ajay, ajay-medicines, ajay-deoria" class="w-full px-3 py-1.5 border rounded-lg font-mono text-[11px]" />
+              <input type="text" id="edit-store-aliases" value="${(store.slugAliases || []).filter(a => a && a !== store.slug && !a.includes('.')).join(', ')}" placeholder="ajay, ajay-medicines, ajay-deoria" class="w-full px-3 py-1.5 border rounded-lg font-mono text-[11px]" />
               <span class="text-[10px] text-slate-400 mt-0.5 block">Accessible via drugs.systems/<strong>alias</strong>. Old links never 404.</span>
             </div>
           </div>
@@ -13978,7 +14078,19 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       }
       store.slug = newSlug || store.slug;
 
-      // Custom Subdomain & Aliases from input
+      // Custom Domain, Subdomain & Aliases from input
+      const customDomainEl = document.getElementById("edit-store-custom-domain");
+      if (customDomainEl) {
+        const rawDomain = customDomainEl.value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").trim();
+        store.customDomain = rawDomain;
+        if (rawDomain) {
+          const cleanDom = rawDomain.replace(/^www\./, "");
+          const wwwDom = "www." + cleanDom;
+          if (!store.slugAliases.includes(cleanDom)) store.slugAliases.push(cleanDom);
+          if (!store.slugAliases.includes(wwwDom)) store.slugAliases.push(wwwDom);
+        }
+      }
+
       const subEl = document.getElementById("edit-store-subdomain");
       const aliasesEl = document.getElementById("edit-store-aliases");
       if (subEl) {
@@ -14004,6 +14116,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       }
 
       this.saveStores(true);
+      this.pushSingleStoreToSupabase(store);
       this.closeModal();
       this.renderHeaderBar();
       this.renderCurrentView();
@@ -14027,6 +14140,233 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
 
   openPhotoUpdateModal(storeId) {
     this.openEditStoreModal(storeId);
+  }
+
+  /* ========================================================================= */
+  /* CUSTOM DOMAIN & HOSTINGER DNS MANAGER (APEX + CNAME SYNC)                 */
+  /* ========================================================================= */
+  openCustomDomainModal(storeId) {
+    const store = this.stores.find((s) => s.id === storeId) || this.getCurrentStore();
+    if (!store) return;
+
+    const modal = document.getElementById("modal-generic");
+    const title = document.getElementById("modal-generic-title");
+    const body = document.getElementById("modal-generic-body");
+    if (!modal || !title || !body) return;
+
+    const shortAlias = (store.slugAliases && store.slugAliases.find((a) => a && a.length <= 15 && !a.startsWith("pharmacy-") && a !== store.slug && !a.includes("."))) || (store.slug && store.slug.split("-")[0]) || "store";
+    const currentDomain = store.customDomain || "";
+    const primarySubdomain = `${shortAlias}.drugs.systems`;
+
+    title.innerHTML = `<i class="fa fa-globe text-[#135c7e]"></i> Custom Domain &amp; Hostinger DNS: ${store.name}`;
+    body.innerHTML = `
+      <div class="space-y-5 text-xs text-slate-800 animate-fade-in">
+        <!-- Current Domain Status Banner -->
+        <div class="p-4 ${currentDomain ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200' : 'bg-gradient-to-r from-blue-50 to-slate-50 border-blue-200'} border rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="w-2.5 h-2.5 rounded-full ${currentDomain ? 'bg-emerald-500 animate-pulse' : 'bg-blue-500'}"></span>
+              <strong class="text-sm font-black ${currentDomain ? 'text-emerald-950' : 'text-blue-950'}">
+                ${currentDomain ? `Custom Domain Active: ${currentDomain}` : 'Default Branded Subdomain Active'}
+              </strong>
+            </div>
+            <p class="text-slate-600 text-[11px] leading-relaxed">
+              ${currentDomain 
+                ? `Incoming traffic hitting <strong>https://${currentDomain}</strong> or <strong>https://www.${currentDomain.replace(/^www\./, '')}</strong> automatically loads ${store.name}.` 
+                : `Your pharmacy is reachable via <strong>https://${primarySubdomain}</strong> and <strong>/pharmacy/${store.slug}</strong>.`
+              }
+            </p>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            ${currentDomain ? `
+              <a href="https://${currentDomain}" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition flex items-center gap-1 shadow-xs">
+                <i class="fa fa-external-link"></i> Test Live Domain
+              </a>
+              <button type="button" onclick="window.acsApp.removeCustomDomain('${store.id}')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold rounded-lg text-xs transition flex items-center gap-1 cursor-pointer">
+                <i class="fa fa-trash"></i> Remove
+              </button>
+            ` : `
+              <span class="px-2.5 py-1 bg-blue-100 text-blue-800 font-bold rounded-lg text-[11px] border border-blue-200">
+                Ready to Connect
+              </span>
+            `}
+          </div>
+        </div>
+
+        <!-- Custom Domain Input Form -->
+        <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+          <label class="block font-bold text-slate-800 text-xs">
+            <i class="fa fa-pencil text-[#135c7e]"></i> Set or Edit Custom Domain Name
+          </label>
+          <div class="flex items-center">
+            <span class="px-3 py-2 bg-slate-200 border border-r-0 rounded-l-xl text-slate-600 font-mono text-xs">https://</span>
+            <input 
+              type="text" 
+              id="custom-domain-modal-input" 
+              value="${currentDomain}" 
+              placeholder="e.g. deoriadrughouse.com or ajaymedicines.in" 
+              class="w-full px-3 py-2 border font-mono text-xs font-bold text-[#135c7e] bg-white rounded-r-xl focus:ring-2 focus:ring-[#135c7e] focus:outline-none" 
+            />
+          </div>
+          <p class="text-[11px] text-slate-500">
+            Enter your custom root domain (e.g. <code>deoriadrughouse.com</code>) or any subdomain. You can edit this anytime!
+          </p>
+          <div class="flex justify-end gap-2 pt-1">
+            <button 
+              type="button" 
+              onclick="const val = document.getElementById('custom-domain-modal-input').value; window.acsApp.saveCustomDomain('${store.id}', val);" 
+              class="px-5 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white font-black rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer"
+            >
+              <i class="fa fa-save"></i> Save &amp; Sync to Cloud Database
+            </button>
+          </div>
+        </div>
+
+        <!-- Hostinger DNS Configuration Card (For Tomorrow's Setup) -->
+        <div class="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 bg-amber-600 text-white font-black text-[10px] rounded uppercase tracking-wider">Hostinger DNS</span>
+              <strong class="text-xs font-bold text-amber-950">DNS Records Setup (Add in Hostinger hPanel)</strong>
+            </div>
+            <a href="https://hpanel.hostinger.com/" target="_blank" rel="noopener noreferrer" class="text-[10px] text-amber-900 font-bold hover:underline flex items-center gap-1">
+              Open Hostinger hPanel <i class="fa fa-external-link"></i>
+            </a>
+          </div>
+
+          <p class="text-[11px] text-amber-900 leading-relaxed">
+            When you log in to Hostinger tomorrow, open <strong>DNS Zone Editor</strong> for your domain and enter these 2 records:
+          </p>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+            <!-- Record 1: CNAME -->
+            <div class="p-3 bg-white rounded-xl border border-amber-200 shadow-2xs space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-black uppercase tracking-wider text-slate-500">Record 1 (CNAME for www)</span>
+                <span class="px-1.5 py-0.5 bg-blue-100 text-blue-800 font-mono text-[9px] font-bold rounded">CNAME</span>
+              </div>
+              <div class="font-mono text-[11px] text-slate-700 space-y-0.5">
+                <div>Type: <strong class="text-slate-900">CNAME</strong></div>
+                <div>Name: <strong class="text-slate-900">www</strong></div>
+                <div class="flex items-center justify-between gap-1">
+                  <span>Target: <strong class="text-[#135c7e] break-all">cname.vercel-dns.com</strong></span>
+                  <button 
+                    type="button" 
+                    onclick="navigator.clipboard.writeText('cname.vercel-dns.com'); window.acsApp.showToast('Copied cname.vercel-dns.com to clipboard!', 'success');" 
+                    class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-sans font-bold text-[10px] rounded transition flex items-center gap-1 flex-shrink-0 cursor-pointer"
+                  >
+                    <i class="fa fa-clone"></i> Copy
+                  </button>
+                </div>
+                <div>TTL: <strong class="text-slate-900">3600</strong></div>
+              </div>
+            </div>
+
+            <!-- Record 2: A Record -->
+            <div class="p-3 bg-white rounded-xl border border-amber-200 shadow-2xs space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-black uppercase tracking-wider text-slate-500">Record 2 (A Record for Root/Apex)</span>
+                <span class="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 font-mono text-[9px] font-bold rounded">A RECORD</span>
+              </div>
+              <div class="font-mono text-[11px] text-slate-700 space-y-0.5">
+                <div>Type: <strong class="text-slate-900">A</strong></div>
+                <div>Name: <strong class="text-slate-900">@</strong></div>
+                <div class="flex items-center justify-between gap-1">
+                  <span>Points to: <strong class="text-[#135c7e]">76.76.21.21</strong></span>
+                  <button 
+                    type="button" 
+                    onclick="navigator.clipboard.writeText('76.76.21.21'); window.acsApp.showToast('Copied 76.76.21.21 to clipboard!', 'success');" 
+                    class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-sans font-bold text-[10px] rounded transition flex items-center gap-1 flex-shrink-0 cursor-pointer"
+                  >
+                    <i class="fa fa-clone"></i> Copy
+                  </button>
+                </div>
+                <div>TTL: <strong class="text-slate-900">3600</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-amber-200/80 text-[10px] text-amber-900 space-y-1">
+            <div class="flex items-center gap-1.5 font-bold">
+              <i class="fa fa-check-circle text-emerald-600"></i> One-Time Hostinger Setup:
+            </div>
+            <p>
+              You only configure these DNS records in Hostinger <strong>once per domain</strong>. Afterwards, our intelligent edge routing automatically maps any visitor from that domain to this store's real-time catalog and compliance dossier!
+            </p>
+          </div>
+        </div>
+
+        <!-- Active Store Web Addresses Strip -->
+        <div class="p-3.5 bg-slate-100 rounded-xl space-y-1 text-[11px] text-slate-600">
+          <div class="font-bold text-slate-700 flex items-center gap-1">
+            <i class="fa fa-link text-[#135c7e]"></i> Active Store Web Addresses:
+          </div>
+          <div class="space-y-0.5 font-mono text-[10px]">
+            ${currentDomain ? `<div>• Custom Domain: <a href="https://${currentDomain}" target="_blank" class="text-[#135c7e] hover:underline font-bold">https://${currentDomain}</a></div>` : ''}
+            <div>• Branded Subdomain: <a href="https://${primarySubdomain}" target="_blank" class="text-[#135c7e] hover:underline font-bold">https://${primarySubdomain}</a></div>
+            <div>• Universal Path: <a href="/pharmacy/${store.slug}" target="_blank" class="text-[#135c7e] hover:underline">https://www.drugs.systems/pharmacy/${store.slug}</a></div>
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-2 border-t border-slate-100">
+          <button type="button" onclick="window.acsApp.closeModal()" class="px-5 py-2 border rounded-xl text-slate-600 hover:bg-slate-100 font-bold transition cursor-pointer">
+            Close
+          </button>
+        </div>
+      </div>
+    `;
+
+    modal.classList.remove("hidden");
+  }
+
+  saveCustomDomain(storeId, domainStr) {
+    const store = this.stores.find((s) => s.id === storeId) || this.getCurrentStore();
+    if (!store) return;
+
+    const clean = (domainStr || "")
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, "")
+      .replace(/\/.*$/, "")
+      .trim();
+
+    store.customDomain = clean;
+    store.slugAliases = store.slugAliases || (store.slug ? [store.slug] : []);
+
+    if (clean) {
+      const baseClean = clean.replace(/^www\./, "");
+      const wwwClean = "www." + baseClean;
+      if (!store.slugAliases.includes(baseClean)) store.slugAliases.push(baseClean);
+      if (!store.slugAliases.includes(wwwClean)) store.slugAliases.push(wwwClean);
+    }
+
+    this.saveStores(true);
+    this.pushSingleStoreToSupabase(store);
+    this.renderHeaderBar();
+    this.renderCurrentView();
+
+    try {
+      window.dispatchEvent(new Event("storage"));
+    } catch (e) {}
+
+    this.showToast(
+      clean
+        ? `Custom domain "${clean}" saved & synced to Supabase PostgreSQL! Ready for Hostinger DNS.`
+        : `Custom domain removed. Storefront now using primary subdomain.`,
+      "success"
+    );
+
+    // Refresh modal to reflect updated domain status
+    this.openCustomDomainModal(store.id);
+  }
+
+  removeCustomDomain(storeId) {
+    const store = this.stores.find((s) => s.id === storeId) || this.getCurrentStore();
+    if (!store) return;
+    if (typeof confirm === "function" && !confirm(`Remove custom domain "${store.customDomain}" from this pharmacy? The store will continue to work under its primary subdomain.`)) {
+      return;
+    }
+    this.saveCustomDomain(store.id, "");
   }
 
   /* ========================================================================= */

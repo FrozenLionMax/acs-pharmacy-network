@@ -1447,6 +1447,63 @@ try {
   app.requestStockPushNotifications();
   console.log('Automated Stock Risk Intelligence & Expiry Audit Suite verified successfully!');
 
+  // --- Testing Custom Domain & Hostinger DNS Setup Suite ---
+  const ajayStore = app.stores.find(s => s.id === 'store-up-2112');
+  if (!ajayStore) throw new Error('Ajay Medicines (store-up-2112) missing for custom domain test!');
+
+  // 1. Save and assign custom domain
+  app.saveCustomDomain('store-up-2112', 'https://ajaymedicines.in/');
+  if (ajayStore.customDomain !== 'ajaymedicines.in') {
+    throw new Error(`Custom domain was not normalized/saved correctly! Got: ${ajayStore.customDomain}`);
+  }
+  if (!ajayStore.slugAliases.includes('ajaymedicines.in') || !ajayStore.slugAliases.includes('www.ajaymedicines.in')) {
+    throw new Error('Custom domain aliases were not injected into slugAliases!');
+  }
+
+  // 2. Open Custom Domain Modal & verify Hostinger DNS instructions
+  app.openCustomDomainModal('store-up-2112');
+  const domainModalTitle = mockElements['modal-generic-title'].innerHTML;
+  const domainModalBody = mockElements['modal-generic-body'].innerHTML;
+  if (!domainModalTitle.includes('Custom Domain') || !domainModalBody.includes('cname.vercel-dns.com') || !domainModalBody.includes('76.76.21.21')) {
+    throw new Error('Custom Domain & Hostinger DNS modal did not render expected DNS records!');
+  }
+  if (!domainModalBody.includes('Record 1 (CNAME for www)') || !domainModalBody.includes('Record 2 (A Record for Root/Apex)')) {
+    throw new Error('DNS Zone configuration cards missing in modal!');
+  }
+
+  // 3. Test Routing resolution with apex custom domain
+  mockWindow.location.hostname = 'ajaymedicines.in';
+  mockWindow.location.pathname = '/';
+  app.checkUrlRouting();
+  if (app.currentStoreId !== 'store-up-2112' || app.activeTab !== 'hosted-site') {
+    throw new Error(`Apex custom domain routing failed! Store: ${app.currentStoreId}, Tab: ${app.activeTab}`);
+  }
+
+  // 4. Test Routing resolution with www custom domain and /audit sub-route
+  mockWindow.location.hostname = 'www.ajaymedicines.in';
+  mockWindow.location.pathname = '/audit';
+  app.checkUrlRouting();
+  if (app.currentStoreId !== 'store-up-2112' || app.activeTab !== 'hosted-site' || app.hostedSubTab !== 'audit-dossier') {
+    throw new Error(`WWW custom domain /audit routing failed! Store: ${app.currentStoreId}, SubTab: ${app.hostedSubTab}`);
+  }
+
+  // 5. Test Store Detail View HTML rendering with custom domain
+  const detailHtml = app.getStoreDetailViewHtml(ajayStore);
+  if (!detailHtml.includes('Custom Domain: ajaymedicines.in') || !detailHtml.includes('openCustomDomainModal')) {
+    throw new Error('Store detail view HTML missing custom domain banner or DNS button!');
+  }
+
+  // 6. Test domain removal and cleanup
+  app.saveCustomDomain('store-up-2112', '');
+  if (ajayStore.customDomain !== '') {
+    throw new Error('Custom domain was not cleared upon empty save!');
+  }
+
+  // Reset window location for subsequent tests
+  mockWindow.location.hostname = 'www.drugs.systems';
+  mockWindow.location.pathname = '/';
+  console.log('Custom Domain & Hostinger DNS Setup Suite verified 100% successfully!');
+
   // --- Testing On-Demand SEO Cache Revalidation Endpoint ---
   const revalidateHandler = require('./api/revalidate.js');
   let revalStatusCode = 0;
