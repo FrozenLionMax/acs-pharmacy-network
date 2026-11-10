@@ -8215,6 +8215,72 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     this.showToast("Downloaded sample template: ACS_Pharmacy_Wholesale_Stock_Template.csv", "success");
   }
 
+  downloadTrialStockExcel() {
+    const headers = [
+      "Medicine Name",
+      "Composition",
+      "Manufacturer",
+      "Batch No",
+      "Expiry Date",
+      "Quantity",
+      "Unit",
+      "Purchase Rate",
+      "MRP",
+      "Drug Schedule",
+      "Rack Location",
+      "Bulk Free Scheme"
+    ];
+    const trialRows = [
+      ["Dolo 650 Tablet", "Paracetamol 650 mg", "Micro Labs Ltd", "DL-8942", "2027-11-30", "150", "15 Tablets / Strip", "24.50", "33.60", "Non-Schedule / OTC", "Rack A-01", "10+1"],
+      ["Pan 40 Tablet", "Pantoprazole Gastro-Resistant 40 mg", "Alkem Laboratories Ltd", "PN-5120", "2028-03-31", "100", "15 Tablets / Strip", "98.00", "155.00", "Schedule H", "Rack B-03", "10+1"],
+      ["Azithral 500 Tablet", "Azithromycin 500 mg", "Alembic Pharmaceuticals Ltd", "AZ-7731", "2027-08-31", "80", "5 Tablets / Strip", "84.00", "132.50", "Schedule H1", "Rack H1-02", "20+2"],
+      ["Montek LC Tablet", "Montelukast 10 mg + Levocetirizine 5 mg", "Sun Pharmaceutical Industries Ltd", "ML-4190", "2027-12-31", "120", "10 Tablets / Strip", "135.00", "215.00", "Schedule H", "Rack C-02", "10+1"],
+      ["Glycomet GP 1 Tablet", "Glimepiride 1 mg + Metformin Hydrochloride 500 mg (SR)", "USV Private Limited", "GM-6204", "2028-01-31", "90", "15 Tablets / Strip", "76.00", "118.00", "Schedule H", "Rack D-01", "15+1"],
+      ["Telma 40 Tablet", "Telmisartan 40 mg", "Glenmark Pharmaceuticals Ltd", "TL-9301", "2027-09-30", "110", "15 Tablets / Strip", "148.00", "228.00", "Schedule H", "Rack D-04", "10+1"],
+      ["Shelcal 500 Tablet", "Calcium 500 mg + Vitamin D3 250 IU", "Torrent Pharmaceuticals Ltd", "SH-3188", "2028-05-31", "140", "15 Tablets / Strip", "88.50", "131.00", "Non-Schedule / Nutritional", "Rack E-02", "10+1"],
+      ["Cefix 200 Tablet", "Cefixime Trihydrate 200 mg", "Cipla Ltd", "CF-1092", "2027-06-30", "75", "10 Tablets / Strip", "72.00", "114.50", "Schedule H1", "Rack H1-01", "10+1"],
+      ["Ascoril D Plus Syrup", "Dextromethorphan HBr 10 mg + Chlorpheniramine 2 mg + Phenylephrine 5 mg / 5ml", "Glenmark Pharmaceuticals Ltd", "AS-8819", "2027-10-31", "60", "100 ml Bottle", "82.00", "129.00", "Schedule H", "Syrup Section B", "12+1"],
+      ["Becosules Z Capsule", "B-Complex Forte with Vitamin C & Zinc", "Pfizer Limited", "BC-7241", "2028-06-30", "180", "20 Capsules / Strip", "34.00", "51.50", "Non-Schedule / OTC", "Rack A-03", "20+2"]
+    ];
+
+    if (typeof XLSX !== "undefined") {
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...trialRows]);
+      XLSX.utils.book_append_sheet(wb, ws, "Trial Stock 10 Medicines");
+      XLSX.writeFile(wb, "trial_stock_10_medicines.xlsx");
+      this.showToast("Downloaded trial test sheet: trial_stock_10_medicines.xlsx", "success");
+    } else {
+      const csvContent = [headers.join(","), ...trialRows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(","))].join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", "trial_stock_10_medicines.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      this.showToast("Downloaded trial test sheet: trial_stock_10_medicines.csv", "success");
+    }
+  }
+
+  loadTrialStockData() {
+    const rawRows = [
+      ["Medicine Name", "Composition", "Manufacturer", "Batch No", "Expiry Date", "Quantity", "Unit", "Purchase Rate", "MRP", "Drug Schedule", "Rack Location", "Bulk Free Scheme"],
+      ["Dolo 650 Tablet", "Paracetamol 650 mg", "Micro Labs Ltd", "DL-8942", "2027-11-30", "150", "15 Tablets / Strip", "24.50", "33.60", "Non-Schedule / OTC", "Rack A-01", "10+1"],
+      ["Pan 40 Tablet", "Pantoprazole Gastro-Resistant 40 mg", "Alkem Laboratories Ltd", "PN-5120", "2028-03-31", "100", "15 Tablets / Strip", "98.00", "155.00", "Schedule H", "Rack B-03", "10+1"],
+      ["Azithral 500 Tablet", "Azithromycin 500 mg", "Alembic Pharmaceuticals Ltd", "AZ-7731", "2027-08-31", "80", "5 Tablets / Strip", "84.00", "132.50", "Schedule H1", "Rack H1-02", "20+2"],
+      ["Montek LC Tablet", "Montelukast 10 mg + Levocetirizine 5 mg", "Sun Pharmaceutical Industries Ltd", "ML-4190", "2027-12-31", "120", "10 Tablets / Strip", "135.00", "215.00", "Schedule H", "Rack C-02", "10+1"],
+      ["Glycomet GP 1 Tablet", "Glimepiride 1 mg + Metformin Hydrochloride 500 mg (SR)", "USV Private Limited", "GM-6204", "2028-01-31", "90", "15 Tablets / Strip", "76.00", "118.00", "Schedule H", "Rack D-01", "15+1"],
+      ["Telma 40 Tablet", "Telmisartan 40 mg", "Glenmark Pharmaceuticals Ltd", "TL-9301", "2027-09-30", "110", "15 Tablets / Strip", "148.00", "228.00", "Schedule H", "Rack D-04", "10+1"],
+      ["Shelcal 500 Tablet", "Calcium 500 mg + Vitamin D3 250 IU", "Torrent Pharmaceuticals Ltd", "SH-3188", "2028-05-31", "140", "15 Tablets / Strip", "88.50", "131.00", "Non-Schedule / Nutritional", "Rack E-02", "10+1"],
+      ["Cefix 200 Tablet", "Cefixime Trihydrate 200 mg", "Cipla Ltd", "CF-1092", "2027-06-30", "75", "10 Tablets / Strip", "72.00", "114.50", "Schedule H1", "Rack H1-01", "10+1"],
+      ["Ascoril D Plus Syrup", "Dextromethorphan HBr 10 mg + Chlorpheniramine 2 mg + Phenylephrine 5 mg / 5ml", "Glenmark Pharmaceuticals Ltd", "AS-8819", "2027-10-31", "60", "100 ml Bottle", "82.00", "129.00", "Schedule H", "Syrup Section B", "12+1"],
+      ["Becosules Z Capsule", "B-Complex Forte with Vitamin C & Zinc", "Pfizer Limited", "BC-7241", "2028-06-30", "180", "20 Capsules / Strip", "34.00", "51.50", "Non-Schedule / OTC", "Rack A-03", "20+2"]
+    ];
+    this.renderImportMapper(rawRows, "trial_stock_10_medicines.xlsx");
+    this.showToast("Loaded 10 Trial Test Medicines! Check mapping below & click Import.", "info");
+  }
+
   openSmartImportModal(preloadedFile = null) {
     const modal = document.getElementById("modal-generic");
     const title = document.getElementById("modal-generic-title");
@@ -8224,14 +8290,21 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     title.innerHTML = `<i class="fa fa-file-excel-o text-emerald-600"></i> Smart Excel (.xlsx, .xls) & CSV Stock Importer`;
     body.innerHTML = `
       <div class="space-y-4 text-xs">
-        <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+        <div class="p-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
           <div>
-            <span class="font-bold text-emerald-950 block">High-Speed Wholesale Stock Importer</span>
+            <span class="font-black text-emerald-950 block text-xs sm:text-sm flex items-center gap-1.5">
+              <i class="fa fa-database text-emerald-700"></i> High-Speed Wholesale Stock Importer
+            </span>
             <span class="text-emerald-700 text-[11px]">Upload stock sheets from distributors, Tally, Marg ERP, or CSV/Excel files.</span>
           </div>
-          <button type="button" onclick="window.acsApp.downloadSampleStockCsv()" class="px-2.5 py-1 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg font-bold text-[11px] shadow-xs transition flex items-center gap-1">
-            <i class="fa fa-download text-emerald-600"></i> Sample Template
-          </button>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button type="button" onclick="window.acsApp.loadTrialStockData()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-[11px] shadow-sm transition flex items-center gap-1.5 cursor-pointer">
+              <i class="fa fa-magic text-amber-300"></i> 1-Click Load 10 Trial Medicines
+            </button>
+            <button type="button" onclick="window.acsApp.downloadTrialStockExcel()" class="px-2.5 py-1.5 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl font-bold text-[11px] shadow-xs transition flex items-center gap-1 cursor-pointer" title="Download trial test file (.xlsx / .csv)">
+              <i class="fa fa-download text-emerald-600"></i> Trial Sheet
+            </button>
+          </div>
         </div>
 
         <!-- Dropzone / File Picker -->
