@@ -1389,6 +1389,19 @@ try {
   }
   console.log('ACID POS Dispensing RPC Suite verified successfully!');
 
+  // --- Testing Automated Stock Risk Intelligence & Expiry Audit Suite ---
+  if (typeof app.openStockAlertAuditModal !== 'function' ||
+      typeof app.requestStockPushNotifications !== 'function') {
+    throw new Error('Stock Risk Intelligence & Expiry Audit methods missing!');
+  }
+  app.openStockAlertAuditModal();
+  const auditModalBody = mockElements['modal-generic-body'].innerHTML;
+  if (!auditModalBody.includes('Stock &amp; Expiry Risk Audit Dossier') && !auditModalBody.includes('flagged SKU(s)')) {
+    throw new Error('Stock Alert Audit modal did not render correctly!');
+  }
+  app.requestStockPushNotifications();
+  console.log('Automated Stock Risk Intelligence & Expiry Audit Suite verified successfully!');
+
   console.log('Supabase Cloud Database integration suite verified successfully!');
 
   console.log('ALL CONNECTION TESTS VERIFIED AND PASSED 100%!');

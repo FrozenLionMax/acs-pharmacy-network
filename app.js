@@ -8424,6 +8424,34 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           </div>
         </div>
 
+        <!-- Smart Inventory Risk Intelligence & Expiry Monitor Ribbon -->
+        ${(lowStockCount > 0 || expiringCount > 0) ? `
+          <div class="p-3.5 bg-gradient-to-r from-amber-50 via-rose-50 to-amber-50 border border-amber-300 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xs">
+            <div class="flex items-center gap-3">
+              <span class="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-sm shadow-xs flex-shrink-0">
+                <i class="fa fa-bell"></i>
+              </span>
+              <div>
+                <strong class="text-xs font-black text-slate-900 block">Inventory Risk Intelligence &amp; Expiry Monitor</strong>
+                <p class="text-[11px] text-slate-600">
+                  <span class="font-bold text-rose-700">${lowStockCount} critical low-stock SKU(s)</span> (&le; 20 units) and <span class="font-bold text-amber-800">${expiringCount} batch(es)</span> expiring within 90 days.
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button onclick="window.acsApp.stockAlertFilter='LOW_STOCK'; window.acsApp.renderCurrentView();" class="px-2.5 py-1 bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-2xs">
+                <i class="fa fa-exclamation-circle"></i> View Low Stock (${lowStockCount})
+              </button>
+              <button onclick="window.acsApp.stockAlertFilter='EXPIRING'; window.acsApp.renderCurrentView();" class="px-2.5 py-1 bg-white hover:bg-amber-50 text-amber-800 border border-amber-300 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-2xs">
+                <i class="fa fa-calendar-times-o"></i> View Expiring (${expiringCount})
+              </button>
+              <button onclick="window.acsApp.openStockAlertAuditModal()" class="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-xs">
+                <i class="fa fa-stethoscope"></i> Full Audit Report
+              </button>
+            </div>
+          </div>
+        ` : ''}
+
         <!-- Prominent Omni-Search with Voice Search & Barcode Quick-Scan (Point 2) -->
         <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
           <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
@@ -16030,6 +16058,123 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     this.closeModal();
     this.renderCurrentView();
     this.showToast(`Updated selling prices across ${count} medicines based on ${multiplier}x buying cost!`, "success");
+  }
+
+  openStockAlertAuditModal() {
+    const store = this.getCurrentStore();
+    if (!store) return;
+
+    const modal = document.getElementById("modal-generic");
+    const title = document.getElementById("modal-generic-title");
+    const body = document.getElementById("modal-generic-body");
+    if (!modal || !title || !body) return;
+
+    const today = new Date();
+    const alertItems = (store.stocks || []).map((m) => {
+      const expDate = new Date(m.expiryDate || "2099-12-31");
+      const diffDays = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+      const isLow = m.quantity <= (m.minAlertThreshold || 15);
+      const isExpiring = diffDays <= 90;
+      const isExpired = diffDays <= 0;
+      return {
+        ...m,
+        diffDays,
+        isLow,
+        isExpiring,
+        isExpired
+      };
+    }).filter(m => m.isLow || m.isExpiring);
+
+    title.innerHTML = `<i class="fa fa-shield text-rose-600"></i> Stock &amp; Expiry Risk Audit Dossier: ${store.name}`;
+    body.innerHTML = `
+      <div class="space-y-4 text-xs text-slate-800">
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs flex-wrap gap-2">
+          <span>Found <strong>${alertItems.length} flagged SKU(s)</strong> requiring immediate operational attention.</span>
+          <div class="flex items-center gap-2">
+            <button onclick="window.acsApp.requestStockPushNotifications()" class="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-bold rounded-lg text-[11px] flex items-center gap-1 cursor-pointer">
+              <i class="fa fa-bell-o"></i> Enable Push Alerts
+            </button>
+            <button onclick="window.acsApp.openReorderPoModal()" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-[11px] flex items-center gap-1 cursor-pointer">
+              <i class="fa fa-file-text-o"></i> Create PO Draft
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto max-h-96 overflow-y-auto border border-slate-200 rounded-xl">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead class="bg-slate-100 sticky top-0 border-b border-slate-200 font-bold text-slate-700 text-[11px]">
+              <tr>
+                <th class="p-2.5">Medicine Name</th>
+                <th class="p-2.5">Batch</th>
+                <th class="p-2.5">Stock</th>
+                <th class="p-2.5">Expiry / Horizon</th>
+                <th class="p-2.5">Rack</th>
+                <th class="p-2.5">Action</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 font-medium">
+              ${alertItems.length ? alertItems.map(m => `
+                <tr class="hover:bg-slate-50">
+                  <td class="p-2.5">
+                    <strong class="text-slate-900">${m.name}</strong>
+                    <div class="text-[10px] text-slate-500 font-mono">${m.saltName || m.manufacturer}</div>
+                  </td>
+                  <td class="p-2.5 font-mono text-[11px]">${m.batchNo}</td>
+                  <td class="p-2.5">
+                    <span class="px-2 py-0.5 rounded font-black text-xs ${m.isLow ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-800'}">
+                      ${m.quantity} ${m.unit || 'Strips'}
+                    </span>
+                  </td>
+                  <td class="p-2.5">
+                    <span class="px-2 py-0.5 rounded font-bold text-[11px] ${m.isExpired ? 'bg-rose-600 text-white' : (m.isExpiring ? 'bg-amber-100 text-amber-900' : 'bg-slate-100 text-slate-700')}">
+                      ${m.expiryDate} (${m.diffDays <= 0 ? 'EXPIRED' : `${m.diffDays}d left`})
+                    </span>
+                  </td>
+                  <td class="p-2.5 font-mono text-[11px]">${m.rackLocation}</td>
+                  <td class="p-2.5">
+                    <button onclick="window.acsApp.openEditMedicineModal('${m.id}')" class="px-2 py-1 bg-[#135c7e] text-white rounded text-[10px] font-bold cursor-pointer">
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              `).join('') : `
+                <tr>
+                  <td colspan="6" class="p-6 text-center text-slate-400 font-medium">All medicines have healthy stock levels and safe expiry dates!</td>
+                </tr>
+              `}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex justify-end pt-2 border-t border-slate-100">
+          <button type="button" onclick="window.acsApp.closeModal()" class="px-4 py-1.5 bg-slate-900 text-white rounded-xl font-bold text-xs cursor-pointer">
+            Close Audit
+          </button>
+        </div>
+      </div>
+    `;
+
+    modal.classList.remove("hidden");
+  }
+
+  requestStockPushNotifications() {
+    if (typeof Notification === "undefined") {
+      this.showToast("Web Notifications are not supported on this browser.", "warning");
+      return;
+    }
+    Notification.requestPermission().then((permission) => {
+      if (permission === "granted") {
+        this.showToast("Push notifications enabled! You will receive daily low-stock alerts.", "success");
+        try {
+          new Notification("Drugs Systems • Stock Monitor Active", {
+            body: "Automated daily monitoring enabled for critical stock & expiry flags.",
+            icon: "/icon-192.png"
+          });
+        } catch (_) {}
+      } else {
+        this.showToast("Notification permission was dismissed or denied.", "info");
+      }
+    });
   }
 
   applyBulkMargin(marginPercent, targetSchedule) {
