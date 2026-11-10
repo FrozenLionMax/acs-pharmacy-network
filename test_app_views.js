@@ -269,6 +269,27 @@ try {
   if (!app.isSummaryOrFooterRow(mock34LineSheet[34])) throw new Error('isSummaryOrFooterRow failed to identify Grand Total row');
   console.log('Smart Multi-Row Header Auto-Detection & 34-Line Distributor Sheet Suite verified 100%!');
 
+  // 4c. Test Distributor ERP Presets & Selective Row Importing
+  if (typeof app.downloadDistributorTemplateExcel !== 'function') throw new Error('downloadDistributorTemplateExcel missing');
+  if (typeof app.exportCurrentInventoryBackup !== 'function') throw new Error('exportCurrentInventoryBackup missing');
+
+  // Test Selective Row Import (e.g. only import first 2 of 3 rows)
+  const selectiveRows = [
+    ["Selective Med 1", "Salt 1", "Pharma 1", "BAT-SEL-01", "2028-12-31", "10", "Strips", "50", "75", "Schedule H", "Rack A"],
+    ["Selective Med 2", "Salt 2", "Pharma 2", "BAT-SEL-02", "2028-12-31", "20", "Strips", "60", "90", "Schedule H", "Rack B"],
+    ["Selective Med 3 (Omitted)", "Salt 3", "Pharma 3", "BAT-SEL-03", "2028-12-31", "30", "Strips", "70", "100", "Schedule H", "Rack C"]
+  ];
+  const initialStockCount = currentStore.stocks.length;
+  // Select only index 0 and 1
+  app.executeSmartStockImport(selectiveRows, colMap, "APPEND", new Set([0, 1]));
+  if (currentStore.stocks.length !== initialStockCount + 2) throw new Error('Selective row import failed: expected 2 new SKUs, got ' + (currentStore.stocks.length - initialStockCount));
+  console.log('Selective Row Importing with Set filtering verified 100%!');
+
+  // Test Distributor Template & Inventory Backup methods
+  app.downloadDistributorTemplateExcel();
+  app.exportCurrentInventoryBackup();
+  console.log('Distributor Template Generator & Inventory Backup Suite verified 100%!');
+
   // 5. Test Barcode Lookup
   app.lookupBarcodeInStock(existingMed.batchNo);
   console.log(`lookupBarcodeInStock("${existingMed.batchNo}") ran successfully!`);

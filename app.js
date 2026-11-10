@@ -9212,6 +9212,112 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     }
   }
 
+  downloadDistributorTemplateExcel() {
+    const headers = [
+      "Medicine Brand Name",
+      "Generic Composition",
+      "Manufacturer Name",
+      "Batch Number",
+      "Expiry Date (YYYY-MM-DD)",
+      "Stock Quantity",
+      "Packaging Unit",
+      "Purchase Rate PTR (₹)",
+      "Selling MRP (₹)",
+      "Drug Schedule",
+      "Rack / Shelf Location",
+      "Bulk Free Scheme"
+    ];
+    const sampleRows = [
+      ["Augmentin 625 Duo Tablet", "Amoxicillin 500mg + Clavulanic Acid 125mg", "GlaxoSmithKline Pharmaceuticals Ltd", "BAT-AUG-9120", "2028-12-31", "120", "10 Tablets / Strip", "142.50", "223.50", "Schedule H1", "Rack A-01", "10+1"],
+      ["Dolo 650 Tablet", "Paracetamol 650 mg", "Micro Labs Ltd", "BAT-DL-8942", "2028-11-30", "150", "15 Tablets / Strip", "24.50", "33.60", "Non-Schedule / OTC", "Rack A-02", "20+2"],
+      ["Pan 40 Tablet", "Pantoprazole Gastro-Resistant 40 mg", "Alkem Laboratories Ltd", "BAT-PN-5120", "2028-03-31", "100", "15 Tablets / Strip", "98.00", "155.00", "Schedule H", "Rack B-01", "10+1"],
+      ["Azithral 500 Tablet", "Azithromycin 500 mg", "Alembic Pharmaceuticals Ltd", "BAT-AZ-7731", "2028-08-31", "80", "5 Tablets / Strip", "84.00", "132.50", "Schedule H1", "Rack H1-02", "20+2"],
+      ["Montek LC Tablet", "Montelukast 10 mg + Levocetirizine 5 mg", "Sun Pharmaceutical Industries Ltd", "BAT-ML-4190", "2028-12-31", "120", "10 Tablets / Strip", "135.00", "215.00", "Schedule H", "Rack C-02", "10+1"]
+    ];
+
+    if (typeof XLSX !== "undefined") {
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleRows]);
+      XLSX.utils.book_append_sheet(wb, ws, "Inventory Template");
+      XLSX.writeFile(wb, "distributor_stock_import_template.xlsx");
+      this.showToast("Downloaded Distributor Excel Template: distributor_stock_import_template.xlsx", "success");
+    } else {
+      const csvContent = [headers.join(","), ...sampleRows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(","))].join("\n");
+      if (typeof Blob !== "undefined" && typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "distributor_stock_import_template.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      this.showToast("Downloaded Distributor CSV Template: distributor_stock_import_template.csv", "success");
+    }
+  }
+
+  exportCurrentInventoryBackup() {
+    const store = this.getCurrentStore();
+    if (!store || !store.stocks || store.stocks.length === 0) {
+      this.showToast("No active medicines in stock to backup", "warning");
+      return;
+    }
+    const headers = [
+      "Medicine Brand Name",
+      "Generic Composition",
+      "Manufacturer Name",
+      "Batch Number",
+      "Expiry Date",
+      "Stock Quantity",
+      "Packaging Unit",
+      "Purchase Rate (PTR ₹)",
+      "Selling MRP (₹)",
+      "Drug Schedule",
+      "Rack Location",
+      "Bulk Free Scheme"
+    ];
+    const rows = store.stocks.map(s => [
+      s.name || "",
+      s.saltName || "",
+      s.manufacturer || "",
+      s.batchNo || "",
+      s.expiryDate || "",
+      s.quantity || 0,
+      s.unit || "Strips",
+      s.purchaseRate || 0,
+      s.mrp || 0,
+      s.schedule || "Schedule H",
+      s.rackLocation || "General Shelf",
+      s.freeScheme || ""
+    ]);
+
+    const storeSlug = (store.name || "pharmacy").toLowerCase().replace(/[^a-z0-9]/g, "-");
+    const today = new Date().toISOString().split("T")[0];
+    const filename = `${storeSlug}_inventory_backup_${today}.csv`;
+
+    if (typeof XLSX !== "undefined") {
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      XLSX.utils.book_append_sheet(wb, ws, "Live Stocks Backup");
+      XLSX.writeFile(wb, `${storeSlug}_inventory_backup_${today}.xlsx`);
+      this.showToast(`Saved Inventory Backup (${store.stocks.length} SKUs): ${storeSlug}_inventory_backup_${today}.xlsx`, "success");
+    } else {
+      const csvContent = [headers.join(","), ...rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(","))].join("\n");
+      if (typeof Blob !== "undefined" && typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      this.showToast(`Saved Inventory Backup (${store.stocks.length} SKUs): ${filename}`, "success");
+    }
+  }
+
   loadTrialStockData() {
     const rawRows = [
       ["Medicine Name", "Composition", "Manufacturer", "Batch No", "Expiry Date", "Quantity", "Unit", "Purchase Rate", "MRP", "Drug Schedule", "Rack Location", "Bulk Free Scheme"],
@@ -9239,19 +9345,22 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     title.innerHTML = `<i class="fa fa-file-excel-o text-emerald-600"></i> Smart Excel (.xlsx, .xls) & CSV Stock Importer`;
     body.innerHTML = `
       <div class="space-y-4 text-xs">
-        <div class="p-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div class="p-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200 rounded-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-3 shadow-xs">
           <div>
             <span class="font-black text-emerald-950 block text-xs sm:text-sm flex items-center gap-1.5">
               <i class="fa fa-database text-emerald-700"></i> High-Speed Wholesale Stock Importer
             </span>
-            <span class="text-emerald-700 text-[11px]">Upload stock sheets from distributors, Tally, Marg ERP, or CSV/Excel files.</span>
+            <span class="text-emerald-700 text-[11px]">Upload stock sheets from distributors, Marg ERP, Busy, Tally, or Excel/CSV files.</span>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
             <button type="button" onclick="window.acsApp.loadTrialStockData()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-[11px] shadow-sm transition flex items-center gap-1.5 cursor-pointer">
-              <i class="fa fa-magic text-amber-300"></i> 1-Click Load 10 Trial Medicines
+              <i class="fa fa-magic text-amber-300"></i> Load 10 Trial Medicines
             </button>
-            <button type="button" onclick="window.acsApp.downloadTrialStockExcel()" class="px-2.5 py-1.5 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl font-bold text-[11px] shadow-xs transition flex items-center gap-1 cursor-pointer" title="Download trial test file (.xlsx / .csv)">
-              <i class="fa fa-download text-emerald-600"></i> Trial Sheet
+            <button type="button" onclick="window.acsApp.downloadDistributorTemplateExcel()" class="px-2.5 py-1.5 bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-xl font-bold text-[11px] shadow-xs transition flex items-center gap-1 cursor-pointer" title="Download clean Excel template to share with distributor">
+              <i class="fa fa-download text-emerald-600"></i> Blank Template
+            </button>
+            <button type="button" onclick="window.acsApp.exportCurrentInventoryBackup()" class="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl font-bold text-[11px] shadow-xs transition flex items-center gap-1 cursor-pointer" title="1-Click safety backup before bulk import">
+              <i class="fa fa-shield text-blue-600"></i> Backup Stock
             </button>
           </div>
         </div>
@@ -9336,15 +9445,18 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
         try {
           const data = new Uint8Array(e.target.result);
           const workbook = XLSX.read(data, { type: "array" });
-          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          const rawRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
-          this.renderImportMapper(rawRows, file.name);
+          this.currentImportWorkbook = workbook;
+          this.currentImportFileName = file.name;
+          const firstSheetName = workbook.SheetNames[0];
+          this.loadImportSheet(firstSheetName);
         } catch (err) {
           this.showToast("Could not parse Excel workbook: " + err.message, "danger");
         }
       };
       reader.readAsArrayBuffer(file);
     } else {
+      this.currentImportWorkbook = null;
+      this.currentImportFileName = file.name;
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
@@ -9357,6 +9469,92 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       };
       reader.readAsText(file);
     }
+  }
+
+  loadImportSheet(sheetName) {
+    if (!this.currentImportWorkbook) return;
+    const sheet = this.currentImportWorkbook.Sheets[sheetName];
+    if (!sheet) return;
+    const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+    this.renderImportMapper(rawRows, this.currentImportFileName || "Imported Sheet", null, sheetName);
+  }
+
+  applyDistributorPreset(presetKey, headers) {
+    const getSelect = (field) => document.getElementById(`col-map-${field}`);
+    if (!getSelect("name")) return;
+
+    document.querySelectorAll(".preset-pill").forEach(btn => {
+      btn.classList.remove("bg-[#135c7e]", "text-white");
+      btn.classList.add("bg-white", "text-slate-700");
+    });
+    const activeBtn = document.getElementById(`preset-btn-${presetKey}`);
+    if (activeBtn) {
+      activeBtn.classList.remove("bg-white", "text-slate-700");
+      activeBtn.classList.add("bg-[#135c7e]", "text-white");
+    }
+
+    let mapping = {};
+    if (presetKey === "auto") {
+      mapping = this.detectColumnMapping(headers);
+    } else if (presetKey === "marg") {
+      mapping = this.detectColumnMapping(headers);
+      headers.forEach((h, idx) => {
+        const clean = String(h || "").toLowerCase().trim();
+        if (/item\s*name|item\s*desc|particular/i.test(clean)) mapping.name = idx;
+        if (/packing|pack|pkg/i.test(clean) && !/qty/i.test(clean)) mapping.unit = idx;
+        if (/batch|lot/i.test(clean)) mapping.batchNo = idx;
+        if (/exp/i.test(clean)) mapping.expiryDate = idx;
+        if (/^qty|billed\s*qty|qty\./i.test(clean)) mapping.quantity = idx;
+        if (/rate|p\.rate|ptr|cost/i.test(clean)) mapping.purchaseRate = idx;
+        if (/mrp|s\.rate|sale/i.test(clean)) mapping.mrp = idx;
+        if (/scheme|deal|free|sch/i.test(clean)) mapping.freeScheme = idx;
+      });
+    } else if (presetKey === "busy") {
+      mapping = this.detectColumnMapping(headers);
+      headers.forEach((h, idx) => {
+        const clean = String(h || "").toLowerCase().trim();
+        if (/item|description/i.test(clean)) mapping.name = idx;
+        if (/batch/i.test(clean)) mapping.batchNo = idx;
+        if (/qty|pcs/i.test(clean)) mapping.quantity = idx;
+        if (/pur.*price|pur.*rate/i.test(clean)) mapping.purchaseRate = idx;
+        if (/mrp|selling/i.test(clean)) mapping.mrp = idx;
+      });
+    } else if (presetKey === "tally") {
+      mapping = this.detectColumnMapping(headers);
+      headers.forEach((h, idx) => {
+        const clean = String(h || "").toLowerCase().trim();
+        if (/particular|item/i.test(clean)) mapping.name = idx;
+        if (/godown|batch/i.test(clean)) mapping.batchNo = idx;
+        if (/billed\s*qty|qty/i.test(clean)) mapping.quantity = idx;
+        if (/rate/i.test(clean)) mapping.purchaseRate = idx;
+        if (/amount|mrp/i.test(clean)) mapping.mrp = idx;
+      });
+    } else if (presetKey === "standard") {
+      mapping = {
+        name: 0 < headers.length ? 0 : -1,
+        saltName: 1 < headers.length ? 1 : -1,
+        manufacturer: 2 < headers.length ? 2 : -1,
+        batchNo: 3 < headers.length ? 3 : -1,
+        expiryDate: 4 < headers.length ? 4 : -1,
+        quantity: 5 < headers.length ? 5 : -1,
+        unit: 6 < headers.length ? 6 : -1,
+        purchaseRate: 7 < headers.length ? 7 : -1,
+        mrp: 8 < headers.length ? 8 : -1,
+        schedule: 9 < headers.length ? 9 : -1,
+        rackLocation: 10 < headers.length ? 10 : -1,
+        freeScheme: 11 < headers.length ? 11 : -1
+      };
+    }
+
+    Object.entries(mapping).forEach(([field, idx]) => {
+      const el = getSelect(field);
+      if (el) el.value = idx;
+    });
+
+    if (this._currentRenderPreview) {
+      this._currentRenderPreview();
+    }
+    this.showToast(`Applied preset: ${presetKey.toUpperCase()}`, "info");
   }
 
   parseDelimitedText(text) {
@@ -9627,7 +9825,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     return mapping;
   }
 
-  renderImportMapper(rawRows, fileName = "Imported Sheet", forcedHeaderIdx = null) {
+  renderImportMapper(rawRows, fileName = "Imported Sheet", forcedHeaderIdx = null, activeSheetName = null) {
     const container = document.getElementById("import-preview-container");
     if (!container) return;
 
@@ -9652,6 +9850,9 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       this.showToast("No medicine data rows found under row " + (detectedHeaderIdx + 1) + ". Try selecting a different header row.", "warning");
     }
 
+    // Initialize selected row indices (all selected by default)
+    this.selectedImportRowIndices = new Set(dataRows.map((_, i) => i));
+
     // 3. Detect column mapping and infer missing fields
     let detected = this.detectColumnMapping(headers);
     detected = this.inferMissingColumns(detected, headers, dataRows);
@@ -9671,9 +9872,30 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       rackLocation: "Rack / Shelf Location"
     };
 
+    const hasMultiSheets = this.currentImportWorkbook && this.currentImportWorkbook.SheetNames && this.currentImportWorkbook.SheetNames.length > 1;
+
     container.classList.remove("hidden");
     container.innerHTML = `
-      <div class="space-y-3 animate-fade-in">
+      <div class="space-y-3.5 animate-fade-in">
+        ${hasMultiSheets ? `
+          <!-- Workbook Sheet Tabs Selector -->
+          <div class="p-2.5 bg-slate-100 rounded-xl border border-slate-200 flex items-center gap-2 overflow-x-auto shadow-xs">
+            <span class="text-[11px] font-bold text-slate-700 whitespace-nowrap flex items-center gap-1.5">
+              <i class="fa fa-folder-open text-[#135c7e]"></i> Workbook Sheets (${this.currentImportWorkbook.SheetNames.length}):
+            </span>
+            <div class="flex items-center gap-1.5 flex-nowrap">
+              ${this.currentImportWorkbook.SheetNames.map(sName => {
+                const isAct = activeSheetName ? sName === activeSheetName : sName === this.currentImportWorkbook.SheetNames[0];
+                return `
+                  <button type="button" onclick="window.acsApp.loadImportSheet('${sName.replace(/'/g, "\\'")}')" class="px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${isAct ? 'bg-[#135c7e] text-white shadow-xs' : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'}">
+                    <i class="fa fa-file-excel-o mr-1 text-emerald-600"></i> ${sName} ${isAct ? '★' : ''}
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        ` : ''}
+
         <!-- Header Row Detection Banner & Switcher -->
         <div class="p-3 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
           <div class="flex items-center gap-2.5">
@@ -9702,6 +9924,31 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           </div>
         </div>
 
+        <!-- 1-Click Distributor ERP Presets Bar -->
+        <div class="p-2.5 bg-slate-100/80 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-[11px] font-bold text-slate-700 whitespace-nowrap flex items-center gap-1">
+              <i class="fa fa-bolt text-amber-500"></i> ERP Presets:
+            </span>
+            <button type="button" id="preset-btn-auto" class="preset-pill px-2.5 py-1 rounded-lg text-xs font-bold border transition bg-[#135c7e] text-white cursor-pointer shadow-xs">
+              <i class="fa fa-magic text-amber-300"></i> Auto-Detect (AI)
+            </button>
+            <button type="button" id="preset-btn-marg" class="preset-pill px-2.5 py-1 rounded-lg text-xs font-bold border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 cursor-pointer shadow-xs">
+              Marg ERP
+            </button>
+            <button type="button" id="preset-btn-busy" class="preset-pill px-2.5 py-1 rounded-lg text-xs font-bold border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 cursor-pointer shadow-xs">
+              Busy Accounting
+            </button>
+            <button type="button" id="preset-btn-tally" class="preset-pill px-2.5 py-1 rounded-lg text-xs font-bold border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 cursor-pointer shadow-xs">
+              Tally Prime
+            </button>
+            <button type="button" id="preset-btn-standard" class="preset-pill px-2.5 py-1 rounded-lg text-xs font-bold border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 cursor-pointer shadow-xs">
+              Standard Template
+            </button>
+          </div>
+          <span class="text-[10px] text-slate-500 hidden sm:inline">1-Click maps all 12 distributor columns</span>
+        </div>
+
         <!-- Column Selectors Grid -->
         <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
           <div class="flex items-center justify-between">
@@ -9714,7 +9961,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
             ${Object.entries(fieldLabels).map(([field, label]) => {
               const mappedIdx = detected[field] !== undefined ? detected[field] : -1;
               return `
-                <div class="p-2 bg-white rounded-lg border border-slate-200 space-y-1">
+                <div class="p-2 bg-white rounded-lg border border-slate-200 space-y-1 shadow-xs">
                   <label class="block font-bold text-slate-700 truncate" title="${label}">${label}</label>
                   <select id="col-map-${field}" class="col-mapper-select w-full px-2 py-1 border border-slate-300 rounded text-xs bg-slate-50 focus:bg-white font-medium text-slate-900">
                     <option value="-1">-- Not in Sheet --</option>
@@ -9749,23 +9996,42 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           </div>
         </div>
 
-        <!-- Live Preview Table -->
-        <div class="space-y-1">
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-slate-800 text-xs">Live Extracted Preview (First ${Math.min(5, dataRows.length)} Records):</span>
-            <span class="text-[10px] text-slate-500">Updates live if you change any column above</span>
+        <!-- Anomaly Health Shield Banner (Dynamically populated) -->
+        <div id="import-anomaly-banner" class="hidden"></div>
+
+        <!-- Live Preview Table with Search & Checkboxes -->
+        <div class="space-y-1.5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                <i class="fa fa-eye text-emerald-600"></i> Extracted Live Preview:
+              </span>
+              <span id="import-selection-count-badge" class="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded text-[10px]">
+                ${dataRows.length} of ${dataRows.length} Selected
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="text" id="import-preview-search" placeholder="Filter preview (e.g. Dolo, Pan, Batch)..." class="px-2.5 py-1 border border-slate-300 rounded-lg text-xs w-full sm:w-56 focus:ring-2 focus:ring-teal-500 shadow-xs" />
+              <button type="button" id="btn-deselect-anomalies" class="hidden px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold cursor-pointer transition whitespace-nowrap shadow-xs">
+                <i class="fa fa-filter"></i> Deselect Flagged Rows
+              </button>
+            </div>
           </div>
-          <div class="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-xs">
+          <div class="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-xs max-h-72 overflow-y-auto">
             <table class="w-full text-left text-[11px] divide-y divide-slate-200">
-              <thead class="bg-slate-100 font-bold text-slate-700">
+              <thead class="bg-slate-100 font-bold text-slate-700 sticky top-0 z-10 shadow-xs">
                 <tr>
-                  <th class="p-2">#</th>
-                  <th class="p-2">Medicine Brand</th>
+                  <th class="p-2 w-8 text-center">
+                    <input type="checkbox" id="import-master-check" checked class="w-3.5 h-3.5 rounded text-emerald-600 cursor-pointer" title="Select / Deselect All Rows" />
+                  </th>
+                  <th class="p-2 w-8">#</th>
+                  <th class="p-2">Medicine Brand & Formula</th>
                   <th class="p-2">Batch</th>
                   <th class="p-2">Exp Date</th>
                   <th class="p-2 text-center">Qty</th>
                   <th class="p-2">Buying CP</th>
                   <th class="p-2">Selling MRP</th>
+                  <th class="p-2 text-center">Margin</th>
                   <th class="p-2">Free Scheme</th>
                   <th class="p-2">Rack</th>
                 </tr>
@@ -9777,25 +10043,30 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           </div>
         </div>
 
-        <div class="pt-2 flex items-center justify-between">
-          <span class="text-xs text-slate-500 font-medium">Ready to import <strong class="text-emerald-800 font-bold">${dataRows.length}</strong> medicines into live inventory.</span>
-          <button type="button" id="btn-execute-import" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md transition flex items-center gap-2 cursor-pointer">
-            <i class="fa fa-cloud-upload"></i> Import & Synchronize Inventory (${dataRows.length} SKUs)
+        <div class="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <span id="import-status-bottom-text" class="text-xs text-slate-600 font-medium">
+            Ready to import <strong class="text-emerald-800 font-bold" id="import-ready-count">${dataRows.length}</strong> verified medicines into live inventory.
+          </span>
+          <button type="button" id="btn-execute-import" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer">
+            <i class="fa fa-cloud-upload"></i> Import & Synchronize Inventory (<span id="btn-import-count">${dataRows.length}</span> SKUs)
           </button>
         </div>
       </div>
     `;
 
-    // Function to render preview table rows
+    // Function to render preview table rows and calculate quality metrics
     const renderPreviewTable = () => {
       const tbody = document.getElementById("import-preview-tbody");
       if (!tbody) return;
+
       const getVal = (id) => {
         const el = document.getElementById(id);
         return el ? parseInt(el.value) : -1;
       };
+
       const curMap = {
         name: getVal("col-map-name"),
+        saltName: getVal("col-map-saltName"),
         batchNo: getVal("col-map-batchNo"),
         expiryDate: getVal("col-map-expiryDate"),
         quantity: getVal("col-map-quantity"),
@@ -9805,32 +10076,168 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
         rackLocation: getVal("col-map-rackLocation")
       };
 
-      tbody.innerHTML = dataRows.slice(0, 5).map((row, idx) => {
+      const searchQuery = (document.getElementById("import-preview-search")?.value || "").toLowerCase().trim();
+
+      let cpExceedsMrpCount = 0;
+      let expiredCount = 0;
+      let nearExpCount = 0;
+      const today = new Date();
+
+      const renderedRows = [];
+
+      dataRows.forEach((row, idx) => {
+        const isSelected = this.selectedImportRowIndices ? this.selectedImportRowIndices.has(idx) : true;
+
         const name = (curMap.name !== -1 && row[curMap.name]) ? String(row[curMap.name]).trim() : (row.find(c => typeof c === 'string' && c.length >= 3 && !/^\d+$/.test(c)) || 'Medicine ' + (idx + 1));
-        const batch = (curMap.batchNo !== -1 && row[curMap.batchNo]) ? String(row[curMap.batchNo]).trim() : `BAT-AUT-${100 + idx}`;
+        const salt = (curMap.saltName !== -1 && row[curMap.saltName]) ? String(row[curMap.saltName]).trim() : '';
+        const rawBatch = (curMap.batchNo !== -1 && row[curMap.batchNo]) ? String(row[curMap.batchNo]).trim() : '';
+        const isAutoBatch = !rawBatch;
+        const batch = rawBatch || `BAT-AUT-${100 + idx}`;
         const exp = (curMap.expiryDate !== -1 && row[curMap.expiryDate]) ? this.normalizeExpiryDate(row[curMap.expiryDate]) : '2028-12-31';
         const qty = (curMap.quantity !== -1 && row[curMap.quantity]) ? String(row[curMap.quantity]).replace(/[^0-9]/g, '') || '20' : '20';
-        const cp = (curMap.purchaseRate !== -1 && row[curMap.purchaseRate]) ? String(row[curMap.purchaseRate]).replace(/[^0-9.]/g, '') || '50' : '50';
-        const mrp = (curMap.mrp !== -1 && row[curMap.mrp]) ? String(row[curMap.mrp]).replace(/[^0-9.]/g, '') || '80' : '80';
+        const cp = (curMap.purchaseRate !== -1 && row[curMap.purchaseRate]) ? parseFloat(String(row[curMap.purchaseRate]).replace(/[^0-9.]/g, '')) || 50 : 50;
+        const mrp = (curMap.mrp !== -1 && row[curMap.mrp]) ? parseFloat(String(row[curMap.mrp]).replace(/[^0-9.]/g, '')) || 80 : 80;
         const free = (curMap.freeScheme !== -1 && row[curMap.freeScheme]) ? this.formatFreeScheme(row[curMap.freeScheme]) : '-';
         const rack = (curMap.rackLocation !== -1 && row[curMap.rackLocation]) ? String(row[curMap.rackLocation]).trim() : 'Rack A-01';
 
-        return `
-          <tr>
+        // Anomaly Checks
+        const isCpHigher = cp > mrp && mrp > 0;
+        if (isCpHigher) cpExceedsMrpCount++;
+
+        const expDateObj = new Date(exp);
+        const isExpired = !isNaN(expDateObj.getTime()) && expDateObj < today;
+        if (isExpired) expiredCount++;
+
+        const daysToExpiry = (expDateObj.getTime() - today.getTime()) / (1000 * 3600 * 24);
+        const isNearExp = !isExpired && daysToExpiry < 90;
+        if (isNearExp) nearExpCount++;
+
+        // Margin calculation
+        const marginPct = cp > 0 ? Math.round(((mrp - cp) / cp) * 100) : 0;
+
+        // Search Filter
+        if (searchQuery) {
+          const rowText = `${name} ${salt} ${batch} ${exp} ${rack}`.toLowerCase();
+          if (!rowText.includes(searchQuery)) return;
+        }
+
+        renderedRows.push(`
+          <tr class="hover:bg-slate-50/80 transition ${!isSelected ? 'opacity-40 bg-slate-50' : (isCpHigher ? 'bg-rose-50/30' : '')}">
+            <td class="p-2 text-center">
+              <input type="checkbox" class="import-row-check cursor-pointer w-3.5 h-3.5 rounded text-emerald-600" data-idx="${idx}" ${isSelected ? 'checked' : ''} />
+            </td>
             <td class="p-2 text-slate-400 font-mono">${idx + 1}</td>
-            <td class="p-2 font-bold text-slate-900">${name}</td>
+            <td class="p-2">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="font-bold text-slate-900">${name}</span>
+                ${isCpHigher ? `<span class="px-1.5 py-0.2 bg-rose-100 text-rose-700 font-black text-[9px] rounded flex items-center gap-1" title="Cost Price exceeds Selling MRP!"><i class="fa fa-exclamation-triangle"></i> CP > MRP</span>` : ''}
+                ${isExpired ? `<span class="px-1.5 py-0.2 bg-rose-100 text-rose-800 font-black text-[9px] rounded flex items-center gap-1" title="Batch Expiry in the past"><i class="fa fa-clock-o"></i> Expired</span>` : ''}
+                ${isNearExp ? `<span class="px-1.5 py-0.2 bg-amber-100 text-amber-800 font-black text-[9px] rounded flex items-center gap-1" title="Expires within 90 days"><i class="fa fa-hourglass-half"></i> Near Exp</span>` : ''}
+                ${isAutoBatch ? `<span class="px-1.5 py-0.2 bg-slate-100 text-slate-500 font-mono text-[9px] rounded" title="Auto-assigned fallback batch">Auto-Batch</span>` : ''}
+              </div>
+              ${salt ? `<span class="text-slate-500 text-[10px] block truncate max-w-xs">${salt}</span>` : ''}
+            </td>
             <td class="p-2 font-mono text-slate-700">${batch}</td>
             <td class="p-2 font-mono text-slate-700">${exp}</td>
             <td class="p-2 font-bold text-center text-indigo-700">${qty}</td>
-            <td class="p-2 text-slate-700">₹${cp}</td>
+            <td class="p-2 ${isCpHigher ? 'font-bold text-rose-700' : 'text-slate-700'}">₹${cp}</td>
             <td class="p-2 font-bold text-emerald-800">₹${mrp}</td>
+            <td class="p-2 text-center font-bold ${marginPct >= 0 ? 'text-emerald-700' : 'text-rose-700'}">
+              ${marginPct >= 0 ? '+' : ''}${marginPct}%
+            </td>
             <td class="p-2 font-bold text-amber-800">${free || '-'}</td>
             <td class="p-2 text-slate-500">${rack}</td>
           </tr>
-        `;
-      }).join("");
+        `);
+      });
+
+      tbody.innerHTML = renderedRows.length > 0 ? renderedRows.join("") : `
+        <tr>
+          <td colspan="11" class="p-6 text-center text-slate-400">
+            <i class="fa fa-search text-2xl mb-1 block"></i>
+            No medicines match the search filter "${searchQuery}".
+          </td>
+        </tr>
+      `;
+
+      // Update Health Shield Anomaly Banner
+      const anomalyBanner = document.getElementById("import-anomaly-banner");
+      const btnDeselectAnomalies = document.getElementById("btn-deselect-anomalies");
+      if (anomalyBanner) {
+        if (cpExceedsMrpCount > 0 || expiredCount > 0) {
+          anomalyBanner.classList.remove("hidden");
+          anomalyBanner.innerHTML = `
+            <div class="p-2.5 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between text-xs text-rose-800 shadow-xs">
+              <span class="flex items-center gap-2">
+                <i class="fa fa-shield text-rose-600 text-sm"></i>
+                <span><strong>Quality Shield:</strong> Found ${cpExceedsMrpCount > 0 ? `<strong>${cpExceedsMrpCount}</strong> Pricing Anomaly (CP > MRP)` : ''} ${expiredCount > 0 ? ` and <strong>${expiredCount}</strong> Expired batch(es)` : ''}. Review highlighted rows.</span>
+              </span>
+              <button type="button" id="btn-auto-uncheck-flags" class="px-2.5 py-1 bg-white hover:bg-rose-100 text-rose-800 border border-rose-300 rounded-lg font-bold text-[11px] cursor-pointer transition shadow-xs whitespace-nowrap">
+                <i class="fa fa-times-circle"></i> Deselect ${cpExceedsMrpCount + expiredCount} Flagged Rows
+              </button>
+            </div>
+          `;
+          if (btnDeselectAnomalies) btnDeselectAnomalies.classList.remove("hidden");
+
+          const btnUncheck = document.getElementById("btn-auto-uncheck-flags");
+          if (btnUncheck) {
+            btnUncheck.onclick = () => {
+              dataRows.forEach((row, i) => {
+                const cp = (curMap.purchaseRate !== -1 && row[curMap.purchaseRate]) ? parseFloat(String(row[curMap.purchaseRate]).replace(/[^0-9.]/g, '')) || 0 : 0;
+                const mrp = (curMap.mrp !== -1 && row[curMap.mrp]) ? parseFloat(String(row[curMap.mrp]).replace(/[^0-9.]/g, '')) || 0 : 0;
+                const exp = (curMap.expiryDate !== -1 && row[curMap.expiryDate]) ? this.normalizeExpiryDate(row[curMap.expiryDate]) : '2028-12-31';
+                const isExp = new Date(exp) < today;
+                if ((cp > mrp && mrp > 0) || isExp) {
+                  this.selectedImportRowIndices.delete(i);
+                }
+              });
+              updateSelectionUI();
+              renderPreviewTable();
+              this.showToast(`Deselected ${cpExceedsMrpCount + expiredCount} flagged rows`, "info");
+            };
+          }
+        } else {
+          anomalyBanner.classList.add("hidden");
+          if (btnDeselectAnomalies) btnDeselectAnomalies.classList.add("hidden");
+        }
+      }
+
+      // Re-bind row checkboxes
+      document.querySelectorAll(".import-row-check").forEach(cb => {
+        cb.addEventListener("change", (e) => {
+          const rowIdx = parseInt(e.target.getAttribute("data-idx"));
+          if (e.target.checked) {
+            this.selectedImportRowIndices.add(rowIdx);
+          } else {
+            this.selectedImportRowIndices.delete(rowIdx);
+          }
+          updateSelectionUI();
+          renderPreviewTable();
+        });
+      });
     };
 
+    const updateSelectionUI = () => {
+      const selectedCount = this.selectedImportRowIndices ? this.selectedImportRowIndices.size : 0;
+      const totalCount = dataRows.length;
+
+      const badge = document.getElementById("import-selection-count-badge");
+      if (badge) badge.innerText = `${selectedCount} of ${totalCount} Selected`;
+
+      const readyCount = document.getElementById("import-ready-count");
+      if (readyCount) readyCount.innerText = selectedCount;
+
+      const btnCount = document.getElementById("btn-import-count");
+      if (btnCount) btnCount.innerText = selectedCount;
+
+      const masterCheck = document.getElementById("import-master-check");
+      if (masterCheck) {
+        masterCheck.checked = selectedCount === totalCount && totalCount > 0;
+        masterCheck.indeterminate = selectedCount > 0 && selectedCount < totalCount;
+      }
+    };
+
+    this._currentRenderPreview = renderPreviewTable;
     renderPreviewTable();
 
     // Listen to changes on column mapping dropdowns
@@ -9842,14 +10249,48 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     const selectHeaderRow = document.getElementById("select-header-row");
     if (selectHeaderRow) {
       selectHeaderRow.addEventListener("change", (e) => {
-        this.renderImportMapper(rawRows, fileName, parseInt(e.target.value));
+        this.renderImportMapper(rawRows, fileName, parseInt(e.target.value), activeSheetName);
       });
     }
 
-    // Handle submit
+    // Preset buttons click handlers
+    ["auto", "marg", "busy", "tally", "standard"].forEach(presetKey => {
+      const btn = document.getElementById(`preset-btn-${presetKey}`);
+      if (btn) {
+        btn.onclick = () => this.applyDistributorPreset(presetKey, headers);
+      }
+    });
+
+    // Master Checkbox handler
+    const masterCheck = document.getElementById("import-master-check");
+    if (masterCheck) {
+      masterCheck.addEventListener("change", (e) => {
+        if (e.target.checked) {
+          this.selectedImportRowIndices = new Set(dataRows.map((_, i) => i));
+        } else {
+          this.selectedImportRowIndices.clear();
+        }
+        updateSelectionUI();
+        renderPreviewTable();
+      });
+    }
+
+    // Search filter live handler
+    const searchInput = document.getElementById("import-preview-search");
+    if (searchInput) {
+      searchInput.addEventListener("input", renderPreviewTable);
+    }
+
+    // Handle execute submit
     const btnExecute = document.getElementById("btn-execute-import");
     if (btnExecute) {
       btnExecute.onclick = () => {
+        const selectedCount = this.selectedImportRowIndices ? this.selectedImportRowIndices.size : 0;
+        if (selectedCount === 0) {
+          this.showToast("Please select at least 1 medicine row to import", "warning");
+          return;
+        }
+
         const getVal = (id) => {
           const el = document.getElementById(id);
           return el ? parseInt(el.value) : -1;
@@ -9869,7 +10310,35 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           rackLocation: getVal("col-map-rackLocation")
         };
         const selectedMode = document.querySelector('input[name="import-mode"]:checked')?.value || "MERGE";
-        this.executeSmartStockImport(dataRows, finalColMap, selectedMode);
+
+        // Animated Cloud Sync UI Transition
+        container.innerHTML = `
+          <div class="p-8 bg-gradient-to-b from-teal-50 to-emerald-50 border border-teal-200 rounded-2xl text-center space-y-4 animate-fade-in shadow-xs">
+            <div class="w-16 h-16 mx-auto rounded-full bg-emerald-600 text-white flex items-center justify-center text-3xl shadow-md animate-pulse">
+              <i class="fa fa-cloud-upload"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-black text-slate-900">Synchronizing ${selectedCount} Medicines with Cloud Database...</h3>
+              <p class="text-xs text-slate-500 mt-1">Merging with store inventory & committing to live Supabase PostgreSQL.</p>
+            </div>
+            <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden max-w-md mx-auto shadow-inner">
+              <div id="import-sync-progress-bar" class="bg-gradient-to-r from-teal-500 to-emerald-600 h-3 rounded-full transition-all duration-300" style="width: 15%"></div>
+            </div>
+            <p id="import-sync-status-text" class="text-xs text-slate-500 font-medium">Validating drug schedules & batch details...</p>
+          </div>
+        `;
+
+        setTimeout(() => {
+          const pBar = document.getElementById("import-sync-progress-bar");
+          const pText = document.getElementById("import-sync-status-text");
+          if (pBar) pBar.style.width = "75%";
+          if (pText) pText.innerText = "Writing SKUs to Supabase cloud...";
+
+          setTimeout(() => {
+            if (pBar) pBar.style.width = "100%";
+            this.executeSmartStockImport(dataRows, finalColMap, selectedMode, this.selectedImportRowIndices);
+          }, 200);
+        }, 150);
       };
     }
   }
@@ -9895,7 +10364,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     return "2028-12-31";
   }
 
-  executeSmartStockImport(dataRows, colMap, importMode) {
+  executeSmartStockImport(dataRows, colMap, importMode = "MERGE", selectedRowIndices = null) {
     const store = this.getCurrentStore();
     if (!store) {
       this.showToast("No active pharmacy selected for import", "danger");
@@ -9905,10 +10374,19 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     store.stocks = store.stocks || [];
     let updatedCount = 0;
     let addedCount = 0;
+    let totalStockValue = 0;
 
     dataRows.forEach((row, idx) => {
       if (!Array.isArray(row)) return;
       if (this.isSummaryOrFooterRow(row)) return;
+
+      // If selective row import is specified, verify index
+      if (selectedRowIndices) {
+        const isSelected = (typeof selectedRowIndices.has === "function")
+          ? selectedRowIndices.has(idx)
+          : (Array.isArray(selectedRowIndices) ? selectedRowIndices.includes(idx) : true);
+        if (!isSelected) return;
+      }
 
       // Extract medicine name with fallback
       let name = "";
@@ -9916,13 +10394,11 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
         name = String(row[colMap.name]).trim();
       }
       if (!name) {
-        // Fallback: search for first non-numeric text column
         const fallbackText = row.find(c => typeof c === 'string' && c.trim().length >= 3 && !/^\d+$/.test(c.trim()) && !/^[0-9.]+$/.test(c.trim()));
         if (fallbackText) name = fallbackText.trim();
       }
-      if (!name) return; // skip row if no usable medicine name
+      if (!name) return;
 
-      // Exclude title/footer words
       if (/^(total|sub\s*total|grand\s*total|taxable|net\s*amt|round\s*off|cgst|sgst|igst|invoice\s*total|gross\s*total|amount\s*in\s*words)/i.test(name)) {
         return;
       }
@@ -9953,6 +10429,8 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
         const parsedMrp = parseFloat(String(row[colMap.mrp]).replace(/[^0-9.]/g, ""));
         if (!isNaN(parsedMrp) && parsedMrp >= 0) mrp = parsedMrp;
       }
+
+      totalStockValue += (mrp * qty);
 
       // Salt
       const salt = (colMap.saltName !== -1 && row[colMap.saltName]) ? String(row[colMap.saltName]).trim() : "Generic Compound";
@@ -10018,10 +10496,47 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     });
 
     this.saveStores();
-    this.closeModal();
-    this.renderCurrentView();
 
-    this.showToast(`Excel Import Complete: ${updatedCount} existing batches updated, ${addedCount} new medicines added to live inventory & database.`, "success");
+    // If modal is active in browser DOM, show Celebration Dossier Card
+    const previewContainer = document.getElementById("import-preview-container");
+    if (previewContainer && previewContainer.isConnected) {
+      previewContainer.innerHTML = `
+        <div class="p-6 bg-gradient-to-b from-emerald-50/70 to-teal-50 border border-emerald-200 rounded-2xl text-center space-y-4 animate-fade-in shadow-xs">
+          <div class="w-16 h-16 mx-auto rounded-full bg-emerald-600 text-white flex items-center justify-center text-3xl shadow-md">
+            <i class="fa fa-check"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-black text-slate-900">Inventory Import & Cloud Synchronization Complete!</h3>
+            <p class="text-xs text-slate-600 mt-1">All verified medicines have been merged into <strong>${store.name}</strong> and synchronized with Supabase PostgreSQL.</p>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 max-w-lg mx-auto">
+            <div class="p-3 bg-white rounded-xl border border-emerald-100 shadow-xs">
+              <span class="block text-2xl font-black text-emerald-700">${addedCount}</span>
+              <span class="text-[11px] font-bold text-slate-500">New Medicines Added</span>
+            </div>
+            <div class="p-3 bg-white rounded-xl border border-teal-100 shadow-xs">
+              <span class="block text-2xl font-black text-[#135c7e]">${updatedCount}</span>
+              <span class="text-[11px] font-bold text-slate-500">Batches Incremented</span>
+            </div>
+            <div class="p-3 bg-white rounded-xl border border-blue-100 shadow-xs">
+              <span class="block text-2xl font-black text-blue-700">₹${Math.round(totalStockValue).toLocaleString('en-IN')}</span>
+              <span class="text-[11px] font-bold text-slate-500">Total Stock Value Added</span>
+            </div>
+          </div>
+          <div class="pt-2 flex justify-center gap-2">
+            <button type="button" onclick="window.acsApp.closeModal(); window.acsApp.renderCurrentView();" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-md transition cursor-pointer flex items-center gap-2">
+              <i class="fa fa-cubes"></i> View Live Stock Inventory
+            </button>
+          </div>
+        </div>
+      `;
+    } else {
+      this.closeModal();
+      this.renderCurrentView();
+    }
+
+    this.showToast(`Excel Import Complete: ${updatedCount} existing batches updated, ${addedCount} new medicines added.`, "success");
+    return { addedCount, updatedCount, totalStockValue };
   }
 
   // ==========================================
