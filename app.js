@@ -1297,6 +1297,35 @@ class ACSApp {
     this.showToast("Logged out successfully. Returned to Portal Gateway.", "info");
   }
 
+  togglePasswordVisibility(inputId, triggerEl) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const isPassword = input.type === "password";
+    input.type = isPassword ? "text" : "password";
+
+    // Toggle icons and text labels for all elements referencing this input
+    const targets = document.querySelectorAll(`[data-toggle-target="${inputId}"]`);
+    targets.forEach((el) => {
+      const icon = el.querySelector("i");
+      if (icon) {
+        icon.className = isPassword ? "fa fa-eye-slash text-slate-700" : "fa fa-eye text-slate-400 hover:text-slate-600";
+      }
+      const label = el.querySelector("span");
+      if (label) {
+        if (label.innerText.includes("Show") || label.innerText.includes("Hide")) {
+          label.innerText = isPassword ? label.innerText.replace("Show", "Hide") : label.innerText.replace("Hide", "Show");
+        }
+      }
+    });
+
+    if (triggerEl && !triggerEl.dataset.toggleTarget) {
+      const icon = triggerEl.querySelector("i");
+      if (icon) {
+        icon.className = isPassword ? "fa fa-eye-slash text-slate-700" : "fa fa-eye text-slate-400 hover:text-slate-600";
+      }
+    }
+  }
+
   openLoginModal() {
     const modal = document.getElementById("modal-generic");
     const title = document.getElementById("modal-generic-title");
@@ -1322,7 +1351,17 @@ class ACSApp {
           </div>
 
           <div>
-            <label class="block font-bold text-slate-700 mb-1">Password:</label>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block font-bold text-slate-700">Password:</label>
+              <button 
+                type="button" 
+                data-toggle-target="modal-login-pass"
+                onclick="window.acsApp.togglePasswordVisibility('modal-login-pass', this)" 
+                class="text-[11px] font-semibold text-[#135c7e] hover:text-[#0f4b67] transition flex items-center gap-1 cursor-pointer select-none"
+              >
+                <i class="fa fa-eye"></i> <span>Show Password</span>
+              </button>
+            </div>
             <div class="relative">
               <i class="fa fa-key text-slate-400 absolute left-3 top-2.5"></i>
               <input 
@@ -1330,8 +1369,17 @@ class ACSApp {
                 id="modal-login-pass" 
                 value="" 
                 placeholder="Enter password" 
-                class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e] text-xs font-semibold" 
+                class="w-full pl-9 pr-10 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e] text-xs font-semibold" 
               />
+              <button 
+                type="button" 
+                data-toggle-target="modal-login-pass"
+                onclick="window.acsApp.togglePasswordVisibility('modal-login-pass', this)" 
+                class="absolute right-2.5 top-2 p-1 text-slate-400 hover:text-slate-700 transition focus:outline-none cursor-pointer"
+                title="Show / Hide typed password"
+              >
+                <i class="fa fa-eye text-xs"></i>
+              </button>
             </div>
           </div>
 
@@ -3122,16 +3170,35 @@ class ACSApp {
             </div>
 
             <div>
-              <label class="block font-bold text-slate-700 mb-1">Password:</label>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block font-bold text-slate-700">Password:</label>
+                <button 
+                  type="button" 
+                  data-toggle-target="landing-owner-password"
+                  onclick="window.acsApp.togglePasswordVisibility('landing-owner-password', this)" 
+                  class="text-[11px] font-semibold text-[#135c7e] hover:text-[#0f4b67] transition flex items-center gap-1 cursor-pointer select-none"
+                >
+                  <i class="fa fa-eye"></i> <span>Show Password</span>
+                </button>
+              </div>
               <div class="relative">
-                <i class="fa fa-key text-slate-400 absolute left-3 top-2.5"></i>
+                <i class="fa fa-key text-slate-400 absolute left-3 top-3"></i>
                 <input 
                   type="password" 
                   id="landing-owner-password" 
                   value="" 
                   placeholder="Enter password" 
-                  class="w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#135c7e] text-xs font-semibold" 
+                  class="w-full pl-9 pr-10 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#135c7e] text-xs font-semibold" 
                 />
+                <button 
+                  type="button" 
+                  data-toggle-target="landing-owner-password"
+                  onclick="window.acsApp.togglePasswordVisibility('landing-owner-password', this)" 
+                  class="absolute right-2.5 top-2.5 p-1 text-slate-400 hover:text-slate-700 transition focus:outline-none cursor-pointer"
+                  title="Show / Hide typed password"
+                >
+                  <i class="fa fa-eye text-xs"></i>
+                </button>
               </div>
             </div>
 
@@ -7608,8 +7675,29 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           </div>
 
           <div>
-            <label class="block font-bold text-slate-700 mb-1">Supabase Public Anon Key *</label>
-            <input type="password" id="sb-config-key" value="${config.key}" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." class="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono text-xs bg-white" />
+            <div class="flex items-center justify-between mb-1">
+              <label class="block font-bold text-slate-700">Supabase Public Anon Key *</label>
+              <button 
+                type="button" 
+                data-toggle-target="sb-config-key"
+                onclick="window.acsApp.togglePasswordVisibility('sb-config-key', this)" 
+                class="text-[10px] font-semibold text-[#135c7e] hover:text-[#0f4b67] transition flex items-center gap-1 cursor-pointer select-none"
+              >
+                <i class="fa fa-eye"></i> <span>Show Key</span>
+              </button>
+            </div>
+            <div class="relative">
+              <input type="password" id="sb-config-key" value="${config.key}" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." class="w-full pl-3 pr-10 py-2 border border-slate-300 rounded-xl font-mono text-xs bg-white" />
+              <button 
+                type="button" 
+                data-toggle-target="sb-config-key"
+                onclick="window.acsApp.togglePasswordVisibility('sb-config-key', this)" 
+                class="absolute right-2.5 top-2 p-1 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                title="Toggle key visibility"
+              >
+                <i class="fa fa-eye text-xs"></i>
+              </button>
+            </div>
             <span class="text-[10px] text-slate-400 mt-0.5 block">Found in Supabase Dashboard &gt; Project Settings &gt; API &gt; Project API keys (anon public)</span>
           </div>
 
@@ -13587,9 +13675,28 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
               <span class="text-[10px] text-slate-400">Used to log in as owner. Auto-fills from name.</span>
             </div>
             <div>
-              <label class="block font-semibold text-slate-700 mb-0.5">Owner Password / PIN *</label>
+              <div class="flex items-center justify-between mb-0.5">
+                <label class="block font-semibold text-slate-700">Owner Password / PIN *</label>
+                <button 
+                  type="button" 
+                  data-toggle-target="new-store-password"
+                  onclick="window.acsApp.togglePasswordVisibility('new-store-password', this)" 
+                  class="text-[10px] font-semibold text-[#135c7e] hover:text-[#0f4b67] transition flex items-center gap-1 cursor-pointer select-none"
+                >
+                  <i class="fa fa-eye"></i> <span>Show</span>
+                </button>
+              </div>
               <div class="relative">
-                <input type="text" id="new-store-password" required value="Pharma@8004" class="w-full px-3 py-1.5 border rounded-lg bg-white font-mono text-xs font-bold text-slate-800" />
+                <input type="password" id="new-store-password" required value="Pharma@8004" class="w-full pl-2.5 pr-8 py-1.5 border rounded-lg bg-white font-mono text-xs font-bold text-slate-800" />
+                <button 
+                  type="button" 
+                  data-toggle-target="new-store-password"
+                  onclick="window.acsApp.togglePasswordVisibility('new-store-password', this)" 
+                  class="absolute right-2 top-1.5 p-0.5 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                  title="Toggle password visibility"
+                >
+                  <i class="fa fa-eye text-xs"></i>
+                </button>
               </div>
               <span class="text-[10px] text-slate-400">Save this password. You will need it to make edits.</span>
             </div>
