@@ -1341,6 +1341,22 @@ try {
     throw new Error('Supabase config modal did not render correctly!');
   }
   app.setSupabaseConfig('', '');
+
+  // Verify atomic targeted mutation methods exist and are callable
+  if (typeof app.pushSingleStockToSupabase !== 'function' ||
+      typeof app.deleteSingleStockFromSupabase !== 'function' ||
+      typeof app.pushSingleStoreToSupabase !== 'function' ||
+      typeof app.pushSingleStaffToSupabase !== 'function' ||
+      typeof app.pushSingleTransactionToSupabase !== 'function') {
+    throw new Error('Atomic Supabase mutation methods missing!');
+  }
+  await app.pushSingleStockToSupabase('store-up-001', { id: 'test-med', name: 'Test Med', quantity: 50 });
+  await app.deleteSingleStockFromSupabase('store-up-001', 'test-med');
+  await app.pushSingleStoreToSupabase({ id: 'store-up-001', name: 'Test Store' });
+  await app.pushSingleStaffToSupabase('store-up-001', { id: 'st-test', name: 'Test Staff' }, 'upsert');
+  await app.pushSingleTransactionToSupabase('store-up-001', { id: 'txn-test', totalBill: 150 });
+  console.log('Atomic targeted single-row mutation methods verified successfully!');
+
   console.log('Supabase Cloud Database integration suite verified successfully!');
 
   console.log('ALL CONNECTION TESTS VERIFIED AND PASSED 100%!');

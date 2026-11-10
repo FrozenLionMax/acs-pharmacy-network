@@ -7019,6 +7019,136 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     }
   }
 
+  // ==========================================
+  // ATOMIC SINGLE-ROW TARGETED MUTATIONS
+  // ==========================================
+  async pushSingleStockToSupabase(storeId, medicine) {
+    if (!this.supabase || !this.isSupabaseConnected || !medicine) return;
+    try {
+      const row = {
+        id: medicine.id,
+        store_id: storeId,
+        name: medicine.name,
+        salt_name: medicine.saltName || "",
+        manufacturer: medicine.manufacturer || "",
+        batch_no: medicine.batchNo || "BAT-GEN-101",
+        expiry_date: medicine.expiryDate || "2027-12-31",
+        quantity: parseInt(medicine.quantity, 10) || 0,
+        unit: medicine.unit || "10 Tablets / Strip",
+        purchase_rate: parseFloat(medicine.purchaseRate) || 0,
+        mrp: parseFloat(medicine.mrp) || 0,
+        free_scheme: medicine.freeScheme || "",
+        schedule: medicine.schedule || "Non-Schedule / OTC",
+        rack_location: medicine.rackLocation || "Rack A-01",
+        min_alert_threshold: parseInt(medicine.minAlertThreshold, 10) || 15
+      };
+      const { error } = await this.supabase.from("medicine_stocks").upsert(row);
+      if (error) throw error;
+      this.updateCloudSyncBadge("synced", "PostgreSQL: Stock SKU updated");
+    } catch (err) {
+      console.warn("Atomic pushSingleStock error:", err.message || err);
+    }
+  }
+
+  async deleteSingleStockFromSupabase(storeId, medicineId) {
+    if (!this.supabase || !this.isSupabaseConnected || !medicineId) return;
+    try {
+      const { error } = await this.supabase
+        .from("medicine_stocks")
+        .delete()
+        .match({ id: medicineId, store_id: storeId });
+      if (error) throw error;
+      this.updateCloudSyncBadge("synced", "PostgreSQL: Stock SKU deleted");
+    } catch (err) {
+      console.warn("Atomic deleteSingleStock error:", err.message || err);
+    }
+  }
+
+  async pushSingleStoreToSupabase(store) {
+    if (!this.supabase || !this.isSupabaseConnected || !store) return;
+    try {
+      const row = {
+        id: store.id,
+        slug: store.slug,
+        slug_aliases: store.slugAliases || [],
+        name: store.name,
+        district: store.district,
+        city: store.city,
+        address: store.address,
+        maps_url: store.mapsUrl || "",
+        phone: store.phone,
+        whatsapp: store.whatsapp,
+        email: store.email || "",
+        owner_name: store.ownerName,
+        license20: store.license20,
+        license21: store.license21,
+        gstin: store.gstin,
+        established_year: store.establishedYear || "1998",
+        operating_hours: store.operatingHours || "08:00 AM - 10:30 PM",
+        is_24x7: Boolean(store.is24x7),
+        photo_url: store.photoUrl || "",
+        gallery_photos: store.galleryPhotos || [],
+        pin: store.pin || "1998",
+        status: store.status || "Active",
+        rating: store.rating || 4.9
+      };
+      const { error } = await this.supabase.from("stores").upsert(row);
+      if (error) throw error;
+      this.updateCloudSyncBadge("synced", "PostgreSQL: Store profile updated");
+    } catch (err) {
+      console.warn("Atomic pushSingleStore error:", err.message || err);
+    }
+  }
+
+  async pushSingleStaffToSupabase(storeId, staff, action = "upsert") {
+    if (!this.supabase || !this.isSupabaseConnected || !staff) return;
+    try {
+      if (action === "delete") {
+        await this.supabase.from("staff_members").delete().match({ id: staff.id, store_id: storeId });
+      } else {
+        const row = {
+          id: staff.id,
+          store_id: storeId,
+          name: staff.name,
+          role: staff.role,
+          uppc_reg_no: staff.uppcRegNo || staff.regNumber || "",
+          qualification: staff.qualification || "",
+          reg_date: staff.regDate || "",
+          valid_upto: staff.validUpto || "",
+          phone: staff.phone || "",
+          shift: staff.shift || "Day Shift",
+          is_registered_pharmacist: staff.isRegisteredPharmacist !== false,
+          is_aadhaar_verified: staff.isAadhaarVerified !== false,
+          is_on_duty: staff.isOnDuty !== false,
+          avatar_url: staff.avatarUrl || ""
+        };
+        await this.supabase.from("staff_members").upsert(row);
+      }
+      this.updateCloudSyncBadge("synced", "PostgreSQL: Staff roster updated");
+    } catch (err) {
+      console.warn("Atomic pushSingleStaff error:", err.message || err);
+    }
+  }
+
+  async pushSingleTransactionToSupabase(storeId, transaction) {
+    if (!this.supabase || !this.isSupabaseConnected || !transaction) return;
+    try {
+      const row = {
+        id: transaction.id,
+        store_id: storeId,
+        type: transaction.type || "cash_memo",
+        patient_name: transaction.patientName || "Walk-in Patient",
+        doctor_name: transaction.docName || "Practitioner",
+        items_summary: transaction.medName ? `${transaction.medName} x ${transaction.quantity}` : (transaction.itemsSummary || "Dispensed Medication"),
+        amount: parseFloat(transaction.totalBill || transaction.amount || 0),
+        payment_mode: transaction.paymentMode || "Cash"
+      };
+      await this.supabase.from("transactions").upsert(row);
+    } catch (err) {
+      console.warn("Atomic pushSingleTransaction error:", err.message || err);
+    }
+  }
+
   openSupabaseConfigModal() {
     const modal = document.getElementById("modal-generic");
     const title = document.getElementById("modal-generic-title");
@@ -8648,7 +8778,9 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     }
 
     item[field] = value;
-    this.saveStores();
+    this.saveStores(false);
+    this.pushSingleStockToSupabase(store.id, item);
+    this.debouncedPushToCloud();
     this.renderCurrentView();
 
     let toastMsg = `Updated "${item.name}" successfully.`;
@@ -8673,7 +8805,9 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     if (!item) return;
 
     item.quantity = Math.max(0, item.quantity + delta);
-    this.saveStores();
+    this.saveStores(false);
+    this.pushSingleStockToSupabase(store.id, item);
+    this.debouncedPushToCloud();
     this.renderCurrentView();
     this.showToast(`Updated "${item.name}" stock: ${item.quantity} ${item.unit || 'Strips'}`, "info");
   }
@@ -8685,7 +8819,8 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
 
     if (confirm(`Are you sure you want to delete ${item.name} from inventory?`)) {
       store.stocks = store.stocks.filter((m) => m.id !== medicineId);
-      this.saveStores();
+      this.saveStores(false);
+      this.deleteSingleStockFromSupabase(store.id, medicineId);
       this.debouncedPushToCloud();
       this.closeModal();
       this.renderCurrentView();
@@ -10006,7 +10141,9 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
 
     if (confirm(`Remove ${st.name} (${st.role}) from store roster?`)) {
       store.staff = store.staff.filter((s) => s.id !== staffId);
-      this.saveStores();
+      this.saveStores(false);
+      this.pushSingleStaffToSupabase(store.id, st, "delete");
+      this.debouncedPushToCloud();
       this.renderCurrentView();
       this.showToast(`Removed ${st.name} from staff roster`, "info");
     }
@@ -13948,7 +14085,8 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       };
 
       store.stocks.unshift(newMed);
-      this.saveStores();
+      this.saveStores(false);
+      this.pushSingleStockToSupabase(store.id, newMed);
       this.debouncedPushToCloud();
       this.closeModal();
       this.renderCurrentView();
@@ -14063,7 +14201,8 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       med.purchaseRate = parseFloat(document.getElementById("edit-med-buy").value) || 0;
       med.freeScheme = this.formatFreeScheme(document.getElementById("edit-med-free").value) || "";
 
-      this.saveStores();
+      this.saveStores(false);
+      this.pushSingleStockToSupabase(store.id, med);
       this.debouncedPushToCloud();
       this.closeModal();
       this.renderCurrentView();
@@ -15217,7 +15356,10 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       store.scheduleH1Register.unshift(transaction);
     }
 
-    this.saveStores();
+    this.saveStores(false);
+    this.pushSingleStockToSupabase(store.id, med);
+    this.pushSingleTransactionToSupabase(store.id, transaction);
+    this.debouncedPushToCloud();
 
     const body = document.getElementById("modal-generic-body");
     const title = document.getElementById("modal-generic-title");
@@ -15479,7 +15621,9 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       status: staff.isOnDuty ? "Present On Duty (Statutory Incharge)" : "Shift Relieved & Relinquished"
     });
 
-    this.saveStores();
+    this.saveStores(false);
+    this.pushSingleStaffToSupabase(store.id, staff, "upsert");
+    this.debouncedPushToCloud();
     this.renderCurrentView();
     this.showToast(
       `${staff.name} is now ${staff.isOnDuty ? "Present On Duty (Statutory Incharge)" : "Off Duty"}. Biometric attendance logged.`,
