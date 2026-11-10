@@ -1329,8 +1329,19 @@ try {
   if (!deoriaHtml.includes('returnToMainPortal()')) {
     throw new Error('Hosted website footer missing returnToMainPortal link!');
   }
-  console.log('Clean Hosted Website verified: 0 floating portal buttons, footer links to main portal cleanly!');
-
+  // --- Testing Supabase Cloud PostgreSQL Integration Suite ---
+  app.setSupabaseConfig('https://test-ref.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test-anon-key');
+  const sbConf = app.getSupabaseConfig();
+  if (sbConf.url !== 'https://test-ref.supabase.co' || sbConf.key !== 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test-anon-key') {
+    throw new Error('Supabase config get/set failed!');
+  }
+  app.openSupabaseConfigModal();
+  const sbModalBody = mockElements['modal-generic-body'].innerHTML;
+  if (!sbModalBody.includes('sb-config-url') || !sbModalBody.includes('sb-config-key')) {
+    throw new Error('Supabase config modal did not render correctly!');
+  }
+  app.setSupabaseConfig('', '');
+  console.log('Supabase Cloud Database integration suite verified successfully!');
 
   console.log('ALL CONNECTION TESTS VERIFIED AND PASSED 100%!');
   console.log('ALL PHOTO & PROFILE STUDIO TESTS PASSED 100%!');

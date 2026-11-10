@@ -78,6 +78,7 @@ class ACSApp {
     this.renderHeaderBar();
     this.renderCurrentView();
     this.initCloudSync();
+    this.initSupabase();
     this.initPwaInstallation();
     this.handleUrlActionParams();
 
@@ -792,6 +793,9 @@ class ACSApp {
 
     if (syncToCloud) {
       this.debouncedPushToCloud();
+      if (this.isSupabaseConnected) {
+        this.debouncedPushToSupabase();
+      }
     }
   }
 
@@ -1034,6 +1038,13 @@ class ACSApp {
     if (typeof document === "undefined" || !document.querySelectorAll) return;
     const badges = document.querySelectorAll(".cloud-sync-indicator");
     badges.forEach((el) => {
+      if (this.isSupabaseConnected) {
+        el.className = "cloud-sync-indicator inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-900 border border-emerald-300 shadow-2xs cursor-pointer";
+        el.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> <i class="fa fa-database text-emerald-700"></i> PostgreSQL (Supabase) Live`;
+        el.title = "Supabase PostgreSQL Database Connected & Live. Click to manage.";
+        el.onclick = () => window.acsApp && window.acsApp.openSupabaseConfigModal();
+        return;
+      }
       if (status === "syncing") {
         el.className = "cloud-sync-indicator inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs";
         el.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 animate-spin"></span> Syncing to devices...`;
@@ -6687,6 +6698,481 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     dlAnchorElem.setAttribute("download", `acs_pharmacy_backup_${new Date().toISOString().slice(0, 10)}.json`);
     dlAnchorElem.click();
     this.showToast("Downloaded complete pharmacy database JSON backup!", "success");
+  }
+
+  // ==========================================
+  // REAL-TIME SUPABASE POSTGRESQL INTEGRATION
+  // ==========================================
+  getSupabaseConfig() {
+    let url = "";
+    let key = "";
+    if (typeof localStorage !== "undefined") {
+      url = localStorage.getItem("ACS_SUPABASE_URL") || "";
+      key = localStorage.getItem("ACS_SUPABASE_ANON_KEY") || "";
+    }
+    if (!url && typeof window !== "undefined" && window.ACS_SUPABASE_URL) {
+      url = window.ACS_SUPABASE_URL;
+    }
+    if (!key && typeof window !== "undefined" && window.ACS_SUPABASE_ANON_KEY) {
+      key = window.ACS_SUPABASE_ANON_KEY;
+    }
+    return { url: (url || "").trim(), key: (key || "").trim() };
+  }
+
+  setSupabaseConfig(url, key) {
+    if (typeof localStorage !== "undefined") {
+      if (url) localStorage.setItem("ACS_SUPABASE_URL", url.trim());
+      else localStorage.removeItem("ACS_SUPABASE_URL");
+      if (key) localStorage.setItem("ACS_SUPABASE_ANON_KEY", key.trim());
+      else localStorage.removeItem("ACS_SUPABASE_ANON_KEY");
+    }
+    this.initSupabase();
+  }
+
+  initSupabase() {
+    const config = this.getSupabaseConfig();
+    this.isSupabaseConnected = false;
+    this.supabase = null;
+
+    if (!config.url || !config.key) {
+      return;
+    }
+
+    if (typeof window !== "undefined" && window.supabase && typeof window.supabase.createClient === "function") {
+      try {
+        this.supabase = window.supabase.createClient(config.url, config.key, {
+          auth: { persistSession: true, autoRefreshToken: true }
+        });
+        this.isSupabaseConnected = true;
+
+        this.subscribeToSupabaseRealtime();
+        this.pullFromSupabase(true);
+      } catch (err) {
+        console.warn("Supabase client init notice:", err);
+      }
+    }
+  }
+
+  subscribeToSupabaseRealtime() {
+    if (!this.supabase || typeof this.supabase.channel !== "function") return;
+    try {
+      if (this.supabaseRealtimeChannel) {
+        this.supabase.removeChannel(this.supabaseRealtimeChannel);
+      }
+
+      this.supabaseRealtimeChannel = this.supabase.channel("acs-pharmacy-realtime")
+        .on("postgres_changes", { event: "*", schema: "public", table: "medicine_stocks" }, (payload) => {
+          this.handleSupabaseStockRealtime(payload);
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "stores" }, () => {
+          this.pullFromSupabase(false);
+        })
+        .subscribe();
+    } catch (e) {
+      console.warn("Supabase realtime subscribe notice:", e);
+    }
+  }
+
+  handleSupabaseStockRealtime(payload) {
+    if (!payload || !payload.new) return;
+    const newStock = payload.new;
+    const store = this.stores.find((s) => s.id === newStock.store_id);
+    if (!store) return;
+    store.stocks = store.stocks || [];
+    const existing = store.stocks.find((m) => m.id === newStock.id);
+    if (existing) {
+      existing.quantity = newStock.quantity;
+      existing.mrp = parseFloat(newStock.mrp);
+      existing.purchaseRate = parseFloat(newStock.purchase_rate);
+      existing.batchNo = newStock.batch_no;
+      existing.expiryDate = newStock.expiry_date;
+      existing.rackLocation = newStock.rack_location;
+      existing.freeScheme = newStock.free_scheme;
+    } else {
+      store.stocks.unshift({
+        id: newStock.id,
+        name: newStock.name,
+        saltName: newStock.salt_name,
+        manufacturer: newStock.manufacturer,
+        batchNo: newStock.batch_no,
+        expiryDate: newStock.expiry_date,
+        quantity: newStock.quantity,
+        unit: newStock.unit,
+        purchaseRate: parseFloat(newStock.purchase_rate),
+        mrp: parseFloat(newStock.mrp),
+        freeScheme: newStock.free_scheme,
+        schedule: newStock.schedule,
+        rackLocation: newStock.rack_location,
+        minAlertThreshold: newStock.min_alert_threshold
+      });
+    }
+    this.saveStores(false);
+    this.renderCurrentView();
+  }
+
+  async pullFromSupabase(isInitial = false) {
+    if (!this.supabase) return;
+    try {
+      const { data: storesData, error: storesErr } = await this.supabase
+        .from("stores")
+        .select("*, medicine_stocks(*), staff_members(*)");
+
+      if (storesErr || !Array.isArray(storesData) || storesData.length === 0) {
+        return;
+      }
+
+      const mappedStores = storesData.map((s) => {
+        const stocks = (s.medicine_stocks || []).map((m) => ({
+          id: m.id,
+          name: m.name,
+          saltName: m.salt_name,
+          manufacturer: m.manufacturer,
+          batchNo: m.batch_no,
+          expiryDate: m.expiry_date,
+          quantity: m.quantity,
+          unit: m.unit,
+          purchaseRate: parseFloat(m.purchase_rate || 0),
+          mrp: parseFloat(m.mrp || 0),
+          freeScheme: m.free_scheme || "",
+          schedule: m.schedule || "Non-Schedule / OTC",
+          rackLocation: m.rack_location || "Rack A-01",
+          minAlertThreshold: m.min_alert_threshold || 15
+        }));
+
+        const staff = (s.staff_members || []).map((st) => ({
+          id: st.id,
+          name: st.name,
+          role: st.role,
+          uppcRegNo: st.uppc_reg_no,
+          qualification: st.qualification,
+          regDate: st.reg_date,
+          validUpto: st.valid_upto,
+          phone: st.phone,
+          shift: st.shift,
+          isRegisteredPharmacist: st.is_registered_pharmacist,
+          isAadhaarVerified: st.is_aadhaar_verified,
+          isOnDuty: st.is_on_duty,
+          avatarUrl: st.avatar_url
+        }));
+
+        return {
+          id: s.id,
+          slug: s.slug,
+          slugAliases: s.slug_aliases || [],
+          name: s.name,
+          district: s.district,
+          city: s.city,
+          address: s.address,
+          mapsUrl: s.maps_url,
+          phone: s.phone,
+          whatsapp: s.whatsapp,
+          email: s.email,
+          ownerName: s.owner_name,
+          license20: s.license20,
+          license21: s.license21,
+          gstin: s.gstin,
+          establishedYear: s.established_year,
+          operatingHours: s.operating_hours,
+          is24x7: s.is_24x7,
+          photoUrl: s.photo_url,
+          galleryPhotos: s.gallery_photos || [],
+          pin: s.pin || "1998",
+          status: s.status || "Active",
+          rating: parseFloat(s.rating || 4.9),
+          stocks: stocks,
+          staff: staff,
+          revenueData: s.revenue_data || { todaySales: 21500, monthlyGross: 520000, transactions: [] }
+        };
+      });
+
+      this.stores = mappedStores;
+      this.saveStores(false);
+      this.renderHeaderBar();
+      this.renderCurrentView();
+
+      this.updateCloudSyncBadge("synced", "PostgreSQL (Supabase) Database Connected & Live");
+      if (!isInitial) {
+        this.showToast("PostgreSQL Sync: Synchronized latest records from Supabase.", "info");
+      }
+    } catch (e) {
+      console.warn("pullFromSupabase exception:", e);
+    }
+  }
+
+  debouncedPushToSupabase() {
+    if (this.supabasePushTimeout) clearTimeout(this.supabasePushTimeout);
+    this.supabasePushTimeout = setTimeout(() => {
+      this.syncAllToSupabase(true);
+    }, 600);
+  }
+
+  async syncAllToSupabase(silent = false) {
+    if (!this.supabase || !this.isSupabaseConnected) {
+      if (!silent) this.showToast("Supabase is not connected. Enter Project URL & Anon Key first.", "warning");
+      return;
+    }
+    if (!silent) this.showToast("Syncing all pharmacies, inventory & staff to Supabase PostgreSQL...", "info");
+
+    try {
+      let storeCount = 0;
+      let stockCount = 0;
+      let staffCount = 0;
+
+      for (const s of this.stores) {
+        await this.supabase.from("stores").upsert({
+          id: s.id,
+          slug: s.slug,
+          slug_aliases: s.slugAliases || [],
+          name: s.name,
+          district: s.district,
+          city: s.city,
+          address: s.address,
+          maps_url: s.mapsUrl || "",
+          phone: s.phone,
+          whatsapp: s.whatsapp,
+          email: s.email || "",
+          owner_name: s.ownerName,
+          license20: s.license20,
+          license21: s.license21,
+          gstin: s.gstin,
+          established_year: s.establishedYear || "1998",
+          operating_hours: s.operatingHours || "08:00 AM - 10:30 PM",
+          is_24x7: Boolean(s.is24x7),
+          photo_url: s.photoUrl || "",
+          gallery_photos: s.galleryPhotos || [],
+          pin: s.pin || "1998",
+          status: s.status || "Active",
+          rating: s.rating || 4.9
+        });
+        storeCount++;
+
+        if (Array.isArray(s.stocks) && s.stocks.length > 0) {
+          const stockRows = s.stocks.map(m => ({
+            id: m.id,
+            store_id: s.id,
+            name: m.name,
+            salt_name: m.saltName || "",
+            manufacturer: m.manufacturer || "",
+            batch_no: m.batchNo || "BAT-GEN-101",
+            expiry_date: m.expiryDate || "2027-12-31",
+            quantity: m.quantity || 0,
+            unit: m.unit || "10 Tablets / Strip",
+            purchase_rate: m.purchaseRate || 0,
+            mrp: m.mrp || 0,
+            free_scheme: m.freeScheme || "",
+            schedule: m.schedule || "Non-Schedule / OTC",
+            rack_location: m.rackLocation || "Rack A-01",
+            min_alert_threshold: m.minAlertThreshold || 15
+          }));
+          await this.supabase.from("medicine_stocks").upsert(stockRows);
+          stockCount += stockRows.length;
+        }
+
+        if (Array.isArray(s.staff) && s.staff.length > 0) {
+          const staffRows = s.staff.map(st => ({
+            id: st.id,
+            store_id: s.id,
+            name: st.name,
+            role: st.role,
+            uppc_reg_no: st.uppcRegNo || st.regNumber || "",
+            qualification: st.qualification || "",
+            reg_date: st.regDate || "",
+            valid_upto: st.validUpto || "",
+            phone: st.phone || "",
+            shift: st.shift || "Day Shift",
+            is_registered_pharmacist: st.isRegisteredPharmacist !== false,
+            is_aadhaar_verified: st.isAadhaarVerified !== false,
+            is_on_duty: st.isOnDuty !== false,
+            avatar_url: st.avatarUrl || ""
+          }));
+          await this.supabase.from("staff_members").upsert(staffRows);
+          staffCount += staffRows.length;
+        }
+      }
+
+      if (!silent) {
+        this.showToast(`Supabase PostgreSQL Sync Success: ${storeCount} Stores, ${stockCount} Stocks, ${staffCount} Staff pushed!`, "success");
+      }
+      this.updateCloudSyncBadge("synced", "PostgreSQL (Supabase) Database Connected & Live");
+    } catch (err) {
+      console.error("Supabase sync all error:", err);
+      if (!silent) this.showToast(`Supabase Sync Failed: ${err.message}`, "danger");
+    }
+  }
+
+  openSupabaseConfigModal() {
+    const modal = document.getElementById("modal-generic");
+    const title = document.getElementById("modal-generic-title");
+    const body = document.getElementById("modal-generic-body");
+    if (!modal || !title || !body) return;
+
+    const config = this.getSupabaseConfig();
+
+    title.innerHTML = `<i class="fa fa-database text-emerald-600"></i> Supabase PostgreSQL Database Settings`;
+    body.innerHTML = `
+      <div class="space-y-4 text-xs text-slate-800">
+        <!-- Status Banner -->
+        <div class="p-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-300 rounded-2xl flex items-start justify-between gap-3 shadow-xs">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-lg shadow-sm flex-shrink-0">
+              <i class="fa fa-database"></i>
+            </div>
+            <div>
+              <strong class="text-sm font-extrabold text-emerald-950 block">
+                ${this.isSupabaseConnected ? 'PostgreSQL Database Connected (Supabase)' : 'Connect Supabase PostgreSQL Database'}
+              </strong>
+              <p class="text-xs text-emerald-800 mt-0.5">
+                ${this.isSupabaseConnected ? `Live PostgreSQL connection active at <code class="font-mono text-[11px] bg-white/80 px-1 py-0.5 rounded border border-emerald-200 text-emerald-900">${config.url}</code>. Real-time multi-device sync is enabled.` : 'Connect your free Supabase PostgreSQL database to replace JSON sync with enterprise SQL ACID transactions, Row-Level Security, and instant WebSockets.'}
+              </p>
+            </div>
+          </div>
+          <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase flex-shrink-0 ${this.isSupabaseConnected ? 'bg-emerald-600 text-white shadow-xs' : 'bg-amber-100 text-amber-800 border border-amber-300'}">
+            ${this.isSupabaseConnected ? '● Live SQL' : 'Local Fallback'}
+          </span>
+        </div>
+
+        <!-- Connection Inputs -->
+        <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Supabase Project URL *</label>
+            <input type="url" id="sb-config-url" value="${config.url}" placeholder="https://xxxxxxxxxxxxxxxx.supabase.co" class="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono text-xs bg-white" />
+            <span class="text-[10px] text-slate-400 mt-0.5 block">Found in Supabase Dashboard &gt; Project Settings &gt; API &gt; Project URL</span>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Supabase Public Anon Key *</label>
+            <input type="password" id="sb-config-key" value="${config.key}" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." class="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono text-xs bg-white" />
+            <span class="text-[10px] text-slate-400 mt-0.5 block">Found in Supabase Dashboard &gt; Project Settings &gt; API &gt; Project API keys (anon public)</span>
+          </div>
+
+          <div id="sb-test-result" class="hidden"></div>
+
+          <div class="flex items-center gap-2 pt-2 flex-wrap">
+            <button type="button" onclick="window.acsApp.testSupabaseConnection()" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+              <i class="fa fa-plug"></i> Test Connection
+            </button>
+            <button type="button" onclick="window.acsApp.saveSupabaseCredentials()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+              <i class="fa fa-save"></i> Save &amp; Connect
+            </button>
+            <button type="button" onclick="window.acsApp.syncAllToSupabase()" class="px-3.5 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+              <i class="fa fa-cloud-upload"></i> 1-Click Push All Data to SQL
+            </button>
+            <button type="button" onclick="window.acsApp.downloadSupabaseSchemaSql()" class="px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer" title="Download SQL setup script">
+              <i class="fa fa-download text-teal-600"></i> Download SQL Setup File
+            </button>
+          </div>
+        </div>
+
+        <!-- Setup Instructions Guide -->
+        <div class="p-3.5 bg-sky-50/70 border border-sky-200 rounded-2xl space-y-1.5 text-slate-700 text-[11px]">
+          <strong class="text-sky-950 font-bold block text-xs flex items-center gap-1.5">
+            <i class="fa fa-info-circle text-sky-600"></i> Quick Setup Guide (₹0, 2 minutes):
+          </strong>
+          <ol class="list-decimal pl-4 space-y-1 text-slate-600">
+            <li>Go to <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline font-bold">supabase.com</a> and sign in with GitHub or email (Free forever tier).</li>
+            <li>Click <strong>New Project</strong>, set a database password, and pick a region.</li>
+            <li>Open the <strong>SQL Editor</strong> tab on the left in Supabase, click <strong>New Query</strong>, paste the content of <a href="javascript:void(0)" onclick="window.acsApp.downloadSupabaseSchemaSql()" class="text-teal-700 font-bold underline">supabase_complete_setup.sql</a>, and click <strong>Run</strong>.</li>
+            <li>Copy your <strong>Project URL</strong> and <strong>Anon Key</strong> from <em>Project Settings &gt; API</em>, paste them above, and click <strong>Save &amp; Connect</strong>!</li>
+          </ol>
+        </div>
+      </div>
+    `;
+
+    modal.classList.remove("hidden");
+  }
+
+  async testSupabaseConnection() {
+    const urlInput = document.getElementById("sb-config-url");
+    const keyInput = document.getElementById("sb-config-key");
+    const resultBox = document.getElementById("sb-test-result");
+
+    const url = (urlInput?.value || "").trim();
+    const key = (keyInput?.value || "").trim();
+
+    if (!url || !key) {
+      if (resultBox) {
+        resultBox.className = "p-3 rounded-xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300 block";
+        resultBox.innerHTML = `<i class="fa fa-exclamation-triangle"></i> Please enter both Supabase Project URL and Anon Key.`;
+      }
+      return;
+    }
+
+    if (resultBox) {
+      resultBox.className = "p-3 rounded-xl text-xs font-medium bg-blue-50 text-blue-800 border border-blue-300 block";
+      resultBox.innerHTML = `<i class="fa fa-spinner fa-spin"></i> Pinging Supabase PostgreSQL endpoint...`;
+    }
+
+    try {
+      if (typeof window !== "undefined" && window.supabase && typeof window.supabase.createClient === "function") {
+        const client = window.supabase.createClient(url, key);
+        const startTime = Date.now();
+        const { data, error, count } = await client.from("stores").select("id", { count: "exact", head: true });
+        const latency = Date.now() - startTime;
+
+        if (error) {
+          if (error.code === "42P01" || error.message?.includes("does not exist")) {
+            if (resultBox) {
+              resultBox.className = "p-3 rounded-xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300 block";
+              resultBox.innerHTML = `<i class="fa fa-info-circle text-amber-600"></i> Connected to Supabase in ${latency}ms, but tables are not created yet. Click "Download SQL Setup File" and run it in your Supabase SQL Editor.`;
+            }
+            return;
+          }
+          throw error;
+        }
+
+        if (resultBox) {
+          resultBox.className = "p-3 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 block";
+          resultBox.innerHTML = `<i class="fa fa-check-circle text-emerald-600"></i> Connection Verified! Connected to Supabase PostgreSQL in ${latency}ms. Enrolled stores: ${count !== null ? count : 'ready'}.`;
+        }
+      } else {
+        const res = await fetch(`${url}/rest/v1/stores?select=id`, {
+          headers: { "apikey": key, "Authorization": `Bearer ${key}` }
+        });
+        if (res.ok) {
+          if (resultBox) {
+            resultBox.className = "p-3 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 block";
+            resultBox.innerHTML = `<i class="fa fa-check-circle text-emerald-600"></i> Connection Verified via REST! Supabase project is active and reachable.`;
+          }
+        } else {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+      }
+    } catch (err) {
+      if (resultBox) {
+        resultBox.className = "p-3 rounded-xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-300 block";
+        resultBox.innerHTML = `<i class="fa fa-times-circle text-rose-600"></i> Connection Failed: ${err.message}. Please check your URL and anon key.`;
+      }
+    }
+  }
+
+  saveSupabaseCredentials() {
+    const urlInput = document.getElementById("sb-config-url");
+    const keyInput = document.getElementById("sb-config-key");
+
+    const url = (urlInput?.value || "").trim();
+    const key = (keyInput?.value || "").trim();
+
+    this.setSupabaseConfig(url, key);
+    this.closeModal();
+    this.renderHeaderBar();
+    this.renderCurrentView();
+
+    if (url && key) {
+      this.showToast("Supabase PostgreSQL credentials saved & database connected!", "success");
+    } else {
+      this.showToast("Supabase credentials cleared. System returned to local fallback.", "info");
+    }
+  }
+
+  downloadSupabaseSchemaSql() {
+    const sqlUrl = "supabase_complete_setup.sql";
+    const link = document.createElement("a");
+    link.href = sqlUrl;
+    link.download = "supabase_complete_setup.sql";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    this.showToast("Downloaded supabase_complete_setup.sql! Run it in Supabase SQL Editor.", "success");
   }
 
   // ==========================================
