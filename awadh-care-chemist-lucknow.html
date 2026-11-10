@@ -300,7 +300,7 @@
   <base href="/" />
 
   <!-- Custom CSS with UPPC Colors -->
-  <link rel="stylesheet" href="/styles.css?v=2.1.2" />
+  <link rel="stylesheet" href="/styles.css?v=2.2.0" />
 </head>
 <body class="bg-[#f4f7fa] text-slate-800 antialiased min-h-screen flex flex-col justify-between hosted-mode">
 
@@ -1777,16 +1777,18 @@
     window.ACS_SUPABASE_URL = "https://zcvhhfqnhbwpseowfnbr.supabase.co";
     window.ACS_SUPABASE_ANON_KEY = "sb_publishable_ieFq5bk-rn8Z3rbCHC31Ng_0QMLW4U1";
   </script>
-  <script src="/data.js?v=2.1.2"></script>
-  <script src="/app.js?v=2.1.2"></script>
+  <script src="/data.js?v=2.2.0"></script>
+  <script src="/app.js?v=2.2.0"></script>
   <script>
+    // Force purge any legacy service workers and clear browser caches
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').then((reg) => {
-          console.log('Drugs Systems PWA ServiceWorker active with scope:', reg.scope);
-        }).catch((err) => {
-          console.warn('PWA ServiceWorker registration notice:', err);
-        });
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        for (var i = 0; i < regs.length; i++) { regs[i].unregister(); }
+      });
+    }
+    if (typeof caches !== 'undefined' && caches.keys) {
+      caches.keys().then(function(keys) {
+        for (var j = 0; j < keys.length; j++) { caches.delete(keys[j]); }
       });
     }
   </script>

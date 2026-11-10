@@ -1642,6 +1642,17 @@ class ACSApp {
     const store = this.getCurrentStore();
     this.updatePageSeo(store);
 
+    if (this.activeTab === "hosted-site" && store) {
+      this._lastRenderedStoreSig = JSON.stringify({
+        id: store.id,
+        name: store.name,
+        phone: store.phone,
+        photoUrl: store.photoUrl,
+        stocks: (store.stocks || []).map(m => `${m.id}:${m.quantity}:${m.mrp}`),
+        staff: (store.staff || []).map(s => `${s.id}:${s.name}:${s.isOnDuty}`)
+      });
+    }
+
     switch (this.activeTab) {
       case "landing":
         container.innerHTML = this.getLandingPageViewHtml();
@@ -7253,19 +7264,19 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     this.updateCloudSyncBadge();
 
     if (syncedCount > 0) {
-      this.showToast(`Offline POS Sync: Replayed ${syncedCount} queued change(s) to live PostgreSQL!`, "success");
+      console.log(`[Offline Sync] Replayed ${syncedCount} queued change(s) to live PostgreSQL.`);
     }
   }
 
   handleNetworkOnline() {
-    this.showToast("Network restored: Reconnecting live PostgreSQL database...", "info");
+    console.log("[Network] Connection restored: Reconnecting live PostgreSQL database.");
     this.initSupabase();
     this.flushOfflineOutbox();
     this.updateCloudSyncBadge();
   }
 
   handleNetworkOffline() {
-    this.showToast("Offline POS Mode Active: All transactions & edits are safely queued locally.", "warning");
+    console.log("[Network] Connection offline: Operating in local offline mode.");
     this.updateCloudSyncBadge();
   }
 
