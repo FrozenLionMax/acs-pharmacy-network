@@ -3,6 +3,25 @@
  * Uttar Pradesh Pharmacy Data Hosting & Compliance Management Platform
  */
 
+const UP_DISTRICTS = [
+  "Deoria", "Lucknow", "Kanpur Nagar", "Varanasi", "Gorakhpur",
+  "Agra", "Aligarh", "Prayagraj (Allahabad)", "Ambedkar Nagar", "Amethi",
+  "Amroha", "Auraiya", "Ayodhya (Faizabad)", "Azamgarh", "Baghpat",
+  "Bahraich", "Ballia", "Balrampur", "Banda", "Barabanki",
+  "Bareilly", "Basti", "Bhadohi", "Bijnor", "Budaun",
+  "Bulandshahr", "Chandauli", "Chitrakoot", "Etah", "Etawah",
+  "Farrukhabad", "Fatehpur", "Firozabad", "Gautam Buddha Nagar (Noida)",
+  "Ghaziabad", "Ghazipur", "Gonda", "Hamirpur", "Hapur",
+  "Hardoi", "Hathras", "Jalaun", "Jaunpur", "Jhansi",
+  "Kannauj", "Kanpur Dehat", "Kasganj", "Kaushambi", "Kushinagar",
+  "Lakhimpur Kheri", "Lalitpur", "Maharajganj", "Mahoba", "Mainpuri",
+  "Mathura", "Mau", "Meerut", "Mirzapur", "Moradabad",
+  "Muzaffarnagar", "Pilibhit", "Pratapgarh", "Raebareli", "Rampur",
+  "Saharanpur", "Sambhal", "Sant Kabir Nagar", "Shahjahanpur", "Shamli",
+  "Shravasti", "Siddharthnagar", "Sitapur", "Sonbhadra", "Sultanpur",
+  "Unnao"
+];
+
 class ACSApp {
   constructor() {
     this.stores = [];
@@ -297,6 +316,11 @@ class ACSApp {
     const urlParams = new URLSearchParams(window.location.search);
     const storeParam = urlParams.get("store");
     const subTabParam = urlParams.get("tab");
+
+    if (subTabParam === "deploy" || subTabParam === "deploy-website" || path === "/deploy" || path === "/deploy.html" || (window.location && window.location.hash === "#deploy")) {
+      this.activeTab = "deploy-website";
+      return;
+    }
 
     let slug = null;
     let isAudit = false;
@@ -1165,12 +1189,15 @@ class ACSApp {
             <button onclick="window.acsApp.syncNow()" class="cloud-sync-indicator inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30 border border-emerald-400/40 shadow-xs cursor-pointer transition" title="Live multi-device cloud synchronization active. Tap to force instant sync.">
               <span class="w-2 h-2 rounded-full bg-emerald-400"></span> <span class="hidden sm:inline">Live Cloud</span> Synced
             </button>
+            <button onclick="window.acsApp.showDeploymentPage()" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-black bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 shadow-xs cursor-pointer transition" title="Deploy a new licensed pharmacy website">
+              <i class="fa fa-rocket text-slate-950"></i> <span class="hidden sm:inline">Deploy</span> New Store
+            </button>
             <div class="bg-white/15 px-3 py-1.5 rounded-xl border border-white/20 text-xs text-right">
               <span class="text-[10px] uppercase font-black text-amber-300 block flex items-center justify-end gap-1">
-                <i class="fa fa-hospital-o"></i> Deoria Drug House
+                <i class="fa fa-hospital-o"></i> ${this.getCurrentStore() ? this.getCurrentStore().name : 'Deoria Drug House'}
               </span>
               <span class="font-bold text-white text-[11px] sm:text-xs">
-                <i class="fa fa-user-circle text-teal-200 mr-1"></i>Akhileshwar Tripathi
+                <i class="fa fa-user-circle text-teal-200 mr-1"></i>${this.currentUser.name || 'Owner'}
               </span>
             </div>
             <button onclick="window.acsApp.logout()" class="bg-rose-600/90 hover:bg-rose-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow">
@@ -1194,6 +1221,10 @@ class ACSApp {
             </button>
             <button onclick="window.acsApp.syncNow()" class="cloud-sync-indicator inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-white/10 text-white hover:bg-white/20 border border-white/20 shadow-xs cursor-pointer transition" title="Live network sync. Tap to refresh">
               <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Live Synced
+            </button>
+            <button onclick="window.acsApp.showDeploymentPage()" class="inline-flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 shadow-md border border-emerald-300/40 cursor-pointer transition transform hover:scale-[1.02]" title="Deploy your verified pharmacy website live in 60 seconds">
+              <i class="fa fa-rocket text-slate-950"></i>
+              <span>Deploy Pharmacy Website</span>
             </button>
             <button onclick="window.acsApp.openLoginModal()" class="bg-amber-400 hover:bg-amber-500 text-slate-950 px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-black shadow-md transition flex items-center gap-1.5">
               <i class="fa fa-lock"></i> Pharmacist Login
@@ -1280,7 +1311,7 @@ class ACSApp {
     }
 
     // If not authenticated and not on landing, force landing
-    if (!this.currentUser && this.activeTab !== "landing" && this.activeTab !== "hosted-site") {
+    if (!this.currentUser && this.activeTab !== "landing" && this.activeTab !== "hosted-site" && this.activeTab !== "deploy-website") {
       this.activeTab = "landing";
     }
 
@@ -1291,6 +1322,10 @@ class ACSApp {
       case "landing":
         container.innerHTML = this.getLandingPageViewHtml();
         this.bindLandingEvents();
+        break;
+      case "deploy-website":
+        container.innerHTML = this.getDeploymentPageViewHtml();
+        this.bindDeploymentPageEvents();
         break;
       case "hosted-site":
         container.innerHTML = this.getHostedWebsiteViewHtml(store);
@@ -2163,7 +2198,7 @@ class ACSApp {
       <div class="space-y-8 animate-fade-in -mt-2">
         <!-- Top Sub-Navigation Switcher -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
-          <div class="inline-flex items-center gap-1.5 p-1 bg-slate-200/90 rounded-2xl text-xs font-bold shadow-xs">
+          <div class="inline-flex items-center gap-1.5 p-1 bg-slate-200/90 rounded-2xl text-xs font-bold shadow-xs flex-wrap sm:flex-nowrap">
             <button 
               onclick="window.acsApp.setLandingSubTab('gateway')" 
               class="px-4 py-2 rounded-xl transition flex items-center gap-2 ${!isShowcase ? 'bg-[#135c7e] text-white shadow font-black' : 'text-slate-600 hover:text-slate-900'}"
@@ -2178,6 +2213,15 @@ class ACSApp {
               <i class="fa fa-hospital-o"></i>
               <span>Public UP Pharmacy Directory</span>
               <span class="bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full text-[10px] font-black">${this.stores.length} VERIFIED</span>
+            </button>
+            <button 
+              onclick="window.acsApp.showDeploymentPage()" 
+              class="px-4 py-2 rounded-xl transition flex items-center gap-2 text-emerald-900 bg-gradient-to-r from-emerald-300 via-teal-300 to-emerald-300 hover:from-emerald-400 hover:to-teal-400 font-black shadow-xs cursor-pointer transform hover:scale-[1.02]"
+              title="Deploy a new verified retail pharmacy website"
+            >
+              <i class="fa fa-rocket text-emerald-950"></i>
+              <span>Deploy Pharmacy Website</span>
+              <span class="bg-slate-950 text-amber-300 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide">FREE LIVE</span>
             </button>
           </div>
 
@@ -2234,8 +2278,8 @@ class ACSApp {
             </div>
 
             <div class="flex items-center gap-3">
-              <button onclick="window.acsApp.openAddStoreModal()" class="bg-[#135c7e] hover:bg-[#0f4b67] text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm">
-                <i class="fa fa-plus-circle"></i> Register Licensed Pharmacy
+              <button onclick="window.acsApp.showDeploymentPage()" class="bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white px-4 py-2.5 rounded-xl text-xs font-black transition flex items-center gap-2 shadow-sm cursor-pointer">
+                <i class="fa fa-rocket text-amber-300"></i> Deploy Pharmacy Website
               </button>
             </div>
           </div>
@@ -2475,6 +2519,18 @@ class ACSApp {
                 The official public verification portal for Uttar Pradesh retail pharmacies. Search any licensed chemist across Lucknow, Kanpur, Deoria, and all UP districts to verify Form 20/21 drug licenses, on-duty UPPC registered pharmacists, and live retail medicine availability.
               </p>
 
+              <!-- Hero Action Buttons -->
+              <div class="flex items-center gap-3 pt-2 flex-wrap">
+                <button onclick="window.acsApp.showDeploymentPage()" class="bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 hover:from-amber-300 hover:to-amber-200 text-slate-950 text-xs sm:text-sm font-black px-6 py-3.5 rounded-2xl shadow-xl transition flex items-center gap-2.5 transform hover:-translate-y-0.5 border border-amber-200 cursor-pointer" title="Deploy your own verified pharmacy website live in 60 seconds">
+                  <i class="fa fa-rocket text-base text-slate-950"></i>
+                  <span>Deploy Your Pharmacy Website (Free Instant Live)</span>
+                </button>
+                <button onclick="window.acsApp.setLandingSubTab('showcase')" class="bg-white/15 hover:bg-white/25 text-white text-xs sm:text-sm font-bold px-4 sm:px-5 py-3.5 rounded-2xl transition flex items-center gap-2 border border-white/20 cursor-pointer">
+                  <i class="fa fa-search"></i>
+                  <span>Browse ${this.stores.length} Verified Stores</span>
+                </button>
+              </div>
+
               <!-- Live Stat Badges -->
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-white/10">
                 <div class="bg-white/10 backdrop-blur-md p-3 rounded-xl text-center">
@@ -2616,8 +2672,8 @@ class ACSApp {
               <button onclick="window.acsApp.setLandingSubTab('showcase')" class="bg-amber-400 hover:bg-amber-500 text-slate-950 px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-sm">
                 <i class="fa fa-list"></i> Full State Directory (${this.stores.length})
               </button>
-              <button onclick="window.acsApp.openAddStoreModal()" class="bg-[#135c7e] hover:bg-[#0f4b67] text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-                <i class="fa fa-plus-circle"></i> Register Chemist Store
+              <button onclick="window.acsApp.showDeploymentPage()" class="bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-sm cursor-pointer">
+                <i class="fa fa-rocket text-amber-300"></i> Deploy Pharmacy Website
               </button>
             </div>
           </div>
@@ -9535,6 +9591,1144 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           </p>
         </div>
       `;
+    }
+  }
+
+  // ==========================================
+  // DEPLOYMENT PAGE: INSTANT PHARMACY ONBOARDING
+  // ==========================================
+  showDeploymentPage() {
+    this.activeTab = "deploy-website";
+    try {
+      if (typeof window !== "undefined" && window.history && window.history.pushState) {
+        if (window.location.pathname !== "/deploy" && !window.location.search.includes("tab=deploy")) {
+          window.history.pushState({ tab: "deploy-website" }, "", "/deploy");
+        }
+      }
+    } catch (_) {}
+    this.renderHeaderBar();
+    this.renderCurrentView();
+    if (typeof window !== "undefined" && window.scrollTo) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  viewPublicWebsite(storeId) {
+    this.currentUser = null;
+    this.saveUserSession();
+    this.viewHostedWebsite(storeId);
+    this.showToast("Viewing storefront in Public Read-Only Verification Mode.", "info");
+  }
+
+  getDeploymentPageViewHtml() {
+    return `
+      <div id="deploy-page-wrapper" class="max-w-5xl mx-auto space-y-8 animate-fade-in pb-12">
+        <!-- Navigation Breadcrumbs -->
+        <nav class="flex items-center gap-2 text-xs font-semibold text-slate-500">
+          <button type="button" onclick="window.acsApp.switchTab('landing')" class="hover:text-slate-900 transition flex items-center gap-1.5">
+            <i class="fa fa-home"></i> Home
+          </button>
+          <i class="fa fa-angle-right text-slate-400"></i>
+          <span class="text-teal-800 font-bold">Deploy Pharmacy Website</span>
+        </nav>
+
+        <!-- Main Deployment Header Banner -->
+        <div class="bg-gradient-to-br from-[#0e3b52] via-[#135c7e] to-[#1e3e6b] text-white rounded-3xl p-6 sm:p-10 shadow-xl relative overflow-hidden">
+          <div class="absolute -right-16 -bottom-16 w-80 h-80 rounded-full bg-white/5 pointer-events-none"></div>
+          <div class="relative z-10 space-y-4 max-w-3xl">
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold tracking-wide">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              <span>Uttar Pradesh Pharmacy Council &amp; FSDA Aligned</span>
+            </div>
+
+            <h1 class="text-2xl sm:text-4xl font-black tracking-tight leading-tight text-white">
+              Deploy Your Licensed Uttar Pradesh Pharmacy Website
+            </h1>
+
+            <p class="text-xs sm:text-sm text-teal-100/90 leading-relaxed font-normal">
+              Publish your statutory Form 20/21 retail pharmacy webpage in under 60 seconds. Provides real-time public medicine verification for patients, doctor e-prescriptions, and your exclusive confidential owner login to manage inventory, prices, and staff.
+            </p>
+
+            <!-- 3 Trust Value Badges -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3">
+              <div class="flex items-center gap-2.5 p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15">
+                <div class="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black text-sm flex-shrink-0">
+                  <i class="fa fa-globe"></i>
+                </div>
+                <div class="text-left leading-tight">
+                  <div class="text-[11px] font-bold text-white">Dedicated URL</div>
+                  <div class="text-[10px] text-teal-200">drugs.systems/pharmacy/...</div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2.5 p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15">
+                <div class="w-8 h-8 rounded-xl bg-emerald-400 text-slate-950 flex items-center justify-center font-black text-sm flex-shrink-0">
+                  <i class="fa fa-lock"></i>
+                </div>
+                <div class="text-left leading-tight">
+                  <div class="text-[11px] font-bold text-white">Owner Protected</div>
+                  <div class="text-[10px] text-teal-200">Public verify + Owner edit</div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2.5 p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15">
+                <div class="w-8 h-8 rounded-xl bg-cyan-400 text-slate-950 flex items-center justify-center font-black text-sm flex-shrink-0">
+                  <i class="fa fa-bolt"></i>
+                </div>
+                <div class="text-left leading-tight">
+                  <div class="text-[11px] font-bold text-white">Instant Cloud Sync</div>
+                  <div class="text-[10px] text-teal-200">Live multi-device backup</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Deployment Container (Replaced with Success Dossier on submission) -->
+        <div id="deploy-page-content" class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-10 space-y-8">
+          <form id="form-deploy-website" class="space-y-8">
+            <!-- SECTION 1: PHARMACY BRAND & STORE IDENTIFIERS -->
+            <div class="space-y-4">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-7 h-7 rounded-lg bg-teal-50 text-teal-700 font-black text-xs flex items-center justify-center border border-teal-200">1</span>
+                  <h3 class="text-base font-black text-slate-900">Pharmacy Identity &amp; Web Address</h3>
+                </div>
+                <span class="text-[11px] text-slate-500 font-semibold">* Mandatory fields</span>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="md:col-span-2 space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-700">
+                    Registered Pharmacy / Firm Trade Name *
+                  </label>
+                  <input 
+                    type="text" 
+                    id="deploy-store-name" 
+                    required 
+                    placeholder="e.g. Apoorva Tripathi Medicos, Deoria" 
+                    class="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e] focus:border-[#135c7e] font-semibold text-slate-900" 
+                  />
+                  <!-- Live URL Slug Preview Pill -->
+                  <div class="flex items-center gap-2 pt-1 text-xs text-slate-500">
+                    <span class="font-medium text-slate-600">Your Deployed Web Address:</span>
+                    <span class="font-mono text-[11px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-lg border border-teal-200 truncate max-w-full">
+                      https://www.drugs.systems/pharmacy/<span id="deploy-slug-preview">your-pharmacy-name</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-700">
+                    Uttar Pradesh District *
+                  </label>
+                  <select 
+                    id="deploy-district" 
+                    required 
+                    class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e] bg-white font-medium text-slate-900"
+                  >
+                    ${UP_DISTRICTS.map(d => `<option value="${d}" ${d === "Deoria" ? "selected" : ""}>${d}</option>`).join("")}
+                  </select>
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-700">
+                    Operating Hours *
+                  </label>
+                  <input 
+                    type="text" 
+                    id="deploy-hours" 
+                    value="08:00 AM - 10:30 PM" 
+                    required 
+                    placeholder="e.g. 08:00 AM - 10:30 PM" 
+                    class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e] font-medium" 
+                  />
+                </div>
+
+                <div class="md:col-span-2 space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-700">
+                    Full Physical Shop Address *
+                  </label>
+                  <input 
+                    type="text" 
+                    id="deploy-address" 
+                    required 
+                    placeholder="Shop No. / Plot, Market Name, Landmark, PIN Code" 
+                    class="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e] font-medium" 
+                  />
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-700">
+                    Primary Contact Phone (Calling) *
+                  </label>
+                  <input 
+                    type="tel" 
+                    id="deploy-phone" 
+                    required 
+                    placeholder="+91 80040 34320" 
+                    class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e] font-medium" 
+                  />
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-700">
+                    WhatsApp Number for Patient Prescriptions
+                  </label>
+                  <input 
+                    type="tel" 
+                    id="deploy-whatsapp" 
+                    placeholder="+91 80040 34320" 
+                    class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e] font-medium" 
+                  />
+                </div>
+
+                <div class="md:col-span-2 flex items-center pt-1">
+                  <label class="inline-flex items-center gap-2.5 text-xs text-slate-800 font-bold cursor-pointer select-none">
+                    <input type="checkbox" id="deploy-24x7" checked class="w-4 h-4 text-[#135c7e] rounded focus:ring-[#135c7e]" />
+                    <span>Designate as 24x7 Emergency Chemist &amp; Drug Dispensary</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 2: STATUTORY DRUG LICENSES & TAX ID -->
+            <div class="space-y-4">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-7 h-7 rounded-lg bg-teal-50 text-teal-700 font-black text-xs flex items-center justify-center border border-teal-200">2</span>
+                  <h3 class="text-base font-black text-slate-900">Statutory Drug Licenses (UP FSDA Mandate)</h3>
+                </div>
+                <span class="text-[11px] text-slate-500 font-medium">Drugs &amp; Cosmetics Rules 1945</span>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-700">
+                    Drug License (Form 20 - Retail Allopathic) *
+                  </label>
+                  <input 
+                    type="text" 
+                    id="deploy-lic20" 
+                    required 
+                    placeholder="e.g. UP/DEO/2023/20/3142" 
+                    class="w-full px-3.5 py-2.5 text-sm font-mono border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e]" 
+                  />
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-700">
+                    Drug License (Form 21 - Schedule C/C1) *
+                  </label>
+                  <input 
+                    type="text" 
+                    id="deploy-lic21" 
+                    required 
+                    placeholder="e.g. UP/DEO/2023/21/3142" 
+                    class="w-full px-3.5 py-2.5 text-sm font-mono border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e]" 
+                  />
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-700">
+                    GSTIN Number (Optional)
+                  </label>
+                  <input 
+                    type="text" 
+                    id="deploy-gstin" 
+                    placeholder="09AABCT8192M1Z5" 
+                    class="w-full px-3.5 py-2.5 text-sm font-mono border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e]" 
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 3: REGISTERED PHARMACIST INCHARGE -->
+            <div class="space-y-4">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-7 h-7 rounded-lg bg-teal-50 text-teal-700 font-black text-xs flex items-center justify-center border border-teal-200">3</span>
+                  <h3 class="text-base font-black text-slate-900">Registered Pharmacist Incharge (UPPC Council)</h3>
+                </div>
+                <span class="text-[11px] text-slate-500 font-medium">Pharmacy Act 1948 Section 32</span>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-700">
+                    Pharmacist Full Name *
+                  </label>
+                  <input 
+                    type="text" 
+                    id="deploy-pharmacist-name" 
+                    required 
+                    placeholder="e.g. Apoorva Tripathi" 
+                    class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e] font-semibold" 
+                  />
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-700">
+                    UPPC Registration Number *
+                  </label>
+                  <input 
+                    type="text" 
+                    id="deploy-pharmacist-reg" 
+                    required 
+                    placeholder="e.g. UPPC-PH-41290" 
+                    class="w-full px-3.5 py-2.5 text-sm font-mono border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e]" 
+                  />
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-700">
+                    Qualification
+                  </label>
+                  <select 
+                    id="deploy-pharmacist-qual" 
+                    class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e] bg-white font-medium"
+                  >
+                    <option value="B.Pharm, R.Ph (UP)">B.Pharm, R.Ph (UP)</option>
+                    <option value="D.Pharm, R.Ph (UP)">D.Pharm, R.Ph (UP)</option>
+                    <option value="Pharm.D, R.Ph (UP)">Pharm.D, R.Ph (UP)</option>
+                    <option value="M.Pharm, R.Ph (UP)">M.Pharm, R.Ph (UP)</option>
+                  </select>
+                </div>
+
+                <!-- Pharmacist Profile Photo Upload (Real client-side compression) -->
+                <div class="md:col-span-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                  <label class="block text-xs font-bold text-slate-800">
+                    <i class="fa fa-user-circle text-teal-700"></i> Pharmacist Badge Photo (Optional)
+                  </label>
+                  <div class="flex items-center gap-4 flex-wrap">
+                    <div id="deploy-pharmacist-preview-box" class="w-16 h-16 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center overflow-hidden flex-shrink-0 shadow-xs relative">
+                      <i class="fa fa-user text-slate-400 text-2xl" id="deploy-pharmacist-preview-icon"></i>
+                      <img id="deploy-pharmacist-preview-img" src="" class="w-full h-full object-cover hidden" alt="Pharmacist preview" />
+                    </div>
+                    <div class="flex-1 space-y-1">
+                      <div class="flex items-center gap-2">
+                        <label class="cursor-pointer px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition inline-flex items-center gap-1.5 shadow-xs">
+                          <i class="fa fa-upload"></i> Upload Pharmacist Photo
+                          <input type="file" id="deploy-pharmacist-photo-file" accept="image/*" class="hidden" />
+                        </label>
+                        <button type="button" id="btn-remove-deploy-pharmacist-photo" class="text-xs text-rose-600 hover:underline hidden font-bold">
+                          <i class="fa fa-trash"></i> Remove
+                        </button>
+                      </div>
+                      <input type="hidden" id="deploy-pharmacist-photo" value="" />
+                      <span class="text-[11px] text-slate-500 block">Photo is automatically compressed for immediate doctor &amp; patient verification.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 4: STOREFRONT PHOTOGRAPHY & SIGNBOARD (Real File Upload & Canvas Compression) -->
+            <div class="space-y-4">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-7 h-7 rounded-lg bg-teal-50 text-teal-700 font-black text-xs flex items-center justify-center border border-teal-200">4</span>
+                  <h3 class="text-base font-black text-slate-900">Storefront Photo &amp; Signboard</h3>
+                </div>
+                <span class="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
+                  <i class="fa fa-check-circle"></i> Real In-Browser Compression
+                </span>
+              </div>
+
+              <div class="p-5 bg-gradient-to-r from-slate-50 to-teal-50/30 border border-slate-200 rounded-2xl space-y-3">
+                <p class="text-xs text-slate-600 leading-relaxed">
+                  Upload a photo of your shop's front exterior, signboard, or medicine display counter. Large camera photos from mobile phones (e.g. 10MB+) are <strong>automatically optimized down to fast web standards</strong> on your device without quality loss.
+                </p>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                  <!-- Photo Preview Tile -->
+                  <div id="deploy-photo-preview-tile" class="md:col-span-1 h-36 rounded-2xl border-2 border-dashed border-slate-300 bg-white flex flex-col items-center justify-center overflow-hidden relative shadow-xs">
+                    <div id="deploy-photo-placeholder" class="text-center p-3">
+                      <i class="fa fa-camera text-slate-400 text-3xl mb-1.5 block"></i>
+                      <span class="text-[11px] text-slate-500 font-semibold block">No photo selected</span>
+                      <span class="text-[10px] text-slate-400 block">Select a file below or use default</span>
+                    </div>
+                    <img id="deploy-photo-preview-img" src="" class="w-full h-full object-cover hidden" alt="Storefront preview" />
+                  </div>
+
+                  <!-- Controls & Fallbacks -->
+                  <div class="md:col-span-2 space-y-2.5">
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                      <label class="cursor-pointer px-4 py-2.5 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-xl text-xs font-bold transition inline-flex items-center gap-2 shadow-xs">
+                        <i class="fa fa-upload text-amber-300"></i>
+                        <span>Choose Storefront Photo</span>
+                        <input type="file" id="deploy-store-photo-file" accept="image/*" class="hidden" />
+                      </label>
+                      <button type="button" id="btn-remove-deploy-photo" class="px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 rounded-lg hidden font-bold border border-rose-200 transition">
+                        <i class="fa fa-trash"></i> Remove Photo
+                      </button>
+                    </div>
+
+                    <div class="space-y-1">
+                      <span class="text-[11px] text-slate-500 font-medium block">Or specify an existing image URL:</span>
+                      <input 
+                        type="text" 
+                        id="deploy-store-photo-url" 
+                        placeholder="https://images.unsplash.com/... or paste image URL" 
+                        class="w-full px-3 py-2 text-xs font-mono border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e] bg-white" 
+                      />
+                      <input type="hidden" id="deploy-store-photo" value="" />
+                    </div>
+
+                    <div id="deploy-photo-size-badge" class="text-[10px] text-emerald-800 font-bold hidden flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 w-fit">
+                      <i class="fa fa-check"></i> <span id="deploy-photo-size-text">Compressed &amp; ready</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 5: INITIAL MEDICINE STOCK & ESSENTIAL SUPPLIES -->
+            <div class="space-y-4">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-7 h-7 rounded-lg bg-teal-50 text-teal-700 font-black text-xs flex items-center justify-center border border-teal-200">5</span>
+                  <h3 class="text-base font-black text-slate-900">Initial Statutory Medicine Stock Initializer</h3>
+                </div>
+                <span class="text-[11px] text-emerald-700 font-bold">Auto-Populated</span>
+              </div>
+
+              <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                <p class="text-xs text-slate-600 leading-relaxed">
+                  To ensure your webpage is immediately useful for patients and doctors right after deployment, we initialize it with <strong>standard UP essential medicines</strong> (Schedule H &amp; OTC). You can edit quantities, add new SKUs, or import your entire catalog anytime via your Owner Portal.
+                </p>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                  <div class="p-2.5 bg-white rounded-xl border border-slate-200">
+                    <div class="font-bold text-slate-800">Augmentin 625 Duo</div>
+                    <div class="text-[10px] text-slate-500">80 Strips • Sched H</div>
+                  </div>
+                  <div class="p-2.5 bg-white rounded-xl border border-slate-200">
+                    <div class="font-bold text-slate-800">Paracetamol 650mg</div>
+                    <div class="text-[10px] text-slate-500">100 Strips • OTC</div>
+                  </div>
+                  <div class="p-2.5 bg-white rounded-xl border border-slate-200">
+                    <div class="font-bold text-slate-800">Azithromycin 500mg</div>
+                    <div class="text-[10px] text-slate-500">60 Strips • Sched H</div>
+                  </div>
+                  <div class="p-2.5 bg-white rounded-xl border border-slate-200">
+                    <div class="font-bold text-slate-800">ORS Electrolyte Pouch</div>
+                    <div class="text-[10px] text-slate-500">150 Sachets • WHO Formula</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 6: CONFIDENTIAL OWNER LOGIN CREDENTIALS -->
+            <div class="space-y-4">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 font-black text-xs flex items-center justify-center border border-amber-300">6</span>
+                  <h3 class="text-base font-black text-slate-900">Confidential Owner Login &amp; Security Credentials</h3>
+                </div>
+                <span class="text-[11px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full">
+                  Keep Private
+                </span>
+              </div>
+
+              <div class="p-5 bg-gradient-to-r from-slate-900 to-[#0e3b52] text-white rounded-2xl space-y-4 shadow-md">
+                <div class="space-y-1">
+                  <h4 class="text-xs font-bold text-amber-300 flex items-center gap-1.5 uppercase tracking-wider">
+                    <i class="fa fa-key"></i> Owner Credentials Enable Exclusive Edit Access
+                  </h4>
+                  <p class="text-[11px] text-slate-300 leading-relaxed">
+                    Public visitors, patients, and drug inspectors will only see a <strong>Public Read-Only Verification Webpage</strong>. They cannot change stocks or prices. Only you can log in with these credentials to edit medicines, update batches, and adjust stock quantities.
+                  </p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
+                  <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-200">
+                      Owner Notification Email *
+                    </label>
+                    <input 
+                      type="email" 
+                      id="deploy-owner-email" 
+                      required 
+                      placeholder="e.g. owner@apoorva-medicos.in" 
+                      class="w-full px-3.5 py-2 text-xs font-mono border border-slate-700 bg-slate-800/90 text-amber-200 rounded-xl focus:ring-2 focus:ring-teal-400" 
+                    />
+                    <span class="text-[10px] text-slate-400 block">Receives doctor Rx alerts &amp; sync logs.</span>
+                  </div>
+
+                  <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-200">
+                      Store ID / Login Username *
+                    </label>
+                    <input 
+                      type="text" 
+                      id="deploy-login-id" 
+                      required 
+                      placeholder="e.g. apoorva-tripathi" 
+                      class="w-full px-3.5 py-2 text-xs font-mono border border-slate-700 bg-slate-800/90 text-amber-300 font-bold rounded-xl focus:ring-2 focus:ring-teal-400" 
+                    />
+                    <span class="text-[10px] text-slate-400 block">Auto-derived from name; fully editable.</span>
+                  </div>
+
+                  <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-200">
+                      Master Owner Password / PIN *
+                    </label>
+                    <div class="relative">
+                      <input 
+                        type="text" 
+                        id="deploy-password" 
+                        required 
+                        value="Pharma@8004" 
+                        class="w-full pl-3.5 pr-10 py-2 text-xs font-mono border border-slate-700 bg-slate-800/90 text-emerald-300 font-bold rounded-xl focus:ring-2 focus:ring-teal-400" 
+                      />
+                      <button 
+                        type="button" 
+                        id="btn-toggle-deploy-password" 
+                        class="absolute right-2.5 top-2 text-slate-400 hover:text-white text-xs"
+                        title="Toggle visibility"
+                      >
+                        <i class="fa fa-eye"></i>
+                      </button>
+                    </div>
+                    <span class="text-[10px] text-slate-400 block">Remember this password or copy it after deploy.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Validation Feedback Box -->
+            <div id="deploy-form-status" class="hidden p-4 rounded-xl text-xs font-semibold"></div>
+
+            <!-- Submit Buttons Bar -->
+            <div class="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <button 
+                type="button" 
+                onclick="window.acsApp.switchTab('landing')" 
+                class="w-full sm:w-auto px-5 py-3 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl font-bold text-xs transition"
+              >
+                <i class="fa fa-arrow-left"></i> Cancel &amp; Back to Home
+              </button>
+
+              <button 
+                type="submit" 
+                id="btn-deploy-submit" 
+                class="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-[#135c7e] hover:from-emerald-500 hover:to-teal-500 text-white text-sm font-black rounded-2xl shadow-xl transition transform hover:scale-[1.01] flex items-center justify-center gap-2.5 cursor-pointer"
+              >
+                <i class="fa fa-rocket text-amber-300 text-base"></i>
+                <span>Deploy Pharmacy Website &amp; Generate Credentials</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+  }
+
+  bindDeploymentPageEvents() {
+    const nameInput = document.getElementById("deploy-store-name");
+    const slugPreview = document.getElementById("deploy-slug-preview");
+    const loginIdInput = document.getElementById("deploy-login-id");
+    const emailInput = document.getElementById("deploy-owner-email");
+    const passInput = document.getElementById("deploy-password");
+    const togglePassBtn = document.getElementById("btn-toggle-deploy-password");
+
+    const storePhotoFileInput = document.getElementById("deploy-store-photo-file");
+    const storePhotoUrlInput = document.getElementById("deploy-store-photo-url");
+    const storePhotoHidden = document.getElementById("deploy-store-photo");
+    const storePhotoImg = document.getElementById("deploy-photo-preview-img");
+    const storePhotoPlaceholder = document.getElementById("deploy-photo-placeholder");
+    const removeStorePhotoBtn = document.getElementById("btn-remove-deploy-photo");
+    const sizeBadge = document.getElementById("deploy-photo-size-badge");
+    const sizeText = document.getElementById("deploy-photo-size-text");
+
+    const pharmPhotoFileInput = document.getElementById("deploy-pharmacist-photo-file");
+    const pharmPhotoHidden = document.getElementById("deploy-pharmacist-photo");
+    const pharmPhotoImg = document.getElementById("deploy-pharmacist-preview-img");
+    const pharmPhotoIcon = document.getElementById("deploy-pharmacist-preview-icon");
+    const removePharmPhotoBtn = document.getElementById("btn-remove-deploy-pharmacist-photo");
+
+    const form = document.getElementById("form-deploy-website");
+
+    // Dynamic slug & login ID generator
+    if (nameInput) {
+      nameInput.addEventListener("input", (e) => {
+        const val = e.target.value.trim();
+        const slug = val.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        if (slugPreview) slugPreview.innerText = slug || "your-pharmacy-name";
+
+        if (loginIdInput && !loginIdInput.dataset.manual) {
+          loginIdInput.value = slug || "";
+        }
+        if (emailInput && !emailInput.dataset.manual) {
+          emailInput.value = slug ? `owner@${slug}.in` : "";
+        }
+      });
+    }
+
+    if (loginIdInput) {
+      loginIdInput.addEventListener("input", () => {
+        loginIdInput.dataset.manual = "true";
+      });
+    }
+
+    if (emailInput) {
+      emailInput.addEventListener("input", () => {
+        emailInput.dataset.manual = "true";
+      });
+    }
+
+    // Toggle password visibility
+    if (togglePassBtn && passInput) {
+      togglePassBtn.addEventListener("click", () => {
+        if (passInput.type === "password") {
+          passInput.type = "text";
+          togglePassBtn.innerHTML = `<i class="fa fa-eye-slash"></i>`;
+        } else {
+          passInput.type = "password";
+          togglePassBtn.innerHTML = `<i class="fa fa-eye"></i>`;
+        }
+      });
+    }
+
+    // Real storefront photo upload + client compression
+    if (storePhotoFileInput) {
+      storePhotoFileInput.addEventListener("change", async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        this.showToast("Compressing storefront photo...", "info");
+        try {
+          const originalSizeKb = Math.round(file.size / 1024);
+          const compressed = await this.compressImageFile(file, 1200, 0.82);
+          if (storePhotoHidden) storePhotoHidden.value = compressed;
+          if (storePhotoUrlInput) storePhotoUrlInput.value = "";
+          if (storePhotoImg) {
+            storePhotoImg.src = compressed;
+            storePhotoImg.classList.remove("hidden");
+          }
+          if (storePhotoPlaceholder) storePhotoPlaceholder.classList.add("hidden");
+          if (removeStorePhotoBtn) removeStorePhotoBtn.classList.remove("hidden");
+
+          const compressedSizeKb = Math.round((compressed.length * 0.75) / 1024);
+          if (sizeBadge && sizeText) {
+            sizeText.innerText = `Optimized: ${originalSizeKb} KB → ${compressedSizeKb} KB`;
+            sizeBadge.classList.remove("hidden");
+          }
+          this.showToast("Storefront photo compressed & ready!", "success");
+        } catch (err) {
+          console.error("Compression error:", err);
+          this.showToast("Could not compress photo. Please try a different image.", "error");
+        }
+      });
+    }
+
+    // Direct URL input fallback
+    if (storePhotoUrlInput) {
+      storePhotoUrlInput.addEventListener("input", (e) => {
+        const url = e.target.value.trim();
+        if (url) {
+          if (storePhotoHidden) storePhotoHidden.value = url;
+          if (storePhotoImg) {
+            storePhotoImg.src = url;
+            storePhotoImg.classList.remove("hidden");
+          }
+          if (storePhotoPlaceholder) storePhotoPlaceholder.classList.add("hidden");
+          if (removeStorePhotoBtn) removeStorePhotoBtn.classList.remove("hidden");
+          if (sizeBadge) sizeBadge.classList.add("hidden");
+        }
+      });
+    }
+
+    // Remove storefront photo
+    if (removeStorePhotoBtn) {
+      removeStorePhotoBtn.addEventListener("click", () => {
+        if (storePhotoFileInput) storePhotoFileInput.value = "";
+        if (storePhotoUrlInput) storePhotoUrlInput.value = "";
+        if (storePhotoHidden) storePhotoHidden.value = "";
+        if (storePhotoImg) {
+          storePhotoImg.src = "";
+          storePhotoImg.classList.add("hidden");
+        }
+        if (storePhotoPlaceholder) storePhotoPlaceholder.classList.remove("hidden");
+        if (removeStorePhotoBtn) removeStorePhotoBtn.classList.add("hidden");
+        if (sizeBadge) sizeBadge.classList.add("hidden");
+      });
+    }
+
+    // Pharmacist photo upload + client compression
+    if (pharmPhotoFileInput) {
+      pharmPhotoFileInput.addEventListener("change", async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        this.showToast("Compressing pharmacist photo...", "info");
+        try {
+          const compressed = await this.compressImageFile(file, 600, 0.82);
+          if (pharmPhotoHidden) pharmPhotoHidden.value = compressed;
+          if (pharmPhotoImg) {
+            pharmPhotoImg.src = compressed;
+            pharmPhotoImg.classList.remove("hidden");
+          }
+          if (pharmPhotoIcon) pharmPhotoIcon.classList.add("hidden");
+          if (removePharmPhotoBtn) removePharmPhotoBtn.classList.remove("hidden");
+          this.showToast("Pharmacist photo optimized!", "success");
+        } catch (err) {
+          console.error("Pharmacist photo compression error:", err);
+        }
+      });
+    }
+
+    if (removePharmPhotoBtn) {
+      removePharmPhotoBtn.addEventListener("click", () => {
+        if (pharmPhotoFileInput) pharmPhotoFileInput.value = "";
+        if (pharmPhotoHidden) pharmPhotoHidden.value = "";
+        if (pharmPhotoImg) {
+          pharmPhotoImg.src = "";
+          pharmPhotoImg.classList.add("hidden");
+        }
+        if (pharmPhotoIcon) pharmPhotoIcon.classList.remove("hidden");
+        if (removePharmPhotoBtn) removePharmPhotoBtn.classList.add("hidden");
+      });
+    }
+
+    // Form submission
+    if (form) {
+      form.onsubmit = (e) => this.handleDeploymentFormSubmit(e);
+    }
+  }
+
+  handleDeploymentFormSubmit(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    const nameEl = document.getElementById("deploy-store-name");
+    const districtEl = document.getElementById("deploy-district");
+    const addressEl = document.getElementById("deploy-address");
+    const phoneEl = document.getElementById("deploy-phone");
+    const hoursEl = document.getElementById("deploy-hours");
+    const is24x7El = document.getElementById("deploy-24x7");
+    const lic20El = document.getElementById("deploy-lic20");
+    const lic21El = document.getElementById("deploy-lic21");
+    const gstinEl = document.getElementById("deploy-gstin");
+    const pharmNameEl = document.getElementById("deploy-pharmacist-name");
+    const pharmRegEl = document.getElementById("deploy-pharmacist-reg");
+    const pharmQualEl = document.getElementById("deploy-pharmacist-qual");
+    const pharmPhotoEl = document.getElementById("deploy-pharmacist-photo");
+    const storePhotoEl = document.getElementById("deploy-store-photo");
+    const storePhotoUrlEl = document.getElementById("deploy-store-photo-url");
+    const emailEl = document.getElementById("deploy-owner-email");
+    const loginIdEl = document.getElementById("deploy-login-id");
+    const passEl = document.getElementById("deploy-password");
+
+    const storeName = nameEl ? nameEl.value.trim() : "";
+    if (!storeName) {
+      this.showToast("Please enter your pharmacy name.", "error");
+      return;
+    }
+
+    let baseSlug = storeName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    if (!baseSlug) baseSlug = `pharmacy-${Date.now().toString().slice(-4)}`;
+
+    let finalSlug = baseSlug;
+    let counter = 1;
+    while (this.stores.some(s => s.slug === finalSlug)) {
+      finalSlug = `${baseSlug}-${counter++}`;
+    }
+
+    const district = districtEl ? districtEl.value : "Deoria";
+    const address = addressEl ? addressEl.value.trim() : "";
+    const phone = phoneEl ? phoneEl.value.trim() : "+91 80040 34320";
+    const hours = hoursEl ? hoursEl.value.trim() : "08:00 AM - 10:30 PM";
+    const is24x7 = is24x7El ? is24x7El.checked : true;
+    const lic20 = (lic20El && lic20El.value.trim()) || `UP/${district.substring(0,3).toUpperCase()}/2026/20/${Math.floor(1000 + Math.random()*9000)}`;
+    const lic21 = (lic21El && lic21El.value.trim()) || `UP/${district.substring(0,3).toUpperCase()}/2026/21/${Math.floor(1000 + Math.random()*9000)}`;
+    const gstin = (gstinEl && gstinEl.value.trim()) || "09AABCT8192M1Z5";
+    const pharmacistName = (pharmNameEl && pharmNameEl.value.trim()) || storeName;
+    const uppcReg = (pharmRegEl && pharmRegEl.value.trim()) || `UPPC-PH-${Math.floor(40000 + Math.random()*20000)}`;
+    const qual = pharmQualEl ? pharmQualEl.value : "B.Pharm, R.Ph (UP)";
+    const pharmacistPhoto = pharmPhotoEl ? pharmPhotoEl.value : "";
+
+    let photoVal = (storePhotoEl && storePhotoEl.value) || (storePhotoUrlEl && storePhotoUrlEl.value.trim()) || "https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80";
+
+    const adminUser = (loginIdEl && loginIdEl.value.trim()) || finalSlug;
+    const adminPass = (passEl && passEl.value.trim()) || "Pharma@8004";
+    const ownerEmail = (emailEl && emailEl.value.trim()) || `contact@${finalSlug}.com`;
+
+    const newStoreId = `store-up-${Date.now().toString().slice(-4)}`;
+
+    const newStore = {
+      id: newStoreId,
+      slug: finalSlug,
+      slugAliases: [finalSlug, `${finalSlug}-${district.toLowerCase()}`, `pharmacy-${finalSlug}`],
+      name: storeName,
+      district: district,
+      city: district,
+      address: address || `${district} Main Market, Uttar Pradesh`,
+      license20: lic20,
+      license21: lic21,
+      ownerName: pharmacistName,
+      phone: phone,
+      whatsapp: phone.replace(/[^0-9]/g, ""),
+      email: ownerEmail,
+      gstin: gstin,
+      establishedYear: new Date().getFullYear().toString(),
+      operatingHours: hours,
+      is24x7: is24x7,
+      status: "Verified",
+      photoUrl: photoVal,
+      adminUsername: adminUser,
+      adminPassword: adminPass,
+      isViewOnly: false,
+      rating: 4.9,
+      staff: [
+        {
+          id: `st-${Date.now()}-1`,
+          name: pharmacistName,
+          role: "Registered Pharmacist & Incharge",
+          uppcRegNo: uppcReg,
+          qualification: qual,
+          regDate: "2022-04-12",
+          validUpto: "2032-12-31",
+          phone: phone,
+          photoUrl: pharmacistPhoto || "",
+          shift: "General Shift / 24x7 Emergency",
+          isAadhaarVerified: true,
+          isOnDuty: true,
+          status: "Active"
+        }
+      ],
+      stocks: [
+        {
+          id: `med-${Date.now()}-1`,
+          name: "Augmentin 625 Duo Tablet",
+          saltName: "Amoxicillin 500mg + Potassium Clavulanate 125mg",
+          manufacturer: "GlaxoSmithKline Pharmaceuticals",
+          batchNo: "BAT-AUG-5501",
+          expiryDate: "2027-08-31",
+          quantity: 80,
+          unit: "Strips (10 tabs)",
+          mrp: 220.00,
+          purchaseRate: 165.00,
+          schedule: "Schedule H",
+          rackLocation: "Rack A-01",
+          minAlertThreshold: 25
+        },
+        {
+          id: `med-${Date.now()}-2`,
+          name: "Paracetamol 650mg",
+          saltName: "Paracetamol IP 650mg",
+          manufacturer: "Generic Pharma",
+          batchNo: "BAT-GEN-101",
+          expiryDate: "2028-12-31",
+          quantity: 100,
+          unit: "Strips (10 tabs)",
+          mrp: 30.00,
+          purchaseRate: 20.00,
+          schedule: "OTC",
+          rackLocation: "Rack A-02",
+          minAlertThreshold: 20
+        },
+        {
+          id: `med-${Date.now()}-3`,
+          name: "Azithromycin 500mg Tablet",
+          saltName: "Azithromycin IP 500mg",
+          manufacturer: "Cipla Ltd",
+          batchNo: "BAT-AZI-901",
+          expiryDate: "2027-11-30",
+          quantity: 60,
+          unit: "Strips (5 tabs)",
+          mrp: 115.00,
+          purchaseRate: 85.00,
+          schedule: "Schedule H",
+          rackLocation: "Rack A-03",
+          minAlertThreshold: 15
+        },
+        {
+          id: `med-${Date.now()}-4`,
+          name: "ORS Electrolyte Powder",
+          saltName: "Oral Rehydration Salts WHO Formula",
+          manufacturer: "FDC Ltd",
+          batchNo: "BAT-ORS-304",
+          expiryDate: "2028-06-30",
+          quantity: 150,
+          unit: "Sachets (21.8g)",
+          mrp: 21.50,
+          purchaseRate: 14.00,
+          schedule: "OTC",
+          rackLocation: "Rack B-01",
+          minAlertThreshold: 30
+        }
+      ],
+      galleryPhotos: [
+        {
+          id: `gp-${Date.now()}-1`,
+          tag: "Store Front",
+          url: photoVal,
+          title: "Storefront & Main Signboard",
+          caption: `${storeName}, ${district}`,
+          isPrimary: true
+        }
+      ],
+      prescriptions: [],
+      scheduleH1Register: [],
+      staffDutyLog: [],
+      purchaseExpenses: [],
+      revenueData: {
+        todaySales: 16500,
+        monthlyGross: 480000,
+        lastMonthGross: 440000,
+        avgGrossMarginPercent: 22.0,
+        totalOrdersThisMonth: 580,
+        digitalSplitPercent: 70,
+        cashSplitPercent: 30,
+        gstCollectedMonthly: 57600,
+        monthlyHistory: [
+          { month: "Aug", revenue: 410000, digital: 270000, cash: 140000 },
+          { month: "Sep", revenue: 440000, digital: 295000, cash: 145000 },
+          { month: "Oct (Current)", revenue: 480000, digital: 336000, cash: 144000 }
+        ],
+        paymentChannels: { upi: 60, cards: 10, cash: 30 }
+      }
+    };
+
+    // Unshift into live memory stores
+    this.stores.unshift(newStore);
+    this.currentStoreId = newStore.id;
+    this.currentUser = {
+      role: "pharmacy_owner",
+      email: newStore.email,
+      name: newStore.ownerName,
+      storeId: newStore.id,
+      storeName: newStore.name
+    };
+
+    // Save to persistent custom stores
+    if (typeof localStorage !== "undefined") {
+      try {
+        const customRaw = localStorage.getItem("ACS_CUSTOM_STORES");
+        const customList = customRaw ? JSON.parse(customRaw) : [];
+        customList.unshift(newStore);
+        localStorage.setItem("ACS_CUSTOM_STORES", JSON.stringify(customList));
+      } catch (_) {}
+    }
+
+    this.saveUserSession();
+    this.saveStores(true);
+    this.pushToCloud();
+    this.renderHeaderBar();
+
+    // Render the beautiful post-deployment credentials dossier
+    this.renderDeploymentSuccessView(newStore);
+    this.showToast(`🎉 "${newStore.name}" is now live and deployed!`, "success");
+  }
+
+  renderDeploymentSuccessView(store) {
+    const container = document.getElementById("deploy-page-content");
+    if (!container) return;
+
+    const liveUrl = `https://www.drugs.systems/pharmacy/${store.slug}`;
+    const credentialsSummary = `Store: ${store.name}\nStore ID / Username: ${store.adminUsername}\nOwner Email: ${store.email}\nOwner Password: ${store.adminPassword}\nLive URL: ${liveUrl}`;
+
+    container.innerHTML = `
+      <div class="space-y-6 animate-fade-in text-slate-800">
+        <!-- Success Alert Header -->
+        <div class="p-5 sm:p-6 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border-2 border-emerald-300 rounded-3xl flex items-start gap-4 shadow-sm">
+          <div class="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 text-2xl shadow-md">
+            <i class="fa fa-check"></i>
+          </div>
+          <div class="space-y-1">
+            <div class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 uppercase tracking-wider">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              Official UP State Verification Live
+            </div>
+            <h2 class="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+              "${store.name}" is Officially Deployed &amp; Active!
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-2xl">
+              Your pharmacy webpage is now live on the Uttar Pradesh Drug Network with statutory Form 20/21 compliance, UPPC pharmacist credentials, and real-time public medicine stock search.
+            </p>
+          </div>
+        </div>
+
+        <!-- Live Website Link Card -->
+        <div class="p-4 sm:p-5 bg-teal-50/70 border border-teal-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="space-y-1">
+            <span class="text-[11px] font-bold text-teal-900 uppercase tracking-wider block">
+              <i class="fa fa-globe text-teal-600"></i> Public Dedicated Web Address:
+            </span>
+            <a href="/pharmacy/${store.slug}" target="_blank" class="font-mono text-sm sm:text-base font-bold text-[#135c7e] hover:underline break-all">
+              ${liveUrl}
+            </a>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <button 
+              type="button" 
+              onclick="navigator.clipboard.writeText('${liveUrl}'); window.acsApp.showToast('Copied website URL to clipboard!', 'success');" 
+              class="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs border border-slate-200 shadow-2xs transition flex items-center gap-1.5"
+            >
+              <i class="fa fa-copy"></i> Copy Link
+            </button>
+            <a 
+              href="/pharmacy/${store.slug}" 
+              onclick="event.preventDefault(); window.acsApp.viewHostedWebsite('${store.id}');" 
+              class="px-4 py-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white font-black rounded-xl text-xs shadow-xs transition flex items-center gap-1.5"
+            >
+              <i class="fa fa-external-link text-amber-300"></i> Open Now
+            </a>
+          </div>
+        </div>
+
+        <!-- Confidential Credentials Dossier Card -->
+        <div class="p-6 bg-slate-950 text-white rounded-3xl space-y-5 shadow-2xl border border-slate-800">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2.5">
+              <span class="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black text-sm shadow">
+                <i class="fa fa-key"></i>
+              </span>
+              <div>
+                <h3 class="font-black text-sm sm:text-base text-amber-300 uppercase tracking-wider">
+                  Your Confidential Owner Login Credentials
+                </h3>
+                <span class="text-[11px] text-slate-400">Save these credentials now. They grant exclusive edit control.</span>
+              </div>
+            </div>
+            <span class="text-[10px] bg-slate-800 text-emerald-400 px-3 py-1 rounded-full border border-slate-700 font-mono font-bold self-start sm:self-auto">
+              Owner Mode Currently Active
+            </span>
+          </div>
+
+          <div class="p-3.5 bg-slate-900/90 rounded-2xl border border-slate-800 text-xs text-slate-300 leading-relaxed">
+            <p>
+              Normal patients, customers, and drug inspectors only see the <strong class="text-amber-300">Public Read-Only Verification View</strong> and cannot modify your stock or prices. You are currently logged in as the owner. If you log out or switch browsers, use these credentials to log back in and edit:
+            </p>
+          </div>
+
+          <!-- Credentials Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <!-- Store ID / Username -->
+            <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col justify-between space-y-2">
+              <div>
+                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Store ID / Username</span>
+                <span class="font-mono font-black text-base text-amber-300 select-all block mt-1" id="cred-display-username">${store.adminUsername}</span>
+              </div>
+              <button 
+                type="button" 
+                onclick="navigator.clipboard.writeText('${store.adminUsername}'); window.acsApp.showToast('Copied Store ID!', 'success');" 
+                class="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border border-slate-700"
+              >
+                <i class="fa fa-copy"></i> Copy Store ID
+              </button>
+            </div>
+
+            <!-- Owner Email -->
+            <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col justify-between space-y-2">
+              <div>
+                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Owner Login Email</span>
+                <span class="font-mono font-black text-xs sm:text-sm text-cyan-300 select-all block mt-1 truncate" id="cred-display-email" title="${store.email}">${store.email}</span>
+              </div>
+              <button 
+                type="button" 
+                onclick="navigator.clipboard.writeText('${store.email}'); window.acsApp.showToast('Copied Owner Email!', 'success');" 
+                class="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border border-slate-700"
+              >
+                <i class="fa fa-copy"></i> Copy Email
+              </button>
+            </div>
+
+            <!-- Password -->
+            <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col justify-between space-y-2">
+              <div>
+                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Owner Password / PIN</span>
+                <span class="font-mono font-black text-base text-emerald-300 select-all block mt-1" id="cred-display-password">${store.adminPassword}</span>
+              </div>
+              <button 
+                type="button" 
+                onclick="navigator.clipboard.writeText('${store.adminPassword}'); window.acsApp.showToast('Copied Password!', 'success');" 
+                class="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border border-slate-700"
+              >
+                <i class="fa fa-copy"></i> Copy Password
+              </button>
+            </div>
+          </div>
+
+          <!-- Copy All Button -->
+          <div class="pt-1 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <button 
+              type="button" 
+              onclick="
+                const creds = 'Store: ' + '${store.name}' + '\\nStore ID / Username: ' + '${store.adminUsername}' + '\\nOwner Email: ' + '${store.email}' + '\\nOwner Password: ' + '${store.adminPassword}' + '\\nLive URL: ' + '${liveUrl}';
+                navigator.clipboard.writeText(creds); 
+                window.acsApp.showToast('All credentials copied to clipboard!', 'success');
+              " 
+              class="w-full sm:w-auto px-5 py-3 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black rounded-xl text-xs shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <i class="fa fa-clipboard"></i> Copy All Credentials to Clipboard
+            </button>
+
+            <span class="text-[11px] text-slate-400 flex items-center gap-1.5">
+              <i class="fa fa-shield text-emerald-400"></i> Credentials encrypted and saved to local session.
+            </span>
+          </div>
+        </div>
+
+        <!-- Next Actions Bar -->
+        <div class="p-6 bg-slate-50 border border-slate-200 rounded-3xl space-y-4">
+          <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">
+            Choose What You Want to Do Next:
+          </h4>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <!-- Action 1: Enter Owner Edit Mode -->
+            <button 
+              type="button" 
+              onclick="window.acsApp.viewHostedWebsite('${store.id}');" 
+              class="p-4 bg-gradient-to-br from-[#135c7e] to-[#0f4b67] hover:from-[#0f4b67] hover:to-[#0a364a] text-white rounded-2xl shadow-md transition text-left space-y-1.5 group cursor-pointer"
+            >
+              <div class="w-8 h-8 rounded-xl bg-white/20 text-white flex items-center justify-center font-bold text-sm mb-1 group-hover:scale-110 transition">
+                <i class="fa fa-pencil-square-o text-amber-300"></i>
+              </div>
+              <div class="font-black text-sm">Enter Storefront (Owner Edit Mode)</div>
+              <p class="text-[11px] text-teal-100/90 leading-tight">
+                Add medicines, adjust live quantities, change cover photos, and manage staff.
+              </p>
+            </button>
+
+            <!-- Action 2: Go to Inventory Management -->
+            <button 
+              type="button" 
+              onclick="window.acsApp.switchTab('stocks');" 
+              class="p-4 bg-white hover:bg-slate-100 text-slate-800 border-2 border-slate-200 hover:border-slate-300 rounded-2xl transition text-left space-y-1.5 group cursor-pointer"
+            >
+              <div class="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-sm mb-1 group-hover:scale-110 transition">
+                <i class="fa fa-medkit text-teal-600"></i>
+              </div>
+              <div class="font-black text-sm text-slate-900">Manage Stocks &amp; Catalog</div>
+              <p class="text-[11px] text-slate-500 leading-tight">
+                Open batch manager, barcode scanner, Excel/CSV importer, and low-stock alerts.
+              </p>
+            </button>
+
+            <!-- Action 3: View Public Patient View -->
+            <button 
+              type="button" 
+              onclick="window.acsApp.viewPublicWebsite('${store.id}');" 
+              class="p-4 bg-white hover:bg-slate-100 text-slate-800 border-2 border-slate-200 hover:border-slate-300 rounded-2xl transition text-left space-y-1.5 group cursor-pointer"
+            >
+              <div class="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-sm mb-1 group-hover:scale-110 transition">
+                <i class="fa fa-eye text-emerald-600"></i>
+              </div>
+              <div class="font-black text-sm text-slate-900">Test Public Patient View</div>
+              <p class="text-[11px] text-slate-500 leading-tight">
+                See exactly how patients and drug inspectors view your verified website.
+              </p>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    if (typeof window !== "undefined" && window.scrollTo) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }
 

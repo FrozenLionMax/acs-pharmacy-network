@@ -369,7 +369,17 @@
           </div>
 
           <div id="header-auth-controls">
-            <!-- Dynamically populated (Login or User info + Logout) -->
+            <div class="flex items-center gap-2">
+              <button onclick="window.acsApp.showDeploymentPage()" class="inline-flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 shadow-md border border-emerald-300/40 cursor-pointer transition transform hover:scale-[1.02]" title="Deploy your verified pharmacy website live in 60 seconds">
+                <i class="fa fa-cloud-upload text-slate-950 text-sm"></i>
+                <span class="whitespace-nowrap">Deploy Pharmacy Website</span>
+                <span class="bg-slate-950 text-amber-300 px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase">Live</span>
+              </button>
+              <button onclick="window.acsApp.openLoginModal()" class="bg-amber-400 hover:bg-amber-500 text-slate-950 px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-black shadow-md transition flex items-center gap-1.5">
+                <i class="fa fa-user-circle"></i>
+                <span>Portal Login</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

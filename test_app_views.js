@@ -1094,6 +1094,119 @@ try {
 
   console.log('Apoorva Tripathi Medicos, Deoria verified from scratch: Routing, Aliases, Storefront, Catalog Search, Rx Matching, POS, Auth & Credentials Modal passed 100%!');
 
+  // =========================================================================
+  // --- Testing Dedicated Pharmacy Website Deployment Suite ---
+  // =========================================================================
+  console.log('--- Testing Dedicated Pharmacy Website Deployment Suite ---');
+
+  // Test 1: showDeploymentPage switches to deploy-website view
+  app.showDeploymentPage();
+  if (app.activeTab !== 'deploy-website') {
+    throw new Error('showDeploymentPage did not set activeTab to deploy-website!');
+  }
+
+  const deployHtml = app.getDeploymentPageViewHtml();
+  if (!deployHtml.includes('Deploy Your Licensed Uttar Pradesh Pharmacy Website')) {
+    throw new Error('getDeploymentPageViewHtml missing main deployment headline!');
+  }
+  if (!deployHtml.includes('deploy-store-name') || !deployHtml.includes('deploy-district')) {
+    throw new Error('getDeploymentPageViewHtml missing store name or district inputs!');
+  }
+  if (!deployHtml.includes('deploy-lic20') || !deployHtml.includes('deploy-lic21')) {
+    throw new Error('getDeploymentPageViewHtml missing Form 20/21 license inputs!');
+  }
+  if (!deployHtml.includes('deploy-pharmacist-name') || !deployHtml.includes('deploy-pharmacist-reg')) {
+    throw new Error('getDeploymentPageViewHtml missing UPPC pharmacist inputs!');
+  }
+  if (!deployHtml.includes('deploy-store-photo-file') || !deployHtml.includes('deploy-photo-preview-tile')) {
+    throw new Error('getDeploymentPageViewHtml missing storefront photo upload input or preview tile!');
+  }
+  if (!deployHtml.includes('deploy-owner-email') || !deployHtml.includes('deploy-login-id') || !deployHtml.includes('deploy-password')) {
+    throw new Error('getDeploymentPageViewHtml missing confidential owner credentials inputs!');
+  }
+  if (!deployHtml.includes('btn-deploy-submit')) {
+    throw new Error('getDeploymentPageViewHtml missing submit button!');
+  }
+  console.log('Deployment Page View HTML verified: 6 Form Sections, Photo Upload & Credentials present!');
+
+  // Test 2: Simulate Live Deployment Form Submission
+  const deployPageContainer = { innerHTML: '' };
+  mockElements['deploy-page-content'] = deployPageContainer;
+  mockElements['deploy-store-name'] = { value: 'Varanasi Medicare & Surgical' };
+  mockElements['deploy-district'] = { value: 'Varanasi' };
+  mockElements['deploy-address'] = { value: 'Bhelupur, Near Sankat Mochan, Varanasi, UP 221005' };
+  mockElements['deploy-phone'] = { value: '+91 98765 43210' };
+  mockElements['deploy-hours'] = { value: '08:00 AM - 11:00 PM' };
+  mockElements['deploy-24x7'] = { checked: true };
+  mockElements['deploy-lic20'] = { value: 'UP/VAR/2026/20/7788' };
+  mockElements['deploy-lic21'] = { value: 'UP/VAR/2026/21/7789' };
+  mockElements['deploy-gstin'] = { value: '09AABCV1234F1Z1' };
+  mockElements['deploy-pharmacist-name'] = { value: 'Dr. Amitesh Pandey' };
+  mockElements['deploy-pharmacist-reg'] = { value: 'UPPC-PH-55443' };
+  mockElements['deploy-pharmacist-qual'] = { value: 'B.Pharm, R.Ph (UP)' };
+  mockElements['deploy-pharmacist-photo'] = { value: 'data:image/jpeg;base64,mockPharmPhoto' };
+  mockElements['deploy-store-photo'] = { value: 'data:image/jpeg;base64,mockStorePhoto' };
+  mockElements['deploy-store-photo-url'] = { value: '' };
+  mockElements['deploy-owner-email'] = { value: 'owner@varanasi-medicare.in' };
+  mockElements['deploy-login-id'] = { value: 'varanasi-medicare' };
+  mockElements['deploy-password'] = { value: 'VarMed@9900' };
+
+  app.handleDeploymentFormSubmit({ preventDefault: () => {} });
+
+  const deployedStore = app.stores.find(s => s.name === 'Varanasi Medicare & Surgical');
+  if (!deployedStore) {
+    throw new Error('Deployed store Varanasi Medicare & Surgical not found in app.stores!');
+  }
+  if (deployedStore.slug !== 'varanasi-medicare-surgical') {
+    throw new Error(`Unexpected slug for deployed store: ${deployedStore.slug}`);
+  }
+  if (deployedStore.adminUsername !== 'varanasi-medicare' || deployedStore.adminPassword !== 'VarMed@9900') {
+    throw new Error('Deployed store credentials do not match inputs!');
+  }
+  if (!app.currentUser || app.currentUser.storeId !== deployedStore.id) {
+    throw new Error('app.currentUser not automatically set to deployed store owner!');
+  }
+
+  // Test 3: Verify Success View & Credentials Dossier rendering
+  const successDossierHtml = deployPageContainer.innerHTML;
+  if (!successDossierHtml.includes('Varanasi Medicare & Surgical') || !successDossierHtml.includes('Officially Deployed')) {
+    throw new Error('Success dossier missing store name or deployment confirmation!');
+  }
+  if (!successDossierHtml.includes('varanasi-medicare') || !successDossierHtml.includes('VarMed@9900') || !successDossierHtml.includes('owner@varanasi-medicare.in')) {
+    throw new Error('Success dossier missing username, password, or email credentials!');
+  }
+  if (!successDossierHtml.includes('https://www.drugs.systems/pharmacy/varanasi-medicare-surgical')) {
+    throw new Error('Success dossier missing public live URL link!');
+  }
+  console.log('Deployment Form Submission & Credentials Dossier verified 100%!');
+
+  // Test 4: Verify Post-Deployment Owner Authentication Flow
+  app.logout();
+  if (app.currentUser !== null) {
+    throw new Error('Logout failed!');
+  }
+  const reAuth = app.authenticate('varanasi-medicare', 'VarMed@9900');
+  if (!reAuth || !app.currentUser || app.currentUser.storeId !== deployedStore.id) {
+    throw new Error('Failed to re-authenticate with newly deployed owner credentials!');
+  }
+  console.log('Owner Authentication with post-deployment credentials verified 100%!');
+
+  // Test 5: Verify Hosted Website in Owner Mode vs Public Mode
+  const ownerModeHtml = app.getHostedWebsiteViewHtml(deployedStore);
+  if (!ownerModeHtml.includes('Owner Edit Mode') && !ownerModeHtml.includes('Edit Cover Photo')) {
+    throw new Error('Owner Mode controls missing in hosted website view for logged in owner!');
+  }
+
+  app.viewPublicWebsite(deployedStore.id);
+  if (app.currentUser !== null) {
+    throw new Error('viewPublicWebsite did not clear currentUser for public mode!');
+  }
+  const publicModeHtml = app.getHostedWebsiteViewHtml(deployedStore);
+  if (publicModeHtml.includes('Owner Edit Mode') || publicModeHtml.includes('Edit Cover Photo')) {
+    throw new Error('Owner controls leaked into public mode view!');
+  }
+  console.log('Owner Mode vs Public Read-Only Mode toggle verified 100%!');
+
   console.log('ALL CONNECTION TESTS VERIFIED AND PASSED 100%!');
   console.log('ALL PHOTO & PROFILE STUDIO TESTS PASSED 100%!');
   console.log('ALL PUBLIC STOREFRONT & AUTO-MATCHER TESTS PASSED 100%!');
