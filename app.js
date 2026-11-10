@@ -3045,9 +3045,6 @@ class ACSApp {
               <button onclick="window.acsApp.copyStoreLink('/pharmacy/${store.slug}')" class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs text-[11px] whitespace-nowrap" title="Copy website link to share">
                 <i class="fa fa-clone text-[#135c7e]"></i> Copy Link
               </button>
-              <button onclick="window.acsApp.openGoogleConsoleAutomationModal('${store.id}')" class="bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer text-[11px] whitespace-nowrap" title="Googlebot Indexing, Knowledge Graph &amp; SERP Status">
-                <i class="fa fa-google text-[#4285F4]"></i> Googlebot &amp; Schema
-              </button>
               <a href="https://www.google.com/search?q=${encodeURIComponent(store.name + ' ' + (store.district || '') + ' ' + (store.ownerName || ''))}" target="_blank" rel="noopener noreferrer" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs hidden lg:inline-flex text-[11px] whitespace-nowrap" title="Search pharmacy on Google">
                 <i class="fa fa-search text-teal-700"></i> Google Test
               </a>
@@ -3068,26 +3065,17 @@ class ACSApp {
         </header>
 
         ${this.currentUser && this.currentUser.storeId === store.id ? `
-          <!-- Authenticated Pharmacist Owner Control Strip -->
+          <!-- Authenticated Pharmacist Owner Notice -->
           <div class="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 text-white px-4 sm:px-10 py-2.5 border-b border-teal-800/60 flex flex-wrap items-center justify-between gap-2.5 text-xs shadow-inner">
             <div class="flex items-center gap-2">
               <span class="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-full font-black text-[11px] uppercase tracking-wider">
                 <i class="fa fa-shield"></i> Verified Owner Mode
               </span>
-              <span class="text-teal-200 hidden md:inline">Logged in as ${this.currentUser.name || 'Store Owner'} — you have full editing access over this deployed website.</span>
+              <span class="text-teal-200 hidden md:inline">Logged in as ${this.currentUser.name || 'Store Owner'}. Storefront is live in Public View mode.</span>
             </div>
-            <div class="flex items-center gap-2 flex-wrap">
-              <button onclick="window.acsApp.openEditStoreModal('${store.id}')" class="bg-teal-700 hover:bg-teal-600 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition">
-                <i class="fa fa-pencil"></i> Edit Store Profile
-              </button>
-              <button onclick="window.acsApp.openManageStorePhotosModal('${store.id}')" class="bg-teal-800 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition">
-                <i class="fa fa-picture-o text-teal-300"></i> Photos &amp; Gallery (${galleryPhotos.length})
-              </button>
-              <button onclick="window.acsApp.openAddMedicineModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition">
-                <i class="fa fa-plus-circle"></i> Add Medicine SKU
-              </button>
-              <button onclick="window.acsApp.switchTab('store-detail')" class="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition">
-                <i class="fa fa-dashboard"></i> Back to Portal
+            <div class="flex items-center gap-2">
+              <button onclick="window.acsApp.switchTab('store-detail')" class="bg-teal-600 hover:bg-teal-500 text-white px-3.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition shadow-xs">
+                <i class="fa fa-dashboard text-amber-300"></i> Open Owner Portal to Edit Data &amp; Photos
               </button>
             </div>
           </div>
@@ -3104,18 +3092,6 @@ class ACSApp {
               <div class="relative h-56 sm:h-72 md:h-96 bg-slate-900 overflow-hidden group">
                 <img id="storefront-hero-img" src="${store.photoUrl}" alt="${store.name}" class="w-full h-full object-cover opacity-90 transition duration-500" onerror="this.src='https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80'" />
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/40 to-transparent"></div>
-                
-                ${this.currentUser && this.currentUser.storeId === store.id ? `
-                  <!-- Owner Quick Photo Edit Floating Bar -->
-                  <div class="absolute top-4 right-4 z-20 flex items-center gap-2">
-                    <button type="button" onclick="window.acsApp.openPhotoStudioModal('store-primary', '${store.id}', '${store.photoUrl}')" class="bg-black/75 hover:bg-black text-white backdrop-blur-md px-3.5 py-2 rounded-xl text-xs font-bold border border-white/20 shadow-md transition flex items-center gap-1.5">
-                      <i class="fa fa-camera text-amber-400"></i> Edit Cover Photo
-                    </button>
-                    <button type="button" onclick="window.acsApp.openManageStorePhotosModal('${store.id}')" class="bg-teal-800/80 hover:bg-teal-800 text-white backdrop-blur-md px-3.5 py-2 rounded-xl text-xs font-bold border border-teal-400/40 shadow-md transition flex items-center gap-1.5">
-                      <i class="fa fa-picture-o text-teal-200"></i> Gallery Photos (${galleryPhotos.length})
-                    </button>
-                  </div>
-                ` : ''}
 
                 <div class="absolute bottom-4 left-3 right-3 sm:bottom-8 sm:left-10 sm:right-10 text-white flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4">
                   <div>
@@ -3167,11 +3143,6 @@ class ACSApp {
                   <button type="button" onclick="window.acsApp.openPhotoViewerModal('${store.photoUrl}', '${store.name} - Store Front')" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold text-xs transition flex items-center gap-1.5">
                     <i class="fa fa-search-plus text-amber-400"></i> View Fullscreen
                   </button>
-                  ${this.currentUser && this.currentUser.storeId === store.id ? `
-                    <button type="button" onclick="window.acsApp.openManageStorePhotosModal('${store.id}')" class="px-3 py-1.5 bg-teal-700 hover:bg-teal-800 text-white rounded-lg font-bold text-xs transition flex items-center gap-1.5 shadow-xs">
-                      <i class="fa fa-plus-circle text-amber-400"></i> Add / Manage Photos
-                    </button>
-                  ` : ''}
                 </div>
               </div>
 
@@ -3192,30 +3163,19 @@ class ACSApp {
                       </div>
 
                       <div class="flex items-center gap-3.5 mb-3">
-                        <div class="relative w-14 h-14 rounded-full overflow-hidden border-2 border-teal-500 shadow-md flex-shrink-0 bg-teal-100 flex items-center justify-center ${this.currentUser && this.currentUser.storeId === store.id && chiefPharmacist ? 'cursor-pointer group' : ''}" ${this.currentUser && this.currentUser.storeId === store.id && chiefPharmacist ? `onclick="window.acsApp.openStaffProfilePhotoModal('${chiefPharmacist.id}')" title="Click to crop / edit profile photo"` : ''}>
+                        <div class="relative w-14 h-14 rounded-full overflow-hidden border-2 border-teal-500 shadow-md flex-shrink-0 bg-teal-100 flex items-center justify-center">
                           ${chiefPharmacist && chiefPharmacist.avatarUrl ? `
                             <img src="${chiefPharmacist.avatarUrl}" alt="${chiefPharmacist.name}" class="w-full h-full object-cover" />
                           ` : `
                             <i class="fa fa-user-md text-2xl text-[#135c7e]"></i>
                           `}
-                          ${this.currentUser && this.currentUser.storeId === store.id && chiefPharmacist ? `
-                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs">
-                              <i class="fa fa-camera"></i>
-                            </div>
-                          ` : ''}
                         </div>
                         <div>
                           <h3 class="text-base font-black text-slate-900">${chiefPharmacist ? chiefPharmacist.name : 'Qualified Pharmacist'}</h3>
                           <span class="text-xs text-teal-800 font-semibold block">${chiefPharmacist ? chiefPharmacist.qualification : 'B.Pharm (UP)'}</span>
-                          ${this.currentUser && this.currentUser.storeId === store.id && chiefPharmacist ? `
-                            <button type="button" onclick="window.acsApp.openStaffProfilePhotoModal('${chiefPharmacist.id}')" class="text-teal-700 hover:text-teal-900 font-bold text-[10px] inline-flex items-center gap-1 mt-0.5">
-                              <i class="fa fa-camera"></i> Edit Pharmacist Photo
-                            </button>
-                          ` : `
-                            <span class="text-[10px] text-emerald-700 font-bold mt-0.5 inline-flex items-center gap-1">
-                              <i class="fa fa-shield"></i> State Council Verified Professional
-                            </span>
-                          `}
+                          <span class="text-[10px] text-emerald-700 font-bold mt-0.5 inline-flex items-center gap-1">
+                            <i class="fa fa-shield"></i> State Council Verified Professional
+                          </span>
                         </div>
                       </div>
                       
@@ -3574,12 +3534,14 @@ class ACSApp {
                       <i class="fa ${this.financialsVisible ? 'fa-eye-slash' : 'fa-eye'}"></i>
                       <span>${this.financialsVisible ? 'Hide Private Numbers' : 'Reveal Financial Numbers'}</span>
                     </button>
-                    <button 
-                      onclick="window.acsApp.openAddMedicineModal()" 
-                      class="bg-[#135c7e] hover:bg-[#0f4b67] text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow"
-                    >
-                      <i class="fa fa-plus"></i> Add Medicine
-                    </button>
+                    ${this.currentUser && this.currentUser.storeId === store.id ? `
+                      <button 
+                        onclick="window.acsApp.switchTab('store-detail')" 
+                        class="bg-teal-600 hover:bg-teal-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow"
+                      >
+                        <i class="fa fa-dashboard"></i> Owner Portal
+                      </button>
+                    ` : ''}
                   </div>
                 </div>
 
@@ -3632,9 +3594,6 @@ class ACSApp {
                       <i class="fa fa-upload"></i> Bulk CSV Import
                     </button>
                     <input type="file" id="hosted-audit-csv-input" accept=".csv" class="hidden" />
-                    <button onclick="window.acsApp.openAddMedicineModal()" class="bg-[#135c7e] hover:bg-[#0f4b67] text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-                      <i class="fa fa-plus"></i> Add New Medicine
-                    </button>
                   </div>
                 </div>
 
@@ -3726,24 +3685,20 @@ class ACSApp {
                               </span>
                             </td>
                             <td class="py-3 px-3 text-center">
-                              <div class="inline-flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg">
-                                <button onclick="window.acsApp.adjustStockQty('${m.id}', -5)" class="w-5 h-5 flex items-center justify-center rounded bg-white hover:bg-slate-200 text-slate-700 font-black shadow-xs">-</button>
-                                <span class="font-extrabold ${isLow ? 'text-rose-600' : 'text-slate-800'} min-w-[2.5rem] text-center">
-                                  ${m.quantity}
-                                </span>
-                                <button onclick="window.acsApp.adjustStockQty('${m.id}', 5)" class="w-5 h-5 flex items-center justify-center rounded bg-white hover:bg-slate-200 text-slate-700 font-black shadow-xs">+</button>
-                              </div>
+                              <span class="font-extrabold ${isLow ? 'text-rose-600' : 'text-slate-800'} text-xs font-mono">
+                                ${m.quantity}
+                              </span>
                               <span class="text-[10px] text-slate-400 block mt-0.5">${m.unit}</span>
                             </td>
                             <td class="py-3 px-3">
-                              <div class="text-slate-900 font-bold text-xs">Selling Price: ₹ ${m.mrp.toFixed(2)}</div>
-                              <div class="text-[11px] text-slate-600 font-semibold mt-0.5">Buying Cost: ₹ ${m.purchaseRate.toFixed(2)}</div>
+                              <div class="text-slate-900 font-bold text-xs">MRP: ₹ ${m.mrp.toFixed(2)}</div>
+                              <span class="text-[10px] text-slate-400 font-mono">Batch: ${m.batchNo}</span>
                             </td>
                             <td class="py-3 px-3 text-center">
                               ${(() => {
                                 const scheme = this.formatFreeScheme(m.freeScheme);
                                 return (scheme && scheme !== '-') ? `
-                                  <span class="bg-amber-50 text-amber-900 border border-amber-200 px-2.5 py-1 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 shadow-2xs">
+                                  <span class="bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-bold inline-flex items-center gap-1 shadow-2xs">
                                     ${scheme}
                                   </span>
                                 ` : `
@@ -3752,14 +3707,9 @@ class ACSApp {
                               })()}
                             </td>
                             <td class="py-3 px-3 text-right">
-                              <div class="flex items-center justify-end gap-1">
-                                <button onclick="window.acsApp.openEditMedicineModal('${m.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit Medicine Details">
-                                  <i class="fa fa-pencil"></i>
-                                </button>
-                                <button onclick="window.acsApp.deleteMedicine('${m.id}')" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded" title="Delete Medicine">
-                                  <i class="fa fa-trash"></i>
-                                </button>
-                              </div>
+                              <button onclick="window.acsApp.openMedicineDetailModal('${m.id}', '${store.id}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs transition inline-flex items-center gap-1" title="View Formulation Details">
+                                <i class="fa fa-info-circle text-[#135c7e]"></i> Details
+                              </button>
                             </td>
                           </tr>
                         `;
@@ -4367,7 +4317,8 @@ class ACSApp {
   }
 
   getHostedMedicineCatalogHtml(store) {
-    const isPharmacist = !!(this.currentUser && (this.currentUser.storeId === store.id || this.currentUser.role === 'admin' || this.currentUser.role === 'pharmacy_owner'));
+    // Live public storefront is 100% patient & customer-facing; SKU additions & editing are centralized in the Owner Portal
+    const isPharmacist = false;
     const categoryFilter = this.hostedCategoryFilter || "ALL";
     const q = (this.hostedStockSearch || "").toLowerCase().trim();
     const viewMode = this.hostedCatalogViewMode || "table";
@@ -4836,22 +4787,7 @@ class ACSApp {
       </div>
     `;
 
-    const ownerBannerHtml = isPharmacist ? `
-      <div class="mb-4 p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-wrap items-center justify-between gap-2.5 shadow-xs">
-        <div class="flex items-center gap-2">
-          <span class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-sm font-bold shadow-xs">
-            <i class="fa fa-shield"></i>
-          </span>
-          <div>
-            <span class="text-xs font-black text-emerald-950 block">Pharmacist Live Inventory Management</span>
-            <span class="text-[11px] text-emerald-800">Directly add medicines, update batches/MRPs, or delete discontinued SKUs on your live website.</span>
-          </div>
-        </div>
-        <button onclick="window.acsApp.openAddMedicineModal()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs shadow-sm transition flex items-center gap-1.5">
-          <i class="fa fa-plus-circle"></i> Add New Medicine SKU
-        </button>
-      </div>
-    ` : '';
+    const ownerBannerHtml = '';
 
     if (viewMode === "compact") {
       return `
@@ -6555,9 +6491,14 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
               State-wide administrative registry of licensed retail & wholesale drugstores hosted on ACS.
             </p>
           </div>
-          <button id="btn-open-add-store" class="inline-flex items-center gap-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white px-5 py-2.5 rounded-lg font-medium shadow-sm transition">
-            <i class="fa fa-plus-circle"></i> Onboard New Pharmacy
-          </button>
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <button onclick="window.acsApp.openGoogleConsoleAutomationModal()" class="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-black text-amber-400 border border-amber-400/40 px-3.5 py-2.5 rounded-lg font-bold shadow-sm transition text-xs cursor-pointer" title="Search Engine Indexing & Schema Automation">
+              <i class="fa fa-google text-amber-400"></i> Googlebot &amp; Schema Hub
+            </button>
+            <button id="btn-open-add-store" class="inline-flex items-center gap-2 bg-[#135c7e] hover:bg-[#0f4b67] text-white px-5 py-2.5 rounded-lg font-medium shadow-sm transition">
+              <i class="fa fa-plus-circle"></i> Onboard New Pharmacy
+            </button>
+          </div>
         </div>
 
         <!-- Filter & Search Controls -->
@@ -6636,11 +6577,15 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
                 </div>
 
                 <div class="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                  <button onclick="window.acsApp.viewHostedWebsite('${store.id}')" class="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 py-2 px-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1">
+                  <button onclick="window.acsApp.viewHostedWebsite('${store.id}')" class="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1" title="Open live public website">
                     <i class="fa fa-globe"></i>
                     <span>Live Website</span>
                   </button>
-                  <button onclick="window.acsApp.selectAndOpenStore('${store.id}')" class="flex-1 bg-[#135c7e] hover:bg-[#0f4b67] text-white py-2 px-2.5 rounded-lg text-xs font-semibold text-center transition flex items-center justify-center gap-1">
+                  <button onclick="window.acsApp.openGoogleConsoleAutomationModal('${store.id}')" class="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer" title="Googlebot &amp; Schema SEO Automation for ${store.name}">
+                    <i class="fa fa-google text-amber-500"></i>
+                    <span class="hidden sm:inline">Googlebot</span>
+                  </button>
+                  <button onclick="window.acsApp.selectAndOpenStore('${store.id}')" class="flex-1 bg-[#135c7e] hover:bg-[#0f4b67] text-white py-2 px-2 rounded-lg text-xs font-semibold text-center transition flex items-center justify-center gap-1">
                     <span>Manage Hub</span>
                     <i class="fa fa-arrow-right"></i>
                   </button>
@@ -6923,6 +6868,127 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           `}
         </div>
 
+        <!-- Active Medicine SKUs & Per-Medicine Data Editor Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div class="flex items-center gap-3">
+              <span class="w-10 h-10 rounded-xl bg-teal-50 text-[#135c7e] flex items-center justify-center font-bold text-lg shadow-xs flex-shrink-0">
+                <i class="fa fa-medkit"></i>
+              </span>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="font-extrabold text-slate-900 text-base">Active Medicine SKUs &amp; Per-Medicine Data Editor</h3>
+                  <span class="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    ${store.stocks.length} Active SKUs
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  Directly edit brand name, generic salt composition, batch numbers, expiry dates, quantities, packaging, MRPs, wholesale cost prices, free schemes, and rack locations.
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 flex-wrap">
+              <button onclick="window.acsApp.openAddMedicineModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-xs shadow-sm transition flex items-center gap-1.5 cursor-pointer">
+                <i class="fa fa-plus-circle text-amber-300"></i> + Add New Medicine SKU
+              </button>
+              <button onclick="window.acsApp.switchTab('stocks')" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition flex items-center gap-1.5 border border-slate-200 cursor-pointer">
+                <i class="fa fa-cubes text-teal-700"></i> Full Stock Register &rarr;
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Owner Medicine Table -->
+          <div class="overflow-x-auto rounded-xl border border-slate-200">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
+                  <th class="py-3 px-3.5 min-w-[180px]">Medicine / Brand</th>
+                  <th class="py-3 px-3 min-w-[160px]">Generic Salt</th>
+                  <th class="py-3 px-2.5 min-w-[90px]">Category</th>
+                  <th class="py-3 px-3 min-w-[120px]">Batch &amp; Expiry</th>
+                  <th class="py-3 px-2.5 min-w-[90px] text-center">In Stock</th>
+                  <th class="py-3 px-2.5 min-w-[100px] text-right">Cost Price (CP)</th>
+                  <th class="py-3 px-3 min-w-[110px] text-right">Retail MRP</th>
+                  <th class="py-3 px-2.5 min-w-[80px] text-center">Free Scheme</th>
+                  <th class="py-3 px-2.5 min-w-[90px]">Rack</th>
+                  <th class="py-3 px-3 text-center min-w-[120px]">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                ${store.stocks.map((m) => {
+                  const inStock = m.quantity > 0;
+                  const isLow = m.quantity <= (m.minAlertThreshold || 20);
+                  const isSchedH = m.schedule && m.schedule.includes("H");
+                  const freeScheme = this.formatFreeScheme(m.freeScheme);
+
+                  return `
+                    <tr class="hover:bg-teal-50/20 transition">
+                      <td class="py-3 px-3.5">
+                        <strong class="font-extrabold text-slate-900 text-xs block">${m.name}</strong>
+                        <span class="text-[10px] text-slate-400 block">${m.manufacturer}</span>
+                      </td>
+                      <td class="py-3 px-3 font-mono text-[11px] text-slate-700">
+                        ${m.saltName}
+                      </td>
+                      <td class="py-3 px-2.5">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isSchedH ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'}">
+                          ${m.schedule}
+                        </span>
+                      </td>
+                      <td class="py-3 px-3 font-mono text-[11px] text-slate-700">
+                        <span class="font-bold">${m.batchNo}</span>
+                        <span class="text-[10px] text-slate-400 block">${m.expiryDate}</span>
+                      </td>
+                      <td class="py-3 px-2.5 text-center">
+                        <span class="font-bold font-mono text-xs px-2 py-0.5 rounded ${inStock ? (isLow ? 'bg-amber-100 text-amber-900' : 'bg-emerald-50 text-emerald-800') : 'bg-rose-100 text-rose-800'}">
+                          ${m.quantity} ${m.unit || 'Strips'}
+                        </span>
+                      </td>
+                      <td class="py-3 px-2.5 text-right font-mono text-xs font-semibold text-slate-700">
+                        ₹ ${(m.purchaseRate || 0).toFixed(2)}
+                      </td>
+                      <td class="py-3 px-3 text-right font-mono text-xs font-black text-emerald-700">
+                        ₹ ${m.mrp.toFixed(2)}
+                      </td>
+                      <td class="py-3 px-2.5 text-center">
+                        ${(freeScheme && freeScheme !== '-') ? `
+                          <span class="px-2 py-0.5 rounded font-bold text-[10px] bg-amber-100 text-amber-900 border border-amber-300 font-mono">
+                            ${freeScheme}
+                          </span>
+                        ` : `<span class="text-slate-300 font-mono">-</span>`}
+                      </td>
+                      <td class="py-3 px-2.5 font-mono text-xs text-slate-600">
+                        <span class="bg-slate-100 px-1.5 py-0.5 rounded font-semibold text-[10px]">${m.rackLocation || 'Shelf A'}</span>
+                      </td>
+                      <td class="py-3 px-3 text-center">
+                        <div class="inline-flex items-center gap-1.5">
+                          <button 
+                            type="button" 
+                            onclick="window.acsApp.openEditMedicineModal('${m.id}')" 
+                            class="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white rounded-lg font-bold text-xs transition flex items-center gap-1 shadow-2xs cursor-pointer"
+                            title="Edit all fields of ${m.name}"
+                          >
+                            <i class="fa fa-pencil"></i> Edit
+                          </button>
+                          <button 
+                            type="button" 
+                            onclick="window.acsApp.deleteMedicine('${m.id}')" 
+                            class="p-1.5 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer"
+                            title="Delete SKU"
+                          >
+                            <i class="fa fa-trash"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  `;
+                }).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- Compliance & Regulatory Dossier Card -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-6">
@@ -7048,25 +7114,60 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
             </div>
           </div>
 
-          <!-- Store Photos & Location Card -->
+          <!-- Storefront & Facility Photography Suite Card -->
           <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
-                <i class="fa fa-picture-o text-amber-600"></i> Storefront Photos
-              </h3>
-              <button onclick="window.acsApp.openPhotoUpdateModal('${store.id}')" class="text-xs text-[#135c7e] hover:underline font-semibold">
-                Update Photo
+              <div class="flex items-center gap-2">
+                <i class="fa fa-picture-o text-amber-600 text-lg"></i>
+                <div>
+                  <h3 class="font-bold text-slate-800 text-sm">Premises &amp; Facility Photos</h3>
+                  <span class="text-[10px] text-slate-500">1 Display Photo + ${(store.galleryPhotos || []).filter(p => !p.isPrimary).length} Extra Facility Photos</span>
+                </div>
+              </div>
+              <button onclick="window.acsApp.openManageStorePhotosModal('${store.id}')" class="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer">
+                <i class="fa fa-cog"></i> Manage Photos
               </button>
             </div>
 
-            <div class="rounded-lg overflow-hidden border border-slate-200 h-44 bg-slate-100 relative group">
-              <img src="${store.photoUrl}" alt="${store.name}" class="w-full h-full object-cover" />
-              <div class="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded">
-                Verified Front Facade
+            <!-- Primary Display Photo -->
+            <div class="space-y-1.5">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Primary Display Photo:</span>
+              <div class="rounded-xl overflow-hidden border border-slate-200 h-40 bg-slate-100 relative group shadow-2xs">
+                <img src="${store.photoUrl}" alt="${store.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" onerror="this.src='https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80'" />
+                <div class="absolute bottom-2 left-2 bg-black/75 backdrop-blur-xs text-white text-[10px] px-2 py-0.5 rounded font-semibold flex items-center gap-1">
+                  <i class="fa fa-camera text-amber-400"></i> Main Storefront Facade
+                </div>
+                <button type="button" onclick="window.acsApp.openPhotoStudioModal('store-primary', '${store.id}', '${store.photoUrl}')" class="absolute top-2 right-2 bg-black/70 hover:bg-black text-white text-[10px] font-bold px-2.5 py-1 rounded-lg backdrop-blur-xs border border-white/20 transition flex items-center gap-1 cursor-pointer">
+                  <i class="fa fa-crop text-amber-300"></i> Crop / Update
+                </button>
               </div>
             </div>
 
-            <div class="space-y-2 text-xs text-slate-600 pt-2">
+            <!-- Extra Facility Photos (Racks, Counter, Cold Chain, Signboard, Licensure) -->
+            <div class="space-y-1.5 pt-2 border-t border-slate-100">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Extra Facility Photos (Up to 5):</span>
+                <span class="text-[10px] font-mono text-teal-700 font-bold">${(store.galleryPhotos || []).filter(p => !p.isPrimary).length} / 5 Added</span>
+              </div>
+              <div class="grid grid-cols-3 gap-2">
+                ${((store.galleryPhotos || []).filter(p => !p.isPrimary)).slice(0, 5).map((p, idx) => `
+                  <div class="relative h-20 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 group">
+                    <img src="${p.url}" alt="${p.title || 'Facility Photo'}" class="w-full h-full object-cover group-hover:scale-110 transition duration-300" />
+                    <span class="absolute bottom-0 inset-x-0 bg-black/75 text-[8px] text-white text-center truncate px-1 py-0.5 font-semibold">
+                      ${p.tag || p.title || `Photo ${idx + 1}`}
+                    </span>
+                  </div>
+                `).join("")}
+                ${Array.from({ length: Math.max(0, 5 - ((store.galleryPhotos || []).filter(p => !p.isPrimary)).length) }).map((_, idx) => `
+                  <button type="button" onclick="window.acsApp.openManageStorePhotosModal('${store.id}')" class="h-20 rounded-lg border border-dashed border-slate-300 hover:border-teal-500 bg-slate-50 hover:bg-teal-50/50 flex flex-col items-center justify-center text-slate-400 hover:text-teal-700 transition cursor-pointer p-1">
+                    <i class="fa fa-plus text-xs mb-0.5"></i>
+                    <span class="text-[8px] font-bold">Add Photo</span>
+                  </button>
+                `).join("")}
+              </div>
+            </div>
+
+            <div class="space-y-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
               <div class="flex items-center justify-between py-1 border-b border-slate-100">
                 <span class="text-slate-500">Established Year:</span>
                 <span class="font-semibold text-slate-800">${store.establishedYear}</span>
@@ -7770,6 +7871,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     if (confirm(`Are you sure you want to delete ${item.name} from inventory?`)) {
       store.stocks = store.stocks.filter((m) => m.id !== medicineId);
       this.saveStores();
+      this.debouncedPushToCloud();
       this.closeModal();
       this.renderCurrentView();
       this.showToast(`Deleted ${item.name} from stock records`, "danger");
@@ -9856,33 +9958,31 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="space-y-1.5">
                   <label class="block text-xs font-bold text-slate-700">
-                    Pharmacist Full Name *
+                    Pharmacist Full Name <span class="text-slate-400 font-normal">(Optional)</span>
                   </label>
                   <input 
                     type="text" 
                     id="deploy-pharmacist-name" 
-                    required 
-                    placeholder="e.g. Apoorva Tripathi" 
+                    placeholder="e.g. Apoorva Tripathi (or leave blank)" 
                     class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e] font-semibold" 
                   />
                 </div>
 
                 <div class="space-y-1.5">
                   <label class="block text-xs font-bold text-slate-700">
-                    UPPC Registration Number *
+                    UPPC Registration Number <span class="text-slate-400 font-normal">(Optional)</span>
                   </label>
                   <input 
                     type="text" 
                     id="deploy-pharmacist-reg" 
-                    required 
-                    placeholder="e.g. UPPC-PH-41290" 
+                    placeholder="e.g. UPPC-PH-41290 (or leave blank)" 
                     class="w-full px-3.5 py-2.5 text-sm font-mono border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e]" 
                   />
                 </div>
 
                 <div class="space-y-1.5">
                   <label class="block text-xs font-bold text-slate-700">
-                    Qualification
+                    Qualification / Designation <span class="text-slate-400 font-normal">(Optional)</span>
                   </label>
                   <select 
                     id="deploy-pharmacist-qual" 
@@ -9923,24 +10023,29 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
               </div>
             </div>
 
-            <!-- SECTION 4: STOREFRONT PHOTOGRAPHY & SIGNBOARD (Real File Upload & Canvas Compression) -->
+            <!-- SECTION 4: STOREFRONT PHOTOGRAPHY & UP TO 5 EXTRA FACILITY PHOTOS -->
             <div class="space-y-4">
               <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div class="flex items-center gap-2.5">
                   <span class="w-7 h-7 rounded-lg bg-teal-50 text-teal-700 font-black text-xs flex items-center justify-center border border-teal-200">4</span>
-                  <h3 class="text-base font-black text-slate-900">Storefront Photo &amp; Signboard</h3>
+                  <h3 class="text-base font-black text-slate-900">Pharmacy Photography: 1 Display Photo + Up to 5 Extra Photos</h3>
                 </div>
                 <span class="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
-                  <i class="fa fa-check-circle"></i> Real In-Browser Compression
+                  <i class="fa fa-check-circle"></i> In-Browser Real Compression
                 </span>
               </div>
 
+              <!-- Main Primary Display Photo Upload -->
               <div class="p-5 bg-gradient-to-r from-slate-50 to-teal-50/30 border border-slate-200 rounded-2xl space-y-3">
-                <p class="text-xs text-slate-600 leading-relaxed">
-                  Upload a photo of your shop's front exterior, signboard, or medicine display counter. Large camera photos from mobile phones (e.g. 10MB+) are <strong>automatically optimized down to fast web standards</strong> on your device without quality loss.
-                </p>
+                <div class="flex items-center justify-between">
+                  <div>
+                    <span class="text-xs font-black text-slate-900 block">1. Main Display Photo (Pharmacy Exterior &amp; Signboard) *</span>
+                    <span class="text-[11px] text-slate-500">This photo will be the main hero cover on your deployed public website and Google preview.</span>
+                  </div>
+                  <span class="text-[10px] bg-teal-100 text-teal-900 px-2 py-0.5 rounded font-bold uppercase">Primary Display Photo</span>
+                </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center pt-1">
                   <!-- Photo Preview Tile -->
                   <div id="deploy-photo-preview-tile" class="md:col-span-1 h-36 rounded-2xl border-2 border-dashed border-slate-300 bg-white flex flex-col items-center justify-center overflow-hidden relative shadow-xs">
                     <div id="deploy-photo-placeholder" class="text-center p-3">
@@ -9956,7 +10061,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
                     <div class="flex items-center gap-2.5 flex-wrap">
                       <label class="cursor-pointer px-4 py-2.5 bg-[#135c7e] hover:bg-[#0f4b67] text-white rounded-xl text-xs font-bold transition inline-flex items-center gap-2 shadow-xs">
                         <i class="fa fa-upload text-amber-300"></i>
-                        <span>Choose Storefront Photo</span>
+                        <span>Upload Main Display Photo</span>
                         <input type="file" id="deploy-store-photo-file" accept="image/*" class="hidden" />
                       </label>
                       <button type="button" id="btn-remove-deploy-photo" class="px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 rounded-lg hidden font-bold border border-rose-200 transition">
@@ -9965,7 +10070,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
                     </div>
 
                     <div class="space-y-1">
-                      <span class="text-[11px] text-slate-500 font-medium block">Or specify an existing image URL:</span>
+                      <span class="text-[11px] text-slate-500 font-medium block">Or paste image URL:</span>
                       <input 
                         type="text" 
                         id="deploy-store-photo-url" 
@@ -9977,6 +10082,124 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
 
                     <div id="deploy-photo-size-badge" class="text-[10px] text-emerald-800 font-bold hidden flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 w-fit">
                       <i class="fa fa-check"></i> <span id="deploy-photo-size-text">Compressed &amp; ready</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Up to 5 Extra Facility Photos Upload Box -->
+              <div class="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <span class="text-xs font-black text-slate-900 block">2. Up to 5 Extra Facility Photos (Optional)</span>
+                    <span class="text-[11px] text-slate-500">Showcase medicine racks, dispensing counter, cold storage, signboard, or licensure wall.</span>
+                  </div>
+                  <span class="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-bold uppercase">Up to 5 Extra Photos</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-1">
+                  <!-- Slot 1: Medicine Racks -->
+                  <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-2 flex flex-col justify-between">
+                    <div>
+                      <span class="text-[11px] font-bold text-slate-800 block">Photo 1: Racks</span>
+                      <span class="text-[10px] text-slate-400 block truncate">Medicine Bays</span>
+                    </div>
+                    <div id="deploy-extra-preview-box-1" class="h-24 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden relative">
+                      <i class="fa fa-cubes text-slate-300 text-2xl" id="deploy-extra-icon-1"></i>
+                      <img id="deploy-extra-img-1" src="" class="w-full h-full object-cover hidden" alt="Racks" />
+                    </div>
+                    <div class="space-y-1">
+                      <label class="cursor-pointer w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1">
+                        <i class="fa fa-camera text-teal-700"></i> Upload
+                        <input type="file" id="deploy-extra-photo-1-file" accept="image/*" class="hidden" />
+                      </label>
+                      <button type="button" id="btn-remove-extra-1" class="w-full text-[10px] text-rose-600 hover:underline hidden font-bold text-center">Remove</button>
+                      <input type="hidden" id="deploy-extra-photo-1" value="" />
+                      <input type="hidden" id="deploy-extra-photo-1-tag" value="Medicine Racks" />
+                    </div>
+                  </div>
+
+                  <!-- Slot 2: Dispensing Counter -->
+                  <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-2 flex flex-col justify-between">
+                    <div>
+                      <span class="text-[11px] font-bold text-slate-800 block">Photo 2: Counter</span>
+                      <span class="text-[10px] text-slate-400 block truncate">Dispensing Desk</span>
+                    </div>
+                    <div id="deploy-extra-preview-box-2" class="h-24 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden relative">
+                      <i class="fa fa-calculator text-slate-300 text-2xl" id="deploy-extra-icon-2"></i>
+                      <img id="deploy-extra-img-2" src="" class="w-full h-full object-cover hidden" alt="Counter" />
+                    </div>
+                    <div class="space-y-1">
+                      <label class="cursor-pointer w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1">
+                        <i class="fa fa-camera text-teal-700"></i> Upload
+                        <input type="file" id="deploy-extra-photo-2-file" accept="image/*" class="hidden" />
+                      </label>
+                      <button type="button" id="btn-remove-extra-2" class="w-full text-[10px] text-rose-600 hover:underline hidden font-bold text-center">Remove</button>
+                      <input type="hidden" id="deploy-extra-photo-2" value="" />
+                      <input type="hidden" id="deploy-extra-photo-2-tag" value="Dispensing Counter" />
+                    </div>
+                  </div>
+
+                  <!-- Slot 3: Cold Storage -->
+                  <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-2 flex flex-col justify-between">
+                    <div>
+                      <span class="text-[11px] font-bold text-slate-800 block">Photo 3: Cold Chain</span>
+                      <span class="text-[10px] text-slate-400 block truncate">2-8°C Vault</span>
+                    </div>
+                    <div id="deploy-extra-preview-box-3" class="h-24 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden relative">
+                      <i class="fa fa-snowflake-o text-slate-300 text-2xl" id="deploy-extra-icon-3"></i>
+                      <img id="deploy-extra-img-3" src="" class="w-full h-full object-cover hidden" alt="Cold Chain" />
+                    </div>
+                    <div class="space-y-1">
+                      <label class="cursor-pointer w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1">
+                        <i class="fa fa-camera text-teal-700"></i> Upload
+                        <input type="file" id="deploy-extra-photo-3-file" accept="image/*" class="hidden" />
+                      </label>
+                      <button type="button" id="btn-remove-extra-3" class="w-full text-[10px] text-rose-600 hover:underline hidden font-bold text-center">Remove</button>
+                      <input type="hidden" id="deploy-extra-photo-3" value="" />
+                      <input type="hidden" id="deploy-extra-photo-3-tag" value="Cold Storage" />
+                    </div>
+                  </div>
+
+                  <!-- Slot 4: Signboard / Exterior -->
+                  <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-2 flex flex-col justify-between">
+                    <div>
+                      <span class="text-[11px] font-bold text-slate-800 block">Photo 4: Signboard</span>
+                      <span class="text-[10px] text-slate-400 block truncate">Outdoor Signage</span>
+                    </div>
+                    <div id="deploy-extra-preview-box-4" class="h-24 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden relative">
+                      <i class="fa fa-building-o text-slate-300 text-2xl" id="deploy-extra-icon-4"></i>
+                      <img id="deploy-extra-img-4" src="" class="w-full h-full object-cover hidden" alt="Signboard" />
+                    </div>
+                    <div class="space-y-1">
+                      <label class="cursor-pointer w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1">
+                        <i class="fa fa-camera text-teal-700"></i> Upload
+                        <input type="file" id="deploy-extra-photo-4-file" accept="image/*" class="hidden" />
+                      </label>
+                      <button type="button" id="btn-remove-extra-4" class="w-full text-[10px] text-rose-600 hover:underline hidden font-bold text-center">Remove</button>
+                      <input type="hidden" id="deploy-extra-photo-4" value="" />
+                      <input type="hidden" id="deploy-extra-photo-4-tag" value="Signboard" />
+                    </div>
+                  </div>
+
+                  <!-- Slot 5: Licensure Wall / Desk -->
+                  <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-2 flex flex-col justify-between">
+                    <div>
+                      <span class="text-[11px] font-bold text-slate-800 block">Photo 5: Licensure Wall</span>
+                      <span class="text-[10px] text-slate-400 block truncate">Certificates</span>
+                    </div>
+                    <div id="deploy-extra-preview-box-5" class="h-24 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden relative">
+                      <i class="fa fa-certificate text-slate-300 text-2xl" id="deploy-extra-icon-5"></i>
+                      <img id="deploy-extra-img-5" src="" class="w-full h-full object-cover hidden" alt="Licensure" />
+                    </div>
+                    <div class="space-y-1">
+                      <label class="cursor-pointer w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1">
+                        <i class="fa fa-camera text-teal-700"></i> Upload
+                        <input type="file" id="deploy-extra-photo-5-file" accept="image/*" class="hidden" />
+                      </label>
+                      <button type="button" id="btn-remove-extra-5" class="w-full text-[10px] text-rose-600 hover:underline hidden font-bold text-center">Remove</button>
+                      <input type="hidden" id="deploy-extra-photo-5" value="" />
+                      <input type="hidden" id="deploy-extra-photo-5-tag" value="Licensure Wall" />
                     </div>
                   </div>
                 </div>
@@ -10292,6 +10515,51 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       });
     }
 
+    // Extra facility photos 1-5 upload + client compression
+    for (let i = 1; i <= 5; i++) {
+      const extraFileInput = document.getElementById(`deploy-extra-photo-${i}-file`);
+      const extraHidden = document.getElementById(`deploy-extra-photo-${i}`);
+      const extraImg = document.getElementById(`deploy-extra-img-${i}`);
+      const extraIcon = document.getElementById(`deploy-extra-icon-${i}`);
+      const removeExtraBtn = document.getElementById(`btn-remove-extra-${i}`);
+
+      if (extraFileInput) {
+        extraFileInput.addEventListener("change", async (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+
+          this.showToast(`Compressing extra photo ${i}...`, "info");
+          try {
+            const compressed = await this.compressImageFile(file, 1200, 0.82);
+            if (extraHidden) extraHidden.value = compressed;
+            if (extraImg) {
+              extraImg.src = compressed;
+              extraImg.classList.remove("hidden");
+            }
+            if (extraIcon) extraIcon.classList.add("hidden");
+            if (removeExtraBtn) removeExtraBtn.classList.remove("hidden");
+            this.showToast(`Facility photo ${i} compressed and attached!`, "success");
+          } catch (err) {
+            console.error(`Extra photo ${i} compression error:`, err);
+            this.showToast(`Could not compress photo ${i}.`, "error");
+          }
+        });
+      }
+
+      if (removeExtraBtn) {
+        removeExtraBtn.addEventListener("click", () => {
+          if (extraFileInput) extraFileInput.value = "";
+          if (extraHidden) extraHidden.value = "";
+          if (extraImg) {
+            extraImg.src = "";
+            extraImg.classList.add("hidden");
+          }
+          if (extraIcon) extraIcon.classList.remove("hidden");
+          if (removeExtraBtn) removeExtraBtn.classList.add("hidden");
+        });
+      }
+    }
+
     // Form submission
     if (form) {
       form.onsubmit = (e) => this.handleDeploymentFormSubmit(e);
@@ -10343,12 +10611,46 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     const lic20 = (lic20El && lic20El.value.trim()) || `UP/${district.substring(0,3).toUpperCase()}/2026/20/${Math.floor(1000 + Math.random()*9000)}`;
     const lic21 = (lic21El && lic21El.value.trim()) || `UP/${district.substring(0,3).toUpperCase()}/2026/21/${Math.floor(1000 + Math.random()*9000)}`;
     const gstin = (gstinEl && gstinEl.value.trim()) || "09AABCT8192M1Z5";
-    const pharmacistName = (pharmNameEl && pharmNameEl.value.trim()) || storeName;
+    
+    // Optional staff details handling
+    const hasCustomPharmacist = pharmNameEl && pharmNameEl.value.trim();
+    const pharmacistName = hasCustomPharmacist ? pharmNameEl.value.trim() : "Registered Pharmacist";
     const uppcReg = (pharmRegEl && pharmRegEl.value.trim()) || `UPPC-PH-${Math.floor(40000 + Math.random()*20000)}`;
     const qual = pharmQualEl ? pharmQualEl.value : "B.Pharm, R.Ph (UP)";
     const pharmacistPhoto = pharmPhotoEl ? pharmPhotoEl.value : "";
 
     let photoVal = (storePhotoEl && storePhotoEl.value) || (storePhotoUrlEl && storePhotoUrlEl.value.trim()) || "https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=800&q=80";
+
+    // Collect up to 5 extra facility photos
+    const extraGalleryPhotos = [];
+    for (let i = 1; i <= 5; i++) {
+      const extraPhotoEl = document.getElementById(`deploy-extra-photo-${i}`);
+      const extraTagEl = document.getElementById(`deploy-extra-photo-${i}-tag`);
+      const extraVal = extraPhotoEl ? extraPhotoEl.value.trim() : "";
+      if (extraVal) {
+        const tag = (extraTagEl && extraTagEl.value) || `Facility Photo ${i}`;
+        extraGalleryPhotos.push({
+          id: `gp-${Date.now()}-${i + 1}`,
+          tag: tag,
+          url: extraVal,
+          title: `${storeName} - ${tag}`,
+          caption: `${tag} at ${storeName}, ${district}`,
+          isPrimary: false
+        });
+      }
+    }
+
+    const allGalleryPhotos = [
+      {
+        id: `gp-${Date.now()}-1`,
+        tag: "Store Front",
+        url: photoVal,
+        title: "Storefront & Main Signboard",
+        caption: `${storeName}, ${district}`,
+        isPrimary: true
+      },
+      ...extraGalleryPhotos
+    ];
 
     const adminUser = (loginIdEl && loginIdEl.value.trim()) || finalSlug;
     const adminPass = (passEl && passEl.value.trim()) || "Pharma@8004";
@@ -10366,7 +10668,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       address: address || `${district} Main Market, Uttar Pradesh`,
       license20: lic20,
       license21: lic21,
-      ownerName: pharmacistName,
+      ownerName: hasCustomPharmacist ? pharmacistName : (storeName + " Owner"),
       phone: phone,
       whatsapp: phone.replace(/[^0-9]/g, ""),
       email: ownerEmail,
@@ -10384,7 +10686,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
         {
           id: `st-${Date.now()}-1`,
           name: pharmacistName,
-          role: "Registered Pharmacist & Incharge",
+          role: hasCustomPharmacist ? "Registered Pharmacist & Incharge" : "Pharmacist on Duty",
           uppcRegNo: uppcReg,
           qualification: qual,
           regDate: "2022-04-12",
@@ -10459,16 +10761,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           minAlertThreshold: 30
         }
       ],
-      galleryPhotos: [
-        {
-          id: `gp-${Date.now()}-1`,
-          tag: "Store Front",
-          url: photoVal,
-          title: "Storefront & Main Signboard",
-          caption: `${storeName}, ${district}`,
-          isPrimary: true
-        }
-      ],
+      galleryPhotos: allGalleryPhotos,
       prescriptions: [],
       scheduleH1Register: [],
       staffDutyLog: [],
@@ -12674,6 +12967,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
 
       store.stocks.unshift(newMed);
       this.saveStores();
+      this.debouncedPushToCloud();
       this.closeModal();
       this.renderCurrentView();
       this.showToast(`Added "${newMed.name}" to inventory successfully.`, "success");
@@ -12788,6 +13082,7 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       med.freeScheme = this.formatFreeScheme(document.getElementById("edit-med-free").value) || "";
 
       this.saveStores();
+      this.debouncedPushToCloud();
       this.closeModal();
       this.renderCurrentView();
 

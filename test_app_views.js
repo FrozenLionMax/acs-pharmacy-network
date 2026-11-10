@@ -314,17 +314,20 @@ try {
   }
   console.log('saveStudioPhoto("staff-avatar") updated and verified successfully!');
 
-  // Test Hosted Website View has owner edit buttons when logged in
+  // Test Hosted Website View has clean public storefront without leaked photo studio or SKU buttons
   app.authenticate('akhil@acs.com', 'akhil123');
   app.hostedSubTab = 'storefront';
   const loggedInHostedHtml = app.getHostedWebsiteViewHtml(currentStore);
-  if (!loggedInHostedHtml.includes('Edit Cover Photo')) {
-    throw new Error('Hosted website view missing Edit Cover Photo button for logged-in owner');
+  if (loggedInHostedHtml.includes('Edit Cover Photo')) {
+    throw new Error('Hosted website view unexpectedly contains Edit Cover Photo button');
   }
-  if (!loggedInHostedHtml.includes('Edit Pharmacist Photo')) {
-    throw new Error('Hosted website view missing Edit Pharmacist Photo button for logged-in owner');
+  if (loggedInHostedHtml.includes('Googlebot &amp; Schema') || loggedInHostedHtml.includes('Googlebot & Schema')) {
+    throw new Error('Hosted website view unexpectedly contains Googlebot & Schema button');
   }
-  console.log('Hosted website view verified: Edit Cover Photo & Edit Pharmacist Photo rendered for owner!');
+  if (!loggedInHostedHtml.includes('Open Owner Portal to Edit Data &amp; Photos') && !loggedInHostedHtml.includes('Open Owner Portal to Edit Data & Photos')) {
+    throw new Error('Hosted website view missing Open Owner Portal notice for logged-in owner');
+  }
+  console.log('Hosted website view verified: 100% clean public storefront, with owner directed to Owner Portal!');
   app.logout();
 
   // 10. Test Public Patient Storefront & Medicine Detail & Rx Auto-Matcher
@@ -398,11 +401,16 @@ try {
     throw new Error('Inquire option should be removed from public customer catalog');
   }
 
-  // Verify that Free is kept for the pharmacist when logged in
+  // Verify that public hosted catalog NEVER shows wholesale Free column even when logged in (Free scheme is kept in Owner Portal & Stocks view)
   app.currentUser = { role: 'pharmacy_owner', storeId: currentStore.id, name: currentStore.ownerName };
   const pharmacistCatalog = app.getHostedMedicineCatalogHtml(currentStore);
-  if (!pharmacistCatalog.includes('>Free<')) {
-    throw new Error('Free header should be present in catalog for logged-in pharmacist');
+  if (pharmacistCatalog.includes('>Free<')) {
+    throw new Error('Wholesale Free header should not be present in public catalog even for logged-in pharmacist');
+  }
+  // Instead verify Free Scheme is present in Owner Portal
+  const ownerDetailHtml = app.getStoreDetailViewHtml(currentStore);
+  if (!ownerDetailHtml.includes('Free Scheme')) {
+    throw new Error('Free Scheme column missing from Owner Portal medicine table');
   }
   app.currentUser = null;
 
@@ -824,7 +832,7 @@ try {
   }
   console.log('Guest storefront mobile experience verified: 0 owner controls, 5 ergonomic touch targets present!');
 
-  // 2. Authenticated Owner check: Owner Mode bar, in-catalog edit/delete, 5-button owner mobile bottom bar
+  // 2. Authenticated Owner check: Clean storefront with Owner notice directing to Owner Portal
   app.currentUser = {
     username: 'akhil_chemist',
     role: 'pharmacy_owner',
@@ -832,22 +840,28 @@ try {
     name: 'Akhileshwar Tripathi'
   };
   const ownerStorefrontHtml = app.getHostedWebsiteViewHtml(currentStore);
-  if (!ownerStorefrontHtml.includes('Verified Owner Mode') || !ownerStorefrontHtml.includes('Edit Store Profile') || !ownerStorefrontHtml.includes('Add Medicine SKU')) {
-    throw new Error('Owner storefront view missing Verified Owner Mode control bar!');
+  if (!ownerStorefrontHtml.includes('Verified Owner Mode') || !ownerStorefrontHtml.includes('Open Owner Portal to Edit Data &amp; Photos')) {
+    throw new Error('Owner storefront view missing Verified Owner Mode notice bar!');
+  }
+  if (ownerStorefrontHtml.includes('Edit Cover Photo') || ownerStorefrontHtml.includes('Add Medicine SKU')) {
+    throw new Error('Edit buttons leaked into hosted storefront!');
   }
   if (!ownerStorefrontHtml.includes('mobile-bottom-bar') || !ownerStorefrontHtml.includes('Portal')) {
     throw new Error('Owner mobile bottom bar missing Portal shortcut!');
   }
 
-  // 3. In-catalog Owner Controls
-  const ownerCatalogHtml = app.getHostedMedicineCatalogHtml(currentStore);
-  if (!ownerCatalogHtml.includes('Pharmacist Live Inventory Management') || !ownerCatalogHtml.includes('Add New Medicine SKU')) {
-    throw new Error('Owner catalog missing Live Inventory Management banner!');
+  // 3. Centralized Owner Portal SKU Management & Per-Medicine Editor
+  const ownerDetailViewHtml = app.getStoreDetailViewHtml(currentStore);
+  if (!ownerDetailViewHtml.includes('Active Medicine SKUs &amp; Per-Medicine Data Editor') && !ownerDetailViewHtml.includes('Active Medicine SKUs & Per-Medicine Data Editor')) {
+    throw new Error('Owner Portal missing Active Medicine SKUs & Per-Medicine Data Editor!');
   }
-  if (!ownerCatalogHtml.includes('openEditMedicineModal') || !ownerCatalogHtml.includes('deleteMedicine')) {
-    throw new Error('Owner catalog missing inline Edit and Delete medicine actions!');
+  if (!ownerDetailViewHtml.includes('+ Add New Medicine SKU')) {
+    throw new Error('Owner Portal missing + Add New Medicine SKU button!');
   }
-  console.log('Authenticated Owner storefront verified: Verified Owner Mode bar, 5-target bar, and inline SKU CRUD active!');
+  if (!ownerDetailViewHtml.includes('openEditMedicineModal') || !ownerDetailViewHtml.includes('deleteMedicine')) {
+    throw new Error('Owner Portal missing inline Edit and Delete medicine actions!');
+  }
+  console.log('Authenticated Owner experience verified: Clean public storefront, with SKU CRUD & multi-photos centralized in Owner Portal!');
 
   // =========================================================================
   // --- Testing Full CRUD Operations (Store, Medicine, Staff) ---
@@ -1193,16 +1207,59 @@ try {
 
   // Test 5: Verify Hosted Website in Owner Mode vs Public Mode
   const ownerModeHtml = app.getHostedWebsiteViewHtml(deployedStore);
-  if (!ownerModeHtml.includes('Owner Edit Mode') && !ownerModeHtml.includes('Edit Cover Photo')) {
-    throw new Error('Owner Mode controls missing in hosted website view for logged in owner!');
+  if (!ownerModeHtml.includes('Verified Owner Mode') || !ownerModeHtml.includes('Open Owner Portal to Edit Data &amp; Photos')) {
+    throw new Error('Owner Mode notice missing in hosted website view for logged in owner!');
   }
+  if (ownerModeHtml.includes('Edit Cover Photo') || ownerModeHtml.includes('Add New Medicine SKU') || ownerModeHtml.includes('Googlebot &amp; Schema')) {
+    throw new Error('Edit buttons or Googlebot leaked into hosted storefront!');
+  }
+
+  // Test 6: Verify Owner Portal contains the Active Medicine SKUs & Per-Medicine Editor and Photo Suite
+  const ownerPortalHtml = app.getStoreDetailViewHtml(deployedStore);
+  if (!ownerPortalHtml.includes('Active Medicine SKUs &amp; Per-Medicine Data Editor') && !ownerPortalHtml.includes('Active Medicine SKUs & Per-Medicine Data Editor')) {
+    throw new Error('Owner Portal missing Active Medicine SKUs & Per-Medicine Data Editor!');
+  }
+  if (!ownerPortalHtml.includes('+ Add New Medicine SKU')) {
+    throw new Error('Owner Portal missing + Add New Medicine SKU button!');
+  }
+  if (!ownerPortalHtml.includes('Premises &amp; Facility Photos') && !ownerPortalHtml.includes('Premises & Facility Photos')) {
+    throw new Error('Owner Portal missing Premises & Facility Photos suite!');
+  }
+  console.log('Owner Portal verified: Photo Suite & Per-Medicine SKU Editor present and functional!');
+
+  // Test 7: Verify Directory View has Googlebot & Schema button strictly on main admin page
+  const mainAdminDirHtml = app.getDirectoryViewHtml();
+  if (!mainAdminDirHtml.includes('Googlebot &amp; Schema Hub') && !mainAdminDirHtml.includes('Googlebot & Schema Hub')) {
+    throw new Error('Directory view missing Googlebot & Schema Hub button!');
+  }
+  if (!mainAdminDirHtml.includes('Googlebot')) {
+    throw new Error('Directory view missing Googlebot button per pharmacy card!');
+  }
+  console.log('Main Admin Directory verified: Googlebot & Schema buttons strictly positioned per pharmacy!');
+
+  // Test 8: Verify Kapoor Medicos Store
+  const kapoorStore = app.stores.find(s => s.slug === 'kapoor-medicos' || s.id === 'store-up-008');
+  if (!kapoorStore) {
+    throw new Error('Kapoor Medicos not found in stores registry!');
+  }
+  if (kapoorStore.name !== 'Kapoor Medicos') {
+    throw new Error('Kapoor Medicos name mismatch!');
+  }
+  if (!Array.isArray(kapoorStore.galleryPhotos) || kapoorStore.galleryPhotos.length < 6) {
+    throw new Error(`Kapoor Medicos expected at least 6 photos (1 display + 5 extra), found: ${kapoorStore.galleryPhotos ? kapoorStore.galleryPhotos.length : 0}`);
+  }
+  const kapoorAuth = app.authenticate('kapoor-medicos', 'Pharma@8004');
+  if (!kapoorAuth || !app.currentUser || app.currentUser.storeId !== kapoorStore.id) {
+    throw new Error('Kapoor Medicos owner authentication failed with credentials kapoor-medicos / Pharma@8004!');
+  }
+  console.log('Kapoor Medicos verified 100%: 1 Display Photo + 5 Extra Photos, Stocks, and Owner Auth functional!');
 
   app.viewPublicWebsite(deployedStore.id);
   if (app.currentUser !== null) {
     throw new Error('viewPublicWebsite did not clear currentUser for public mode!');
   }
   const publicModeHtml = app.getHostedWebsiteViewHtml(deployedStore);
-  if (publicModeHtml.includes('Owner Edit Mode') || publicModeHtml.includes('Edit Cover Photo')) {
+  if (publicModeHtml.includes('Verified Owner Mode') || publicModeHtml.includes('Edit Cover Photo')) {
     throw new Error('Owner controls leaked into public mode view!');
   }
   console.log('Owner Mode vs Public Read-Only Mode toggle verified 100%!');

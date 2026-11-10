@@ -2011,6 +2011,224 @@ const INITIAL_STORES_DATA = [
         }
       ]
     }
+  },
+  {
+    "id": "store-up-008",
+    "slug": "kapoor-medicos",
+    "slugAliases": [
+      "kapoor-medicos",
+      "kapoor-medical-store",
+      "kapoor-chemist",
+      "kapoor-medicos-deoria",
+      "pharmacy-kapoor-medicos"
+    ],
+    "name": "Kapoor Medicos",
+    "alternateNames": [
+      "Kapoor Medical Store",
+      "कपूर मेडिकोज",
+      "Kapoor Chemist Deoria"
+    ],
+    "district": "Deoria",
+    "city": "Deoria",
+    "address": "Station Road, Near Railway Station, Deoria, Uttar Pradesh - 274001",
+    "mapsUrl": "https://maps.google.com/?q=Kapoor+Medicos+Station+Road+Deoria",
+    "phone": "+91 94152 77889",
+    "whatsapp": "+919415277889",
+    "email": "contact@kapoor-medicos.in",
+    "ownerName": "Dr. Rakesh Kapoor",
+    "license20": "UP/DEO/2023/20/4182",
+    "license21": "UP/DEO/2023/21/4183",
+    "gstin": "09AABCK8899M1Z3",
+    "establishedYear": "2005",
+    "operatingHours": "08:00 AM - 10:30 PM (Emergency 24x7)",
+    "is24x7": true,
+    "status": "Verified",
+    "photoUrl": "https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=1200&q=80",
+    "galleryPhotos": [
+      {
+        "id": "gal-kap-01",
+        "url": "https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=1200&q=80",
+        "title": "Storefront & Main Signboard",
+        "category": "Exterior & Front",
+        "tag": "Store Front",
+        "isPrimary": true
+      },
+      {
+        "id": "gal-kap-02",
+        "url": "https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=1200&q=80",
+        "title": "Interior Medicine Racks & Prescription Bays",
+        "category": "Medicine Racks",
+        "tag": "Medicine Racks",
+        "isPrimary": false
+      },
+      {
+        "id": "gal-kap-03",
+        "url": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=1200&q=80",
+        "title": "Dispensing Counter & Digital POS Billing",
+        "category": "Dispensing & Billing",
+        "tag": "Dispensing Counter",
+        "isPrimary": false
+      },
+      {
+        "id": "gal-kap-04",
+        "url": "https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=1200&q=80",
+        "title": "2-8°C Cold Chain Refrigerator Vault",
+        "category": "Cold Storage",
+        "tag": "Cold Storage",
+        "isPrimary": false
+      },
+      {
+        "id": "gal-kap-05",
+        "url": "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1200&q=80",
+        "title": "Signboard & Front Entrance",
+        "category": "Signage & Entrance",
+        "tag": "Signboard",
+        "isPrimary": false
+      },
+      {
+        "id": "gal-kap-06",
+        "url": "https://images.unsplash.com/photo-1585435557343-3b092031a831?auto=format&fit=crop&w=1200&q=80",
+        "title": "Pharmacist Consultation Desk & Licensure Display",
+        "category": "Consultation & Licensure",
+        "tag": "Licensure Wall",
+        "isPrimary": false
+      }
+    ],
+    "rating": 4.9,
+    "adminUsername": "kapoor-medicos",
+    "adminPassword": "Pharma@8004",
+    "isViewOnly": false,
+    "staff": [
+      {
+        "id": "st-kap-001",
+        "name": "Dr. Rakesh Kapoor",
+        "role": "Chief Pharmacist & Store Owner",
+        "uppcRegNo": "UPPC-PH-38910",
+        "qualification": "B.Pharm, R.Ph (UP)",
+        "regDate": "2012-07-15",
+        "validUpto": "2032-07-14",
+        "phone": "+91 94152 77889",
+        "shift": "General Shift / 24x7 Emergency",
+        "isAadhaarVerified": true,
+        "isOnDuty": true,
+        "status": "Active"
+      }
+    ],
+    "stocks": [
+      {
+        "id": "med-kap-001",
+        "name": "Augmentin 625 Duo Tablet",
+        "saltName": "Amoxicillin 500mg + Potassium Clavulanate 125mg",
+        "manufacturer": "GlaxoSmithKline Pharmaceuticals",
+        "batchNo": "BAT-AUG-9912",
+        "expiryDate": "2027-08-31",
+        "schedule": "Schedule H",
+        "quantity": 100,
+        "unit": "Strips (10 tabs)",
+        "mrp": 220.00,
+        "purchaseRate": 165.00,
+        "rackLocation": "Rack A-01",
+        "minAlertThreshold": 25,
+        "freeScheme": "+1"
+      },
+      {
+        "id": "med-kap-002",
+        "name": "Dolo 650 Tablet",
+        "saltName": "Paracetamol IP 650mg",
+        "manufacturer": "Micro Labs Ltd",
+        "batchNo": "BAT-DOL-3310",
+        "expiryDate": "2028-11-30",
+        "schedule": "OTC",
+        "quantity": 150,
+        "unit": "Strips (15 tabs)",
+        "mrp": 34.00,
+        "purchaseRate": 24.50,
+        "rackLocation": "Rack A-02",
+        "minAlertThreshold": 30,
+        "freeScheme": ""
+      },
+      {
+        "id": "med-kap-003",
+        "name": "Azithral 500 Tablet",
+        "saltName": "Azithromycin IP 500mg",
+        "manufacturer": "Alembic Pharmaceuticals Ltd",
+        "batchNo": "BAT-AZI-8801",
+        "expiryDate": "2027-10-31",
+        "schedule": "Schedule H",
+        "quantity": 80,
+        "unit": "Strips (5 tabs)",
+        "mrp": 122.00,
+        "purchaseRate": 89.00,
+        "rackLocation": "Rack A-03",
+        "minAlertThreshold": 20,
+        "freeScheme": "+1"
+      },
+      {
+        "id": "med-kap-004",
+        "name": "Pan-D Capsule",
+        "saltName": "Pantoprazole 40mg + Domperidone 30mg SR",
+        "manufacturer": "Alkem Laboratories Ltd",
+        "batchNo": "BAT-PAN-6012",
+        "expiryDate": "2028-05-31",
+        "schedule": "Schedule H",
+        "quantity": 110,
+        "unit": "Strips (15 caps)",
+        "mrp": 199.00,
+        "purchaseRate": 145.00,
+        "rackLocation": "Rack B-01",
+        "minAlertThreshold": 25,
+        "freeScheme": ""
+      },
+      {
+        "id": "med-kap-005",
+        "name": "Electral Oral Rehydration Salts",
+        "saltName": "WHO Formula Oral Electrolyte Powder (21.8g)",
+        "manufacturer": "FDC Ltd",
+        "batchNo": "BAT-ELC-1090",
+        "expiryDate": "2028-09-30",
+        "schedule": "OTC",
+        "quantity": 200,
+        "unit": "Sachets (21.8g)",
+        "mrp": 22.00,
+        "purchaseRate": 15.00,
+        "rackLocation": "Rack B-02",
+        "minAlertThreshold": 40,
+        "freeScheme": "+2"
+      },
+      {
+        "id": "med-kap-006",
+        "name": "Montek-LC Tablet",
+        "saltName": "Montelukast 10mg + Levocetirizine 5mg",
+        "manufacturer": "Sun Pharmaceutical Industries Ltd",
+        "batchNo": "BAT-MLC-4421",
+        "expiryDate": "2027-12-31",
+        "schedule": "Schedule H",
+        "quantity": 90,
+        "unit": "Strips (10 tabs)",
+        "mrp": 178.00,
+        "purchaseRate": 128.00,
+        "rackLocation": "Rack B-03",
+        "minAlertThreshold": 20,
+        "freeScheme": ""
+      }
+    ],
+    "revenueData": {
+      "todaySales": 21500,
+      "monthlyGross": 520000,
+      "lastMonthGross": 490000,
+      "avgGrossMarginPercent": 23.5,
+      "totalOrdersThisMonth": 640,
+      "digitalSplitPercent": 72,
+      "cashSplitPercent": 28,
+      "gstCollectedMonthly": 62400,
+      "monthlyHistory": [
+        { "month": "Aug", "revenue": 470000, "digital": 330000, "cash": 140000 },
+        { "month": "Sep", "revenue": 490000, "digital": 350000, "cash": 140000 },
+        { "month": "Oct (Current)", "revenue": 520000, "digital": 374400, "cash": 145600 }
+      ],
+      "paymentChannels": { "upi": 62, "cards": 10, "cash": 28 },
+      "transactions": []
+    }
   }
 ];
 
