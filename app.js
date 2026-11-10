@@ -1599,7 +1599,9 @@ class ACSApp {
           phone: currentStore.phone,
           photoUrl: currentStore.photoUrl,
           stocks: (currentStore.stocks || []).map(m => `${m.id}:${m.quantity}:${m.mrp}`).sort(),
-          staff: (currentStore.staff || []).map(s => `${s.id}:${s.name}:${s.isOnDuty}`).sort()
+          staff: (currentStore.staff || []).map(s => `${s.id}:${s.name}:${s.isOnDuty}`).sort(),
+          customServices: (currentStore.customServices || []).join(','),
+          extraNotes: currentStore.extraNotes || ''
         }) : "";
         if (this._lastRenderedStoreSig && this._lastRenderedStoreSig === currentStoreSig) {
           return; // The store being viewed has not changed at all — keep current DOM untouched
@@ -1664,7 +1666,9 @@ class ACSApp {
         phone: store.phone,
         photoUrl: store.photoUrl,
         stocks: (store.stocks || []).map(m => `${m.id}:${m.quantity}:${m.mrp}`).sort(),
-        staff: (store.staff || []).map(s => `${s.id}:${s.name}:${s.isOnDuty}`).sort()
+        staff: (store.staff || []).map(s => `${s.id}:${s.name}:${s.isOnDuty}`).sort(),
+        customServices: (store.customServices || []).join(','),
+        extraNotes: store.extraNotes || ''
       });
     }
 
@@ -3570,24 +3574,74 @@ class ACSApp {
                     </div>
                   </div>
 
-                  <!-- Store Facilities & Cold Storage -->
+                  <!-- Pharmacy Overview, Verification & Store Highlights -->
                   <div class="p-6 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-between shadow-xs">
                     <div>
-                      <div class="flex items-center gap-2 text-slate-700 font-bold text-xs uppercase tracking-wider mb-3">
-                        <i class="fa fa-snowflake-o text-base text-blue-600"></i> Cold Chain &amp; Storage
+                      <div class="flex items-center justify-between gap-2 mb-3">
+                        <span class="text-slate-700 font-bold text-xs uppercase tracking-wider flex items-center gap-1.5">
+                          <i class="fa fa-certificate text-base text-teal-600"></i> Pharmacy Overview &amp; Verification
+                        </span>
+                        <span class="bg-teal-50 text-teal-800 border border-teal-200 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <i class="fa fa-check-circle text-teal-600"></i> ${store.status || 'Verified Retailer'}
+                        </span>
                       </div>
-                      <h3 class="text-base font-bold text-slate-900">Certified Refrigerated Units</h3>
-                      <p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
-                        Insulin, biologicals, and temperature-sensitive injectables stored strictly at 2°C – 8°C with digital logging.
+
+                      <h3 class="text-base font-bold text-slate-900">${store.name}</h3>
+                      <p class="text-xs text-slate-600 mt-1 leading-relaxed">
+                        Licensed retail chemist established in ${store.establishedYear || '1998'}. Verified for genuine allopathic, biological and OTC medicine dispensation in ${store.city || store.district || 'Uttar Pradesh'}, Uttar Pradesh.
                       </p>
-                      <div class="mt-3 space-y-1.5 text-xs text-slate-600">
-                        <div class="flex items-center gap-2"><i class="fa fa-check text-emerald-600"></i> Daily digital temperature logbook</div>
-                        <div class="flex items-center gap-2"><i class="fa fa-check text-emerald-600"></i> 100% Genuine batch procurement</div>
-                        <div class="flex items-center gap-2"><i class="fa fa-check text-emerald-600"></i> Backup generator power assurance</div>
+
+                      <!-- Key Licensure & Statutory Data -->
+                      <div class="mt-3 pt-2.5 border-t border-slate-200/80 space-y-1.5 text-xs text-slate-700">
+                        <div class="flex items-center justify-between">
+                          <span class="text-slate-500 font-medium">Drug License Form 20:</span>
+                          <span class="font-mono font-bold text-slate-800">${store.license20}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                          <span class="text-slate-500 font-medium">Drug License Form 21:</span>
+                          <span class="font-mono font-bold text-slate-800">${store.license21}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                          <span class="text-slate-500 font-medium">GSTIN (Tax Registered):</span>
+                          <span class="font-mono font-bold text-slate-800">${store.gstin || '09AABFD3912K1Z9'}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                          <span class="text-slate-500 font-medium">Proprietor / In-Charge:</span>
+                          <span class="font-bold text-slate-800">${store.ownerName || 'Licensed Pharmacist'}</span>
+                        </div>
+                      </div>
+
+                      <!-- Services, Key Facilities & Owner Extras -->
+                      <div class="mt-3 pt-2.5 border-t border-slate-200/80">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Verified Services &amp; Facilities:</span>
+                        <div class="flex flex-wrap gap-1.5">
+                          ${(store.customServices && store.customServices.length > 0 ? store.customServices : [
+                            'WhatsApp Rx Orders',
+                            'Doorstep Delivery',
+                            'UPI & Card Payments',
+                            '100% Genuine Batches'
+                          ]).map(service => `
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-white text-slate-800 border border-slate-200 shadow-2xs">
+                              <i class="fa fa-check text-emerald-600 text-[10px]"></i> ${service}
+                            </span>
+                          `).join('')}
+                          ${store.is24x7 ? `
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200 shadow-2xs">
+                              <i class="fa fa-clock-o text-indigo-600 text-[10px]"></i> 24x7 Emergency
+                            </span>
+                          ` : ''}
+                        </div>
+                        ${store.extraNotes ? `
+                          <div class="mt-2 p-2 rounded-lg bg-teal-50/70 border border-teal-200/70 text-[11px] text-teal-950 font-medium leading-relaxed">
+                            <i class="fa fa-info-circle text-teal-700 mr-1"></i> ${store.extraNotes}
+                          </div>
+                        ` : ''}
                       </div>
                     </div>
-                    <div class="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center gap-1.5">
-                      <i class="fa fa-shield text-slate-400"></i> Inspected by Drug Licensing Authority, Uttar Pradesh.
+
+                    <div class="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between">
+                      <span class="flex items-center gap-1.5"><i class="fa fa-shield text-teal-600"></i> FSDA Licensure Compliant</span>
+                      <span class="font-semibold text-slate-600">Govt. of Uttar Pradesh</span>
                     </div>
                   </div>
 
@@ -7075,6 +7129,8 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           rating: parseFloat(s.rating || 4.9),
           stocks: stocks,
           staff: staff,
+          customServices: s.custom_services || (this.stores && this.stores.find(st => st.id === s.id)?.customServices) || [],
+          extraNotes: s.extra_notes || (this.stores && this.stores.find(st => st.id === s.id)?.extraNotes) || "",
           revenueData: (this.stores && this.stores.find(st => st.id === s.id)?.revenueData) || s.revenue_data || { todaySales: 21500, monthlyGross: 520000, transactions: [] }
         };
       });
@@ -12262,6 +12318,32 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
                     class="w-full px-3.5 py-2.5 text-sm font-mono border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e]" 
                   />
                 </div>
+
+                <div class="space-y-1.5 md:col-span-2">
+                  <label class="block text-xs font-bold text-slate-700">
+                    Store Highlights &amp; Services <span class="text-slate-400 font-normal">(Optional, Comma-separated)</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    id="deploy-custom-services" 
+                    placeholder="e.g. Doorstep Delivery, WhatsApp Rx Orders, Digital UPI, Genuine Batches" 
+                    class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e] font-medium" 
+                  />
+                  <span class="text-[10px] text-slate-400 block">Featured badges displayed on your website's verification card.</span>
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-700">
+                    Owner Announcement <span class="text-slate-400 font-normal">(Optional)</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    id="deploy-extra-notes" 
+                    placeholder="e.g. Free local delivery available." 
+                    class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#135c7e] font-medium" 
+                  />
+                  <span class="text-[10px] text-slate-400 block">Notice shown to patients.</span>
+                </div>
               </div>
             </div>
 
@@ -12956,6 +13038,12 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
     const emailEl = document.getElementById("deploy-owner-email");
     const loginIdEl = document.getElementById("deploy-login-id");
     const passEl = document.getElementById("deploy-password");
+    const customServicesEl = document.getElementById("deploy-custom-services");
+    const extraNotesEl = document.getElementById("deploy-extra-notes");
+    const customServices = (customServicesEl && customServicesEl.value.trim()) 
+      ? customServicesEl.value.split(",").map(s => s.trim()).filter(Boolean)
+      : [];
+    const extraNotes = extraNotesEl ? extraNotesEl.value.trim() : "";
 
     const storeName = nameEl ? nameEl.value.trim() : "";
     if (!storeName) {
@@ -13073,6 +13161,8 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       is24x7: is24x7,
       status: "Verified",
       photoUrl: photoVal,
+      customServices: customServices,
+      extraNotes: extraNotes,
       adminUsername: adminUser,
       adminPassword: adminPass,
       isViewOnly: false,
@@ -14026,6 +14116,28 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
           <span class="text-[11px] text-teal-800">Badge shown on Google & storefront</span>
         </div>
 
+        <!-- Store Facilities, Highlights & Extras -->
+        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
+              <i class="fa fa-star text-amber-500"></i> Store Facilities, Highlights &amp; Extras
+            </span>
+            <span class="text-[10px] text-teal-700 font-bold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">Shown on Live Website</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 text-xs mb-1">Custom Facilities / Badges (Comma-separated)</label>
+              <input type="text" id="edit-store-custom-services" value="${(store.customServices || []).join(', ')}" placeholder="e.g. Free Home Delivery, Senior Citizen Discount, Nebulizer Support" class="w-full px-3 py-1.5 border rounded-lg text-xs font-medium" />
+              <span class="text-[10px] text-slate-400 mt-0.5 block">Displays as verified highlight badges in the pharmacy overview box.</span>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 text-xs mb-1">Owner Message / Extra Announcement</label>
+              <input type="text" id="edit-store-extra-notes" value="${store.extraNotes || ''}" placeholder="e.g. Doorstep delivery within 5 km. Contact us for special injectables." class="w-full px-3 py-1.5 border rounded-lg text-xs font-medium" />
+              <span class="text-[10px] text-slate-400 mt-0.5 block">Optional notice or announcement displayed prominently to visitors.</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Web Address, Custom Domain, Subdomain & Short Aliases -->
         <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
           <div class="flex items-center justify-between">
@@ -14134,6 +14246,15 @@ Return ONLY valid JSON matching this exact structure without markdown ticks:
       store.whatsapp = (document.getElementById("edit-store-whatsapp").value || store.phone).replace(/[^0-9]/g, "");
       store.operatingHours = document.getElementById("edit-store-hours").value.trim();
       store.is24x7 = document.getElementById("edit-store-24x7").checked;
+
+      const servicesInput = document.getElementById("edit-store-custom-services");
+      if (servicesInput) {
+        store.customServices = servicesInput.value.split(",").map(s => s.trim()).filter(Boolean);
+      }
+      const extraNotesInput = document.getElementById("edit-store-extra-notes");
+      if (extraNotesInput) {
+        store.extraNotes = extraNotesInput.value.trim();
+      }
 
       let photoVal = document.getElementById("edit-store-photo").value.trim() || store.photoUrl;
       if (photoVal.startsWith("data:image/") && photoVal.length > 90000) {
